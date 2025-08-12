@@ -129,7 +129,7 @@ Crisis Text Line - Text HOME to 741741 for free, 24/7 crisis counseling.
 [Add links to articles or books on burnout and imposter syndrome]
 
 ## 🤝 How to Contribute
-Contributions are welcome and encouraged! Please read the CONTRIBUTING.md file for guidelines on how to add your own tips, tools, and resources to this list.
+Contributions are welcome and encouraged! Please read the [contributing.md](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/contributing.md) file for guidelines on how to add your own tips, tools, and resources to this list.
 
 ## 📜 License
 This project is licensed under the Creative Commons CC0 1.0 Universal License.
