@@ -14,12 +14,32 @@ This script provides a simple way to manage your daily schedule and receive remi
 
 ## How It Works
 
-The `reminder_macos.py` script contains a dictionary called `schedule` where you can define your daily tasks and their corresponding times. The script runs in a loop, checking the current time and triggering an alarm when it matches a scheduled time.
+The `reminder_macos.py` script reads your schedule from a TOML configuration file (`schedule.toml`) and runs in a loop, checking the current time and triggering an alarm when it matches a scheduled time.
 
 ### Configuration
 
-1.  **Edit the schedule**: Open [`schedule_management/reminder_macos.py`](schedule_management/reminder_macos.py) and modify the `schedule` dictionary to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
-2.  **Change the sound (optional)**: You can change the notification sound by modifying the `SOUND_FILE` variable.
+The configuration is now stored in a TOML file (`schedule.toml`) for easier management:
+
+1.  **Edit the schedule**: Open [`schedule_management/schedule.toml`](schedule_management/schedule.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
+
+    ```toml
+    [schedule]
+    "08:00" = "Good morning! Time to wake up 🌅"
+    "12:00" = "Lunch time 🍽️"
+    "18:00" = "End of work day 🎉"
+    ```
+
+2.  **Customize settings**: You can modify the `[settings]` section in the TOML file to:
+    - Change the notification sound (`sound_file`)
+    - Adjust alarm interval (`alarm_interval` in seconds)
+    - Set maximum alarm duration (`max_alarm_duration` in seconds)
+
+    ```toml
+    [settings]
+    sound_file = "/System/Library/Sounds/Ping.aiff"
+    alarm_interval = 30
+    max_alarm_duration = 300
+    ```
 
 ### Manual Execution
 
