@@ -1,2 +1,9 @@
 .venv
-schedule.toml
+schedule.toml# Test arti
+facts
+.pytest_cache/
+htmlcov/
+.coverage
+__pycache__/
+*.pyc
+*.pyo
