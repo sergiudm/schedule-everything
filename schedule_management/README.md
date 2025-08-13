@@ -20,7 +20,7 @@ The `reminder_macos.py` script reads your schedule from a TOML configuration fil
 
 The configuration is now stored in a TOML file (`schedule.toml`) for easier management:
 
-1.  **Edit the schedule**: Open [`schedule_management/schedule.toml`](schedule_management/schedule.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
+1.  **Edit the schedule**: Open [`schedule_management/schedule_template.toml`](schedule_management/schedule_template.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
 
     ```toml
     [schedule]
@@ -41,6 +41,14 @@ The configuration is now stored in a TOML file (`schedule.toml`) for easier mana
     max_alarm_duration = 300
     ```
 
+3. **Create your own file**:
+   ```bash
+   cp schedule_management/schedule_template.toml schedule.toml
+   ```
+
+> [!IMPORTANT]
+> Any changes in `schedule_template.toml` will not be reflected in the script. The only way to change the behavior of the script is modifying `schedule.toml`.
+
 ### Manual Execution
 
 You can run the script manually from your terminal:
@@ -51,7 +59,32 @@ uv run schedule_management/reminder_macos.py
 
 ### Automatic Execution with `launchd`
 
-To run the script automatically in the background, you can use `launchd`, the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided.
+To run the script automatically in the background, you can use `launchd`, the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.schedule_notify</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/usrname/awesome-health-habits/schedule_management/.venv/bin/python</string>
+        <string>/Users/usrname/awesome-health-habits/schedule_management/reminder_macos.py</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+
+```
 
 1.  **Edit the `.plist` file**: You will need to create a file like `com.user.schedule_notify.plist` in `~/Library/LaunchAgents/`. Make sure the `ProgramArguments` key points to the correct path of your python interpreter and the `reminder_macos.py` script.
 2.  **Load the agent**:
