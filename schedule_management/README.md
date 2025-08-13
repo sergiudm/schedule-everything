@@ -2,7 +2,8 @@
 
 This script provides a simple way to manage your daily schedule and receive reminders on macOS. It uses a Python script to trigger notifications based on a predefined schedule.
 
->[!NOTE] This script is designed for macOS. Support for other operating systems may be added in the future.
+> [!NOTE]
+> This script is designed for macOS. Support for other operating systems may be added in the future.
 
 ## Features
 
