@@ -20,7 +20,7 @@ The `reminder_macos.py` script reads your schedule from a TOML configuration fil
 
 The configuration is now stored in a TOML file (`schedule.toml`) for easier management:
 
-1.  **Edit the schedule**: Open [`schedule_management/schedule_template.toml`](schedule_management/schedule_template.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
+1.  **Edit the schedule**: Open [`schedule_management/schedule_template.toml`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/schedule_template.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
 
     ```toml
     [schedule]
