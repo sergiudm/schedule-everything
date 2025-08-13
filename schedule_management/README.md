@@ -46,7 +46,7 @@ The configuration is now stored in a TOML file (`schedule.toml`) for easier mana
 You can run the script manually from your terminal:
 
 ```bash
-python3 schedule_management/reminder_macos.py
+uv run schedule_management/reminder_macos.py
 ```
 
 ### Automatic Execution with `launchd`
