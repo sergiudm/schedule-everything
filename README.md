@@ -231,9 +231,4 @@
 > **Tip:** :bulb: **首次贡献者福利**：PR被合并后，可私信我获取《程序员健康自测手册》PDF（含20个快速筛查方法）。  
 > :heart: **感谢你的参与**——每一份贡献，都在为开发者群体争取更长的职业生涯！  
 
-[![一键返回目录](https://img.shields.io/badge/回到目录-%E2%AC%86-black?style=flat-square)](#目录)  
-
----
-
-> **医学专家寄语**：我是Dr. Chen，职业病预防科主任。曾接诊过数百名程序员患者，深知“等项目结束再养生”是最大误区。**健康不是成本，而是投资回报率最高的代码优化。** 从今天开始，写健康习惯像写单元测试——小步迭代，持续集成。 :rocket:  
-> **最后彩蛋**：在`/health-hacks`目录下，有我整理的[程序员急救包清单](https://github.com/your-repo/tree/main/health-hacks)（含¥50内神器推荐）！
+[![一键返回目录](https://img.shields.io/badge/回到目录-%E2%AC%86-black?style=flat-square)](#目录)
