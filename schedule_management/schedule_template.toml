@@ -7,32 +7,161 @@ sound_file = "/System/Library/Sounds/Ping.aiff"
 alarm_interval = 5  # seconds between alarm repeats
 max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)
 
-[schedule]
+[schedule.odd.monday]
 "08:05" = "Wake up!"
 "08:30" = "Breakfast time 🍳"
+
 "09:10" = "Pomodoro #1"
 "09:35" = "Pomodoro #1 finished, 5min break"
 "09:40" = "Pomodoro #2"
 "10:10" = "Take a break 🚶 Walk or light exercise"
-"10:50" = "Pomodoro #3"
-"11:25" = "Pomodoro #3 finished, 5min break"
-"11:30" = "Pomodoro #4"
-"11:55" = "Pomodoro #4 finished, 5min break"
-"12:00" = "Pomodoro #5"
-"12:30" = "Morning work finished, lunch time 🍚"
-"14:00" = "Pomodoro #6"
-"14:25" = "Pomodoro #6 finished, 5min break"
-"14:30" = "Pomodoro #7"
-"15:00" = "Take a break 🚶 Walk or light exercise"
-"16:30" = "Pomodoro #8"
-"16:55" = "Pomodoro #8 finished, 5min break"
-"17:00" = "Pomodoro #9"
-"17:25" = "Pomodoro #9 finished, 5min break"
-"17:30" = "Pomodoro #10"
-"18:00" = "Pomodoro #10 finished, break time"
-"18:30" = "Dinner time 🍽️"
-"20:00" = "Pomodoro #11"
-"20:25" = "Pomodoro #11 finished, 5min break"
-"20:30" = "Pomodoro #12"
+
 "21:00" = "Today's work finished 🎉, time to summarize"
 "22:45" = "Bedtime 😴"
+
+[schedule.odd.tuesday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.odd.wednesday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.odd.thursday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.odd.friday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.odd.saturday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.odd.sunday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+[schedule.even.monday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.even.tuesday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.even.wednesday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.even.thursday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.even.friday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+"21:00" = "Today's work finished 🎉, time to summarize"
+"22:45" = "Bedtime 😴"
+
+[schedule.even.saturday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"
+
+[schedule.even.sunday]
+"08:05" = "Wake up!"
+"08:30" = "Breakfast time 🍳"
+
+"09:10" = "Pomodoro #1"
+"09:35" = "Pomodoro #1 finished, 5min break"
+"09:40" = "Pomodoro #2"
+"10:10" = "Take a break 🚶 Walk or light exercise"

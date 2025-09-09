@@ -1,6 +1,5 @@
 .venv
-schedule.toml# Test arti
-facts
+schedule.toml
 .pytest_cache/
 htmlcov/
 .coverage
