@@ -1,0 +1,4 @@
+[settings]
+sound_file = "/System/Library/Sounds/Ping.aiff"
+alarm_interval = 5  # seconds between alarm repeats
+max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)

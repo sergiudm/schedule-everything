@@ -1,5 +1,6 @@
 .venv
-schedule.toml
+*weeks.toml
+settings.toml
 .pytest_cache/
 htmlcov/
 .coverage
