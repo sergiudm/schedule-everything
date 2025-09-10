@@ -102,6 +102,7 @@ To stop the agent:
 
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+```
 
 ## Roadmap
 - [x] Time point alarms
