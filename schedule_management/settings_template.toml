@@ -2,3 +2,12 @@
 sound_file = "/System/Library/Sounds/Ping.aiff"
 alarm_interval = 5  # seconds between alarm repeats
 max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)
+
+[time_blocks]
+# time in minutes
+pomodoro = 25
+short_break = 5
+long_break = 40
+meeting = 50
+exercise = 30
+lunch = 60

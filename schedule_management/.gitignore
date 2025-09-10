@@ -1,9 +1,2 @@
-.venv
 *weeks.toml
 settings.toml
-.pytest_cache/
-htmlcov/
-.coverage
-__pycache__/
-*.pyc
-*.pyo

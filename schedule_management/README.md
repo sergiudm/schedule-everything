@@ -1,5 +1,7 @@
 # Schedule Management
 
+[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
+
 This script provides a simple way to manage your daily schedule and receive reminders on macOS. It uses a Python script to trigger notifications based on a predefined schedule.
 
 > [!NOTE]
@@ -100,3 +102,9 @@ To stop the agent:
 
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+
+## Roadmap
+- [x] Time point alarms
+- [x] Default schedule
+- [ ] Add support for Linux and Windows
+- [ ] MCP to write schedule files based on Notion Calendar or Google Calendar
