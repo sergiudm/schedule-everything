@@ -16,40 +16,106 @@ This script provides a simple way to manage your daily schedule and receive remi
 
 ## How It Works
 
-The `reminder_macos.py` script reads your schedule from a TOML configuration file (`schedule.toml`) and runs in a loop, checking the current time and triggering an alarm when it matches a scheduled time.
+The [`reminder_macos.py`](file:///Users/sergiu/awesome-health-habits/schedule_management/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
+
+- **Weekly alternation**: Automatically switches between odd and even week schedules
+- **Time blocks**: Activities with start and end alarms (e.g., pomodoro sessions)
+- **Time points**: One-time reminders
+- **Common schedules**: Events that apply to all days of the week
 
 ### Configuration
 
-The configuration is now stored in a TOML file (`schedule.toml`) for easier management:
+The configuration system uses multiple TOML files for flexible schedule management:
 
-1.  **Edit the schedule**: Open [`schedule_management/schedule_template.toml`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/schedule_template.toml) and modify the `[schedule]` section to fit your needs. The key is the time in "HH:MM" format, and the value is the message you want to see.
+#### 1. Settings Configuration (`settings.toml`)
 
-    ```toml
-    [schedule]
-    "08:00" = "Good morning! Time to wake up 🌅"
-    "12:00" = "Lunch time 🍽️"
-    "18:00" = "End of work day 🎉"
-    ```
+This file contains general settings, time blocks, and time points:
 
-2.  **Customize settings**: You can modify the `[settings]` section in the TOML file to:
-    - Change the notification sound (`sound_file`)
-    - Adjust alarm interval (`alarm_interval` in seconds)
-    - Set maximum alarm duration (`max_alarm_duration` in seconds)
+```toml
+[settings]
+sound_file = "/System/Library/Sounds/Ping.aiff"
+alarm_interval = 5  # seconds between alarm repeats
+max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)
 
-    ```toml
-    [settings]
-    sound_file = "/System/Library/Sounds/Ping.aiff"
-    alarm_interval = 30
-    max_alarm_duration = 300
-    ```
+[time_blocks]
+# Define reusable time blocks with duration in minutes
+pomodoro = 25
+long_break = 40
+meeting = 50
+exercise = 30
+lunch = 60
+napping = 30
 
-3. **Create your own file**:
-   ```bash
-   cp schedule_management/schedule_template.toml schedule.toml
+[time_points]
+# Define one-time reminders
+go_to_bed = "上床睡觉 😴 该休息了！"
+summary_time = "今天的工作结束 🎉, 总结一下"
+```
+
+#### 2. Weekly Schedules (`odd_weeks.toml` and `even_weeks.toml`)
+
+The system alternates between odd and even week schedules based on ISO calendar weeks. Each file can contain:
+
+- **Day-specific sections**: `[monday]`, `[tuesday]`, etc.
+- **Common section**: `[common]` - applies to all days
+- **Time entries**: Use "HH:MM" format as keys
+
+**Schedule Entry Types:**
+
+1. **Time Block References** (triggers start and end alarms):
+   ```toml
+   "09:00" = "pomodoro"  # References time_blocks.pomodoro (25 min)
    ```
 
+2. **Time Point References** (one-time reminders):
+   ```toml
+   "22:45" = "go_to_bed"  # References time_points.go_to_bed
+   ```
+
+3. **Direct Messages** (immediate display):
+   ```toml
+   "12:00" = "Lunch time! 🍽️"
+   ```
+
+4. **Block Objects** (custom titles for time blocks):
+   ```toml
+   "14:00" = { block = "meeting", title = "Team Standup" }
+   ```
+
+**Example schedule structure:**
+```toml
+[monday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:30" = "long_break"
+"13:00" = { block = "meeting", title = "Sprint Planning" }
+
+[common]  # Applied to all days
+"19:30" = "pomodoro"
+"21:00" = "summary_time"
+"22:45" = "go_to_bed"
+```
+
+#### 3. Setup Instructions
+
+1. **Create your settings file**:
+   ```bash
+   cp schedule_management/settings_template.toml schedule_management/settings.toml
+   ```
+
+2. **Create your weekly schedules** (or modify existing ones):
+   ```bash
+   cp schedule_management/week_schedule_template.toml schedule_management/odd_weeks.toml
+   cp schedule_management/week_schedule_template.toml schedule_management/even_weeks.toml
+   ```
+
+3. **Customize your schedules** by editing the TOML files to fit your needs.
+
 > [!IMPORTANT]
-> Any changes in `schedule_template.toml` will not be reflected in the script. The only way to change the behavior of the script is modifying `schedule.toml`.
+> Template files are for reference only. The system reads from `settings.toml`, `odd_weeks.toml`, and `even_weeks.toml`.
+
+> [!WARNING]
+> **Avoid Overlapping Time Blocks**: Time blocks create both start and end alarms. Ensure that time blocks don't overlap, as this can cause conflicting notifications. For example, if you schedule a 25-minute pomodoro at "09:00", avoid scheduling another time block between "09:00" and "09:25".
 
 ### Manual Execution
 
