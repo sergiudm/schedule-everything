@@ -125,6 +125,14 @@ You can run the script manually from your terminal:
 uv run schedule_management/reminder_macos.py
 ```
 
+### View Schedule
+To view your schedule, you can pass `--view` flag:
+```bash
+uv run schedule_management/reminder_macos.py --view
+```
+
+Then you can check the output schedule in the `schedule_visualization` folder.
+
 ### Automatic Execution with `launchd`
 
 To run the script automatically in the background, you can use [launchd](https://www.launchd.info/?lang=en), the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
@@ -173,5 +181,7 @@ launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
 ## Roadmap
 - [x] Time point alarms
 - [x] Default schedule
+- [x] Schedule visualization
+- [ ] Install script
 - [ ] Add support for Linux and Windows
 - [ ] MCP to write schedule files based on Notion Calendar or Google Calendar

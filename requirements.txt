@@ -1,0 +1,2 @@
+# Core dependencies for schedule management
+matplotlib>=3.5.0
