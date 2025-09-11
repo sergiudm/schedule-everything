@@ -16,7 +16,7 @@ This script provides a simple way to manage your daily schedule and receive remi
 
 ## How It Works
 
-The [`reminder_macos.py`](file:///Users/sergiu/awesome-health-habits/schedule_management/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
+The [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
 
 - **Weekly alternation**: Automatically switches between odd and even week schedules
 - **Time blocks**: Activities with start and end alarms (e.g., pomodoro sessions)
@@ -127,7 +127,7 @@ uv run schedule_management/reminder_macos.py
 
 ### Automatic Execution with `launchd`
 
-To run the script automatically in the background, you can use `launchd`, the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
+To run the script automatically in the background, you can use [launchd](https://www.launchd.info/?lang=en), the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
