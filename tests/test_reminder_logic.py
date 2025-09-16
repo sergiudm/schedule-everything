@@ -7,6 +7,7 @@ from schedule_management.reminder_macos import (
     time_to_str,
     add_minutes_to_time,
     get_today_schedule,
+    should_skip_today,
 )
 
 
@@ -246,3 +247,101 @@ class TestFullFlow:
         ]
 
         assert events == expected_sequence
+
+
+class TestSkipDays:
+    """Test skip_days functionality"""
+    
+    def test_should_skip_today_with_empty_skip_days(self):
+        """Test should_skip_today with empty skip_days list"""
+        settings = {"skip_days": []}
+        assert not should_skip_today(settings)
+    
+    def test_should_skip_today_with_no_skip_days_key(self):
+        """Test should_skip_today when skip_days key is missing"""
+        settings = {}
+        assert not should_skip_today(settings)
+
+    def test_should_skip_today_with_matching_day(self):
+        """Test should_skip_today when current day is in skip_days"""
+        import datetime
+        current_day = datetime.datetime.now().strftime("%A").lower()
+        settings = {"skip_days": [current_day]}
+        assert should_skip_today(settings)
+    
+    def test_should_skip_today_with_non_matching_day(self):
+        """Test should_skip_today when current day is not in skip_days"""
+        import datetime
+        current_day = datetime.datetime.now().strftime("%A").lower()
+        # Pick a different day
+        other_days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        other_days.remove(current_day)
+        settings = {"skip_days": [other_days[0]]}
+        assert not should_skip_today(settings)
+    
+    def test_should_skip_today_with_multiple_skip_days(self):
+        """Test should_skip_today with multiple days in skip_days"""
+        import datetime
+        current_day = datetime.datetime.now().strftime("%A").lower()
+        settings = {"skip_days": ["sunday", "saturday", current_day]}
+        assert should_skip_today(settings)
+    
+    def test_should_skip_today_case_insensitive(self):
+        """Test should_skip_today is case insensitive"""
+        import datetime
+        current_day = datetime.datetime.now().strftime("%A")
+        # Test with uppercase day name
+        settings = {"skip_days": [current_day.upper()]}
+        # Should return False because we convert to lowercase for comparison
+        assert not should_skip_today(settings)
+        
+        # Test with lowercase day name (should match)
+        settings = {"skip_days": [current_day.lower()]}
+        assert should_skip_today(settings)
+
+    @patch('schedule_management.reminder_macos.load_settings')
+    @patch('schedule_management.reminder_macos.datetime')
+    def test_get_today_schedule_returns_empty_on_skip_day(self, mock_datetime, mock_load_settings):
+        """Test that get_today_schedule returns empty dict on skip days"""
+        # Mock current day as Sunday
+        mock_now = mock_datetime.now.return_value
+        mock_now.strftime.return_value = "Sunday"
+        
+        # Mock settings with Sunday in skip_days
+        mock_load_settings.return_value = (
+            {"skip_days": ["sunday"]},  # settings
+            {},  # time_blocks
+            {}   # time_points
+        )
+        
+        result = get_today_schedule()
+        assert result == {}
+    
+    @patch('schedule_management.reminder_macos.load_settings')
+    @patch('schedule_management.reminder_macos.datetime')
+    def test_get_today_schedule_normal_day_not_skipped(self, mock_datetime, mock_load_settings):
+        """Test that get_today_schedule works normally on non-skip days"""
+        # Mock current day as Monday
+        mock_now = mock_datetime.now.return_value
+        mock_now.strftime.return_value = "Monday"
+        mock_now.isocalendar.return_value.week = 1  # odd week
+        
+        # Mock settings with Sunday in skip_days (not Monday)
+        mock_load_settings.return_value = (
+            {"skip_days": ["sunday"]},  # settings
+            {},  # time_blocks
+            {}   # time_points
+        )
+        
+        # Mock schedule data
+        with patch('schedule_management.reminder_macos.load_odd_week_schedule') as mock_odd:
+            mock_odd.return_value = {
+                "monday": {"09:00": "pomodoro"},
+                "common": {"21:00": "summary_time"}
+            }
+            
+            result = get_today_schedule()
+            # Should return the merged schedule, not empty
+            assert result != {}
+            assert "09:00" in result
+            assert "21:00" in result

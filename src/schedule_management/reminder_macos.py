@@ -78,10 +78,28 @@ def get_week_parity():
     return "odd" if week_number % 2 == 1 else "even"
 
 
+def should_skip_today(settings):
+    """Check if today should be skipped based on skip_days setting"""
+    skip_days = settings.get("skip_days", [])
+    if not skip_days:
+        return False
+    
+    current_weekday = datetime.now().strftime("%A").lower()
+    return current_weekday in skip_days
+
+
 def get_today_schedule():
     """
     Get today's schedule by merging the day-specific schedule over the common schedule.
+    Returns empty dict if today should be skipped based on skip_days setting.
     """
+    # Load settings to check if today should be skipped
+    settings, _, _ = load_settings()
+    
+    # Check if today should be skipped
+    if should_skip_today(settings):
+        return {}
+
     now = datetime.now()
     weekday_en = now.strftime("%A").lower()
 
@@ -336,6 +354,11 @@ def main():
     while True:
         now_str = datetime.now().strftime("%H:%M")
         today_schedule = get_today_schedule()
+
+        # Skip processing if today is a skipped day (empty schedule)
+        if not today_schedule:
+            time.sleep(20)
+            continue
 
         # First, process any scheduled start events
         if now_str in today_schedule and now_str not in notified_today:
