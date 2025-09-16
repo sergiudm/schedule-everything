@@ -317,7 +317,7 @@ test_installation() {
     fi
     
     # Test configuration files
-    if [[ -f "$INSTALL_DIR/schedule_management/settings.toml" ]]; then
+    if [[ -f "$INSTALL_DIR/config/settings.toml" ]]; then
         log_success "Configuration files test passed"
     else
         log_warning "Configuration files not found - will use defaults"

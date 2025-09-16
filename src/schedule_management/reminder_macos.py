@@ -12,7 +12,7 @@ from collections import defaultdict
 def load_toml_file(filename):
     """Helper to load a single TOML file from config directory"""
     # Get the project root directory (parent of src/)
-    project_root = Path(__file__).parent.parent.parent
+    project_root = Path(__file__).parent.parent
     config_dir = project_root / "config"
     file_path = config_dir / filename
 
@@ -23,23 +23,23 @@ def load_toml_file(filename):
         return tomllib.load(f)
 
 
-def load_settings(filename="settings.toml"):
+def load_settings(file_path):
     """Load settings from settings.toml"""
-    config = load_toml_file(filename=filename)
+    config = load_toml_file(filename=file_path)
     settings = config.get("settings", {})
     time_blocks = config.get("time_blocks", {})
     time_points = config.get("time_points", {})
     return settings, time_blocks, time_points
 
 
-def load_odd_week_schedule():
+def load_odd_week_schedule(file_path):
     """Load odd week schedule from odd_weeks.toml"""
-    return load_toml_file("odd_weeks.toml")
+    return load_toml_file(file_path)
 
 
-def load_even_week_schedule():
+def load_even_week_schedule(file_path):
     """Load even week schedule from even_weeks.toml"""
-    return load_toml_file("even_weeks.toml")
+    return load_toml_file(file_path)
 
 
 def _play_sound(sound_file):
@@ -96,7 +96,7 @@ def get_today_schedule():
     Returns empty dict if today should be skipped based on skip_days setting.
     """
     # Load settings to check if today should be skipped
-    settings, _, _ = load_settings()
+    settings, _, _ = load_settings("settings.toml")
     
     # Check if today should be skipped
     if should_skip_today(settings):
@@ -122,9 +122,9 @@ def get_today_schedule():
     # Load the correct schedule file based on week parity
     parity = get_week_parity()
     if parity == "odd":
-        schedule_data = load_odd_week_schedule()
+        schedule_data = load_odd_week_schedule("odd_weeks.toml")
     else:
-        schedule_data = load_even_week_schedule()
+        schedule_data = load_even_week_schedule("even_weeks.toml")
 
     # Get the common schedule (defaults to empty dict if not found)
     common_schedule = schedule_data.get("common", {})
@@ -163,9 +163,9 @@ def visualize_schedule():
     Generates two PNG files: 'odd_week_schedule.png' and 'even_week_schedule.png'
     """
     # Load settings and schedules
-    settings, time_blocks, time_points = load_settings()
-    odd_schedule = load_odd_week_schedule()
-    even_schedule = load_even_week_schedule()
+    settings, time_blocks, time_points = load_settings("settings.toml")
+    odd_schedule = load_odd_week_schedule("odd_weeks.toml")
+    even_schedule = load_even_week_schedule("even_weeks.toml")
 
     # Color mapping for different activity types
     colors = {
@@ -343,7 +343,7 @@ def visualize_schedule():
 
 def main():
     # Load settings and time blocks
-    settings, time_blocks, time_points = load_settings()
+    settings, time_blocks, time_points = load_settings("settings.toml")
     SOUND_FILE = settings.get("sound_file", "/System/Library/Sounds/Ping.aiff")
     ALARM_INTERVAL = settings.get("alarm_interval", 5)
     MAX_ALARM_DURATION = settings.get("max_alarm_duration", 300)
