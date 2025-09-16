@@ -158,9 +158,11 @@ awesome-health-habits/
 │   └── week_schedule_template.toml # 日程模板
 ├── src/schedule_management/        # 源代码
 │   ├── reminder_macos.py           # 主程序
+│   ├── reminder.py                 # CLI 工具
 │   └── __init__.py
 ├── tests/                          # 测试文件
 ├── install.sh                      # 安装脚本
+├── pyproject.toml                  # Python 项目配置
 └── README.md                       # 本文档
 ```
 
@@ -202,13 +204,31 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 
 ### 🚀 快速开始
 
-#### 1. 基础运行
+#### 1. CLI 工具使用（推荐）
+```bash
+# 查看帮助
+uv run src/schedule_management/reminder.py --help
+
+# 更新配置并重启服务
+uv run src/schedule_management/reminder.py update
+
+# 生成日程可视化图表
+uv run src/schedule_management/reminder.py view
+
+# 查看当前状态和下一个事件
+uv run src/schedule_management/reminder.py status
+
+# 查看详细状态（包含今日完整日程）
+uv run src/schedule_management/reminder.py status -v
+```
+
+#### 2. 基础运行
 ```bash
 # 直接运行提醒系统
 uv run src/schedule_management/reminder_macos.py
 ```
 
-#### 2. 生成日程可视化
+#### 3. 生成日程可视化
 ```bash
 # 生成单双周日程图表
 uv run src/schedule_management/reminder_macos.py --view
@@ -217,13 +237,13 @@ open schedule_visualization/odd_week_schedule.png
 open schedule_visualization/even_week_schedule.png
 ```
 
-#### 3. 运行测试
+#### 4. 运行测试
 ```bash
 # 运行所有测试
 uv run pytest tests/ -v
 ```
 
-#### 4. 安装为系统服务
+#### 5. 安装为系统服务
 ```bash
 # 使用安装脚本（推荐）
 ./install.sh
@@ -249,6 +269,65 @@ launchctl load ~/Library/LaunchAgents/com.health.habits.reminder.plist
 3. **自定义标题时间段**
    ```toml
    "14:00" = { block = "meeting", title = "项目评审会议" }
+   ```
+
+### 🛠️ CLI 工具详解
+
+安装后，你可以使用 `reminder` 命令来管理系统：
+
+#### 基础命令
+```bash
+# 查看帮助信息
+reminder --help
+
+# 更新配置并重启服务（修改配置文件后使用）
+reminder update
+
+# 生成日程可视化图表
+reminder view
+
+# 查看当前状态
+reminder status
+```
+
+#### 高级用法
+```bash
+# 查看详细状态（包含今日完整日程）
+reminder status -v
+
+# 查看特定命令帮助
+reminder update --help
+reminder view --help
+reminder status --help
+```
+
+#### 命令说明
+
+| 命令 | 功能 | 使用场景 |
+|------|------|----------|
+| `reminder update` | 重新加载配置并重启服务 | 修改了 `config/` 目录下的任何配置文件后 |
+| `reminder view` | 生成单双周日程可视化图表 | 想要查看或分享日程安排时 |
+| `reminder status` | 显示当前事件和下一个事件 | 快速了解当前应该做什么 |
+| `reminder status -v` | 显示详细状态含完整日程 | 想要查看今天所有安排时 |
+
+#### 安装 CLI 工具
+如果使用安装脚本，`reminder` 命令会自动安装到 `$HOME/healthy_habits/reminder`。你可以：
+
+1. **添加到 PATH**（推荐）：
+   ```bash
+   echo 'export PATH="$HOME/healthy_habits:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+2. **创建别名**：
+   ```bash
+   echo 'alias reminder="$HOME/healthy_habits/reminder"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+3. **直接使用完整路径**：
+   ```bash
+   $HOME/healthy_habits/reminder status
    ```
 
 ### ⚠️ 重要提醒
@@ -288,9 +367,10 @@ launchctl load ~/Library/LaunchAgents/com.health.habits.reminder.plist
 > 修复身体的 bug，比修复代码的 bug 更重要 —— 因为后者可以重写，前者不能。
 
 ### 最近更新（2025-09）
+- ✅ **CLI 工具发布**：全新 `reminder` 命令行工具，支持 update/view/status 三大功能
 - ✅ **配置文件重构**：所有 TOML 配置文件现已迁移到顶级 `config/` 目录
 - ✅ **路径优化**：更新了所有文件引用和导入路径
-- ✅ **安装脚本升级**：安装程序现在正确处理新的目录结构
+- ✅ **安装脚本升级**：安装程序现在正确处理新的目录结构并自动安装 CLI 工具
 - ✅ **测试通过**：所有现有测试用例均已通过验证
 
 ### 如何贡献？

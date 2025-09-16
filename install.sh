@@ -249,8 +249,17 @@ cd "$INSTALL_DIR/schedule_management"
 python reminder_macos.py --visualize
 EOF
     
+    # Create CLI tool wrapper script
+    cat > "$INSTALL_DIR/reminder" << EOF
+#!/bin/bash
+# CLI tool wrapper for the reminder system
+source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+python "$INSTALL_DIR/schedule_management/reminder.py" "\$@"
+EOF
+    
     # Make scripts executable
     chmod +x "$INSTALL_DIR"/*.sh
+    chmod +x "$INSTALL_DIR/reminder"
     
     log_success "Convenience scripts created"
 }
@@ -321,7 +330,14 @@ test_installation() {
 display_usage() {
     log_info "Installation completed successfully!"
     echo
-    echo "=== Usage Instructions ==="
+    echo "=== CLI Tool Usage ==="
+    echo "Add $INSTALL_DIR to your PATH or use full path:"
+    echo "  $INSTALL_DIR/reminder update    # Update configuration and restart service"
+    echo "  $INSTALL_DIR/reminder view      # Generate schedule visualizations"
+    echo "  $INSTALL_DIR/reminder status    # Show current status and next events"
+    echo "  $INSTALL_DIR/reminder status -v # Show detailed status with full schedule"
+    echo
+    echo "=== Manual Scripts ==="
     echo "1. Manual start: $INSTALL_DIR/start_reminders.sh"
     echo "2. Manual stop: $INSTALL_DIR/stop_reminders.sh"
     echo "3. Restart service: $INSTALL_DIR/restart_reminders.sh"
@@ -339,6 +355,11 @@ display_usage() {
     echo "=== Logs ==="
     echo "Output logs: $INSTALL_DIR/logs/healthy_habits.out"
     echo "Error logs: $INSTALL_DIR/logs/healthy_habits.err"
+    echo
+    echo "=== Setup CLI Tool ==="
+    echo "To use 'reminder' command globally, add to your PATH:"
+    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+    echo "Add this line to your ~/.zshrc or ~/.bash_profile"
     echo
     log_warning "You may need to grant accessibility permissions when the app first runs."
     log_info "The reminder system will start automatically on next login if LaunchAgent is loaded."

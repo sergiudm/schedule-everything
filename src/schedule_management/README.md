@@ -194,5 +194,6 @@ launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
 - [x] Schedule visualization
 - [x] Install script
 - [x] Skip days
+- [ ] Add CLI tools
 - [ ] Add support for Linux and Windows
 - [ ] MCP to write schedule files based on Notion Calendar or Google Calendar
