@@ -91,14 +91,21 @@ install_python() {
 create_venv() {
     log_info "Creating virtual environment..."
     
-    if [[ -d "$VENV_NAME" ]]; then
+    if [[ -d "$INSTALL_DIR/$VENV_NAME" ]]; then
         log_warning "Virtual environment already exists. Removing old environment..."
-        rm -rf "$VENV_NAME"
+        rm -rf "$INSTALL_DIR/$VENV_NAME"
     fi
     
-    python$PYTHON_VERSION -m venv "$VENV_NAME"
-    source "$VENV_NAME/bin/activate"
-    log_success "Virtual environment created and activated"
+    log_info "Creating venv at: $INSTALL_DIR/$VENV_NAME"
+    python$PYTHON_VERSION -m venv "$INSTALL_DIR/$VENV_NAME"
+    
+    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
+        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+        log_success "Virtual environment created and activated"
+    else
+        log_error "Virtual environment creation failed - activation script not found"
+        exit 1
+    fi
 }
 
 # Install Python dependencies
@@ -136,18 +143,18 @@ setup_project() {
     mkdir -p "$INSTALL_DIR"
     
     # Copy project files
-    if [[ -d "schedule_management" ]]; then
-        cp -r schedule_management "$INSTALL_DIR/"
+    if [[ -d "src/schedule_management" ]]; then
+        cp -r src/schedule_management "$INSTALL_DIR/"
         log_success "Schedule management files copied"
     else
-        log_error "schedule_management directory not found!"
+        log_error "src/schedule_management directory not found!"
         exit 1
     fi
     
     # Copy configuration files if they exist
     for config_file in settings.toml odd_weeks.toml even_weeks.toml; do
-        if [[ -f "schedule_management/$config_file" ]]; then
-            cp "schedule_management/$config_file" "$INSTALL_DIR/schedule_management/"
+        if [[ -f "src/schedule_management/$config_file" ]]; then
+            cp "src/schedule_management/$config_file" "$INSTALL_DIR/schedule_management/"
         fi
     done
     
@@ -174,7 +181,7 @@ create_launch_agent() {
     <string>${LAUNCH_AGENT_NAME}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$HOME/$VENV_NAME/bin/python</string>
+        <string>$INSTALL_DIR/$VENV_NAME/bin/python</string>
         <string>$INSTALL_DIR/schedule_management/reminder_macos.py</string>
     </array>
     <key>RunAtLoad</key>
@@ -211,10 +218,10 @@ create_scripts() {
     log_info "Creating convenience scripts..."
     
     # Create start script
-    cat > "$INSTALL_DIR/start_reminders.sh" << 'EOF'
+    cat > "$INSTALL_DIR/start_reminders.sh" << EOF
 #!/bin/bash
-source "$HOME/healthy_habits_env/bin/activate"
-cd "$HOME/healthy_habits/schedule_management"
+source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+cd "$INSTALL_DIR/schedule_management"
 python reminder_macos.py
 EOF
     
@@ -234,10 +241,10 @@ launchctl load "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
 EOF
     
     # Create visualization script
-    cat > "$INSTALL_DIR/visualize_schedule.sh" << 'EOF'
+    cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
 #!/bin/bash
-source "$HOME/healthy_habits_env/bin/activate"
-cd "$HOME/healthy_habits/schedule_management"
+source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+cd "$INSTALL_DIR/schedule_management"
 python reminder_macos.py --visualize
 EOF
     
@@ -287,12 +294,16 @@ test_installation() {
     log_info "Testing installation..."
     
     # Test Python import
-    source "$VENV_NAME/bin/activate"
-    if python -c "import matplotlib; print('matplotlib imported successfully')"; then
-        log_success "Python dependencies test passed"
+    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
+        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+        if python -c "import matplotlib; print('matplotlib imported successfully')"; then
+            log_success "Python dependencies test passed"
+        else
+            log_error "Python dependencies test failed"
+            exit 1
+        fi
     else
-        log_error "Python dependencies test failed"
-        exit 1
+        log_warning "Virtual environment activation script not found, skipping Python test"
     fi
     
     # Test configuration files

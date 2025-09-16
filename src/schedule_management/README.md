@@ -16,18 +16,18 @@ This script provides a simple way to manage your daily schedule and receive remi
 
 ## How It Works
 
-The [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
+The [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/src/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
 
 - **Weekly alternation**: Automatically switches between odd and even week schedules
 - **Time blocks**: Activities with start and end alarms (e.g., pomodoro sessions)
 - **Time points**: One-time reminders
 - **Common schedules**: Events that apply to all days of the week
 
-### Configuration
+## Configuration
 
 The configuration system uses multiple TOML files for flexible schedule management:
 
-#### 1. Settings Configuration (`settings.toml`)
+### 1. Settings Configuration (`settings.toml`)
 
 This file contains general settings, time blocks, and time points:
 
@@ -52,7 +52,7 @@ go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
 ```
 
-#### 2. Weekly Schedules (`odd_weeks.toml` and `even_weeks.toml`)
+### 2. Weekly Schedules (`odd_weeks.toml` and `even_weeks.toml`)
 
 The system alternates between odd and even week schedules based on ISO calendar weeks. Each file can contain:
 
@@ -96,7 +96,9 @@ The system alternates between odd and even week schedules based on ISO calendar 
 "22:45" = "go_to_bed"
 ```
 
-#### 3. Setup Instructions
+## 3. Setup Instructions
+
+Go to `src/schedule_management` directory.
 
 1. **Create your settings file**:
    ```bash
@@ -122,18 +124,26 @@ The system alternates between odd and even week schedules based on ISO calendar 
 You can run the script manually from your terminal:
 
 ```bash
-uv run schedule_management/reminder_macos.py
+uv run src/schedule_management/reminder_macos.py
 ```
 
 ### View Schedule
 To view your schedule, you can pass `--view` flag:
 ```bash
-uv run schedule_management/reminder_macos.py --view
+uv run src/schedule_management/reminder_macos.py --view
 ```
 
 Then you can check the output schedule in the `schedule_visualization` folder.
 
-### Automatic Execution with `launchd`
+### Deployment
+
+#### Deploying with the installation script
+To deploy the script, you can use the provided installation script:
+```bash
+./install.sh
+```
+
+#### Deploying manually
 
 To run the script automatically in the background, you can use [launchd](https://www.launchd.info/?lang=en), the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
 
@@ -149,7 +159,7 @@ To run the script automatically in the background, you can use [launchd](https:/
     <key>ProgramArguments</key>
     <array>
         <string>/Users/usrname/awesome-health-habits/schedule_management/.venv/bin/python</string>
-        <string>/Users/usrname/awesome-health-habits/schedule_management/reminder_macos.py</string>
+        <string>/Users/usrname/awesome-health-habits/schedule_management/src/reminder_macos.py</string>
     </array>
 
     <key>RunAtLoad</key>

@@ -441,7 +441,7 @@ if __name__ == "__main__":
     import sys
 
     # Check if user wants to generate visualizations
-    if len(sys.argv) > 1 and sys.argv[1] == "--visualize":
+    if len(sys.argv) > 1 and sys.argv[1] == "--view":
         visualize_schedule()
     else:
         main()
