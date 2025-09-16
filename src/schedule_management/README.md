@@ -98,23 +98,23 @@ The system alternates between odd and even week schedules based on ISO calendar 
 
 ## 3. Setup Instructions
 
-Go to `src/schedule_management` directory.
+Configuration files are now located in the top-level `config/` directory.
 
 1. **Create your settings file**:
    ```bash
-   cp schedule_management/settings_template.toml schedule_management/settings.toml
+   cp config/settings_template.toml config/settings.toml
    ```
 
 2. **Create your weekly schedules** (or modify existing ones):
    ```bash
-   cp schedule_management/week_schedule_template.toml schedule_management/odd_weeks.toml
-   cp schedule_management/week_schedule_template.toml schedule_management/even_weeks.toml
+   cp config/week_schedule_template.toml config/odd_weeks.toml
+   cp config/week_schedule_template.toml config/even_weeks.toml
    ```
 
-3. **Customize your schedules** by editing the TOML files to fit your needs.
+3. **Customize your schedules** by editing the TOML files in the `config/` directory to fit your needs.
 
 > [!IMPORTANT]
-> Template files are for reference only. The system reads from `settings.toml`, `odd_weeks.toml`, and `even_weeks.toml`.
+> Template files are for reference only. The system reads from `config/settings.toml`, `config/odd_weeks.toml`, and `config/even_weeks.toml`.
 
 > [!WARNING]
 > **Avoid Overlapping Time Blocks**: Time blocks create both start and end alarms. Ensure that time blocks don't overlap, as this can cause conflicting notifications. For example, if you schedule a 25-minute pomodoro at "09:00", avoid scheduling another time block between "09:00" and "09:25".
@@ -158,8 +158,8 @@ To run the script automatically in the background, you can use [launchd](https:/
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/usrname/awesome-health-habits/schedule_management/.venv/bin/python</string>
-        <string>/Users/usrname/awesome-health-habits/schedule_management/src/reminder_macos.py</string>
+        <string>/Users/usrname/awesome-health-habits/.venv/bin/python</string>
+        <string>/Users/usrname/awesome-health-habits/src/schedule_management/reminder_macos.py</string>
     </array>
 
     <key>RunAtLoad</key>

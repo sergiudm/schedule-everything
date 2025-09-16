@@ -141,6 +141,7 @@ setup_project() {
     fi
     
     mkdir -p "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR/config"
     
     # Copy project files
     if [[ -d "src/schedule_management" ]]; then
@@ -153,8 +154,8 @@ setup_project() {
     
     # Copy configuration files if they exist
     for config_file in settings.toml odd_weeks.toml even_weeks.toml; do
-        if [[ -f "src/schedule_management/$config_file" ]]; then
-            cp "src/schedule_management/$config_file" "$INSTALL_DIR/schedule_management/"
+        if [[ -f "config/$config_file" ]]; then
+            cp "config/$config_file" "$INSTALL_DIR/config/"
         fi
     done
     
@@ -331,9 +332,9 @@ display_usage() {
     echo "Unload service: launchctl unload $LAUNCH_AGENT_PLIST"
     echo
     echo "=== Configuration ==="
-    echo "Settings: $INSTALL_DIR/schedule_management/settings.toml"
-    echo "Odd week schedule: $INSTALL_DIR/schedule_management/odd_weeks.toml"
-    echo "Even week schedule: $INSTALL_DIR/schedule_management/even_weeks.toml"
+    echo "Settings: $INSTALL_DIR/config/settings.toml"
+    echo "Odd week schedule: $INSTALL_DIR/config/odd_weeks.toml"
+    echo "Even week schedule: $INSTALL_DIR/config/even_weeks.toml"
     echo
     echo "=== Logs ==="
     echo "Output logs: $INSTALL_DIR/logs/healthy_habits.out"

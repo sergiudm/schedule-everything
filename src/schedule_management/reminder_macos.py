@@ -10,9 +10,11 @@ from collections import defaultdict
 
 
 def load_toml_file(filename):
-    """Helper to load a single TOML file"""
-    script_dir = Path(__file__).parent
-    file_path = script_dir / filename
+    """Helper to load a single TOML file from config directory"""
+    # Get the project root directory (parent of src/)
+    project_root = Path(__file__).parent.parent.parent
+    config_dir = project_root / "config"
+    file_path = config_dir / filename
 
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")

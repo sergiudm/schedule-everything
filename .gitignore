@@ -9,3 +9,22 @@ __pycache__/
 build/
 
 schedule_visualization/
+
+# Ignore all files except templates
+*
+!*/
+!.gitignore
+!.python-version
+!CONTRIBUTING.md
+!install.sh
+!pyproject.toml
+!README.md
+!requirements-test.txt
+!requirements.txt
+!uv.lock
+!config/
+!config/*template*
+!src/
+!src/schedule_management/
+!src/schedule_management/*template*
+!tests/
