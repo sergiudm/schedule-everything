@@ -199,7 +199,7 @@ class TestHelperFunctions:
                 
                 mock_parse.side_effect = mock_parse_func
                 
-                with patch('datetime.datetime') as mock_datetime:
+                with patch('schedule_management.reminder.datetime') as mock_datetime:
                     mock_now = MagicMock()
                     mock_now.time.return_value = current_time
                     mock_now.strftime.return_value = "09:30"
