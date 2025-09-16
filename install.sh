@@ -363,9 +363,9 @@ main() {
     check_macos
     check_homebrew
     install_python
+    setup_project
     create_venv
     install_dependencies
-    setup_project
     create_launch_agent
     request_permissions
     create_scripts
