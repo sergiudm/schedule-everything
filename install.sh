@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Awesome Healthy Habits - macOS Installation Script
 # This script sets up the schedule management reminder system for macOS
 
 set -euo pipefail
@@ -13,10 +12,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Script configuration
-SCRIPT_NAME="Awesome Healthy Habits Installer"
+SCRIPT_NAME="Schedule Management Installer"
 PYTHON_VERSION="3.12"
-VENV_NAME="healthy_habits_env"
-INSTALL_DIR="$HOME/healthy_habits"
+VENV_NAME="schedule_management_env"
+INSTALL_DIR="$HOME/schedule_management"
 LAUNCH_AGENT_NAME="com.health.habits.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
 
@@ -199,9 +198,9 @@ create_launch_agent() {
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>$INSTALL_DIR/logs/healthy_habits.out</string>
+    <string>$INSTALL_DIR/logs/schedule_management.out</string>
     <key>StandardErrorPath</key>
-    <string>$INSTALL_DIR/logs/healthy_habits.err</string>
+    <string>$INSTALL_DIR/logs/schedule_management.err</string>
     <key>WorkingDirectory</key>
     <string>$INSTALL_DIR/src/schedule_management</string>
 </dict>
@@ -235,7 +234,7 @@ EOF
 
     cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
 #!/bin/bash
-"$HOME/healthy_habits/stop_reminders.sh"
+"$HOME/schedule_management/stop_reminders.sh"
 sleep 2
 launchctl load "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
 EOF

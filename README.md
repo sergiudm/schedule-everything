@@ -1,6 +1,6 @@
 # Schedule Management
 
-[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
+[![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 [中文版本](README_zh.md)
@@ -55,7 +55,7 @@ With the help of modern **Large Language Models (LLMs)**, you can instantly conv
 
 ## 🧠 How It Works
 
-The core script, [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/src/reminder_macos.py), continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
+The core script, [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/schedule_management/src/reminder_macos.py), continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
 
 The system supports:
 - **Time blocks**: Activities with defined durations (e.g., 25-minute Pomodoro → start + end alerts).
@@ -167,9 +167,9 @@ After running the installer (`install.sh`), you’ll have access to the `reminde
 Add these lines to `~/.zshrc` or `~/.bash_profile`:
 
 ```bash
-export PATH="$HOME/healthy_habits:$PATH"
-export REMINDER_CONFIG_DIR="$HOME/healthy_habits/config"
-alias reminder="$HOME/healthy_habits/reminder"
+export PATH="$HOME/schedule_management:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+alias reminder="$HOME/schedule_management/reminder"
 ```
 
 Then reload your shell:
@@ -199,7 +199,7 @@ source ~/.zshrc  # or source ~/.bash_profile
 
 To uninstall:
 ```bash
-rm -rf "$HOME/healthy_habits"
+rm -rf "$HOME/schedule_management"
 ```
 
 ### Option 2: Manual `launchd` Setup
@@ -215,7 +215,7 @@ rm -rf "$HOME/healthy_habits"
        <key>ProgramArguments</key>
        <array>
            <string>/path/to/your/.venv/bin/python</string>
-           <string>/path/to/awesome-healthy-habits/src/schedule_management/reminder_macos.py</string>
+           <string>/path/to/schedule_management/src/schedule_management/reminder_macos.py</string>
        </array>
        <key>RunAtLoad</key>
        <true/>

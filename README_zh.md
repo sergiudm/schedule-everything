@@ -1,6 +1,6 @@
 # J人日程管理工具（Schedule Everything）
 
-[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)  
+[![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 本项目提供了一种简单而强大的方式，帮助你在 **macOS** 上管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息，J人神器！
@@ -54,7 +54,7 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 
 ## 🧠 工作原理
 
-核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/src/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
+核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/schedule_management/src/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
 
 支持以下功能：
 - **时间段事件**：具有明确持续时间的活动（如 25 分钟番茄钟 → 触发开始和结束提醒）
@@ -169,9 +169,9 @@ uv run src/schedule_management/reminder_macos.py --view
 将以下内容加入 `~/.zshrc` 或 `~/.bash_profile`：
 
 ```bash
-export PATH="$HOME/healthy_habits:$PATH"
-export REMINDER_CONFIG_DIR="$HOME/healthy_habits/config"
-alias reminder="$HOME/healthy_habits/reminder"
+export PATH="$HOME/schedule_management:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+alias reminder="$HOME/schedule_management/reminder"
 ```
 
 然后重载 Shell 配置：
@@ -198,7 +198,7 @@ source ~/.zshrc  # 或 source ~/.bash_profile
 ```
 卸载方法：
 ```bash
-rm -rf "$HOME/healthy_habits"
+rm -rf "$HOME/schedule_management"
 ```
 
 ### 方式二：手动配置 `launchd`
@@ -214,7 +214,7 @@ rm -rf "$HOME/healthy_habits"
        <key>ProgramArguments</key>
        <array>
            <string>/path/to/your/.venv/bin/python</string>
-           <string>/path/to/awesome-healthy-habits/src/schedule_management/reminder_macos.py</string>
+           <string>/path/to/schedule_management/src/schedule_management/reminder_macos.py</string>
        </array>
        <key>RunAtLoad</key>
        <true/>
