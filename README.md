@@ -1,7 +1,9 @@
 # Schedule Management
 
-[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)  
+[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
+[🇨🇳 中文版本](README_zh.md)
 
 This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on **macOS**. Built with Python, it leverages native macOS notifications and sounds to keep you on track with healthy habits, focused work sessions, and regular breaks.
 
@@ -24,6 +26,32 @@ This project provides a simple yet powerful way to manage your daily schedule an
 - **Auto-start via `launchd`**: Runs silently in the background after system boot.
 
 ---
+
+## 📄 Why TOML?
+
+While many schedule management and reminder tools exist—often with sleek interfaces and cloud sync—they typically rely on **graphical user interfaces (GUIs)** or **proprietary formats** that make automation, version control, and customization difficult.
+
+By contrast, this tool embraces **declarative configuration via TOML** for several key reasons:
+
+### ✅ Human-Readable & Simple  
+TOML’s clean, minimal syntax is easy to read and write—even for non-programmers. No JSON brackets, no YAML indentation quirks. Just clear key-value pairs and sections.
+
+### ✅ Version-Control Friendly  
+Your schedule is code. Store it in Git, track changes over time, revert mistakes, or sync across machines with a simple `git pull`.
+
+### ✅ Portable & Reproducible  
+Want to share your ideal developer routine with a teammate? Just send your TOML files. They can replicate your entire schedule in seconds—no clicking through menus.
+
+### ✅ Composable & Reusable  
+Define a `pomodoro = 25` once in `settings.toml`, then reuse it across days and weeks. Need to adjust all work blocks from 25 to 30 minutes? Change one line—not dozens of calendar entries.
+
+### ✅ No Vendor Lock-in  
+Your data stays yours—no accounts, no subscriptions, no cloud dependency. Edit in any text editor, back up anywhere.
+
+### 🤖 AI-Powered Flexibility  
+With the help of modern **Large Language Models (LLMs)**, you can instantly convert almost any representation of your daily schedule into a valid TOML config—whether it’s a **Google Calendar export**, a **screenshot of your team’s shared timetable**, a **PDF agenda**, or even a **handwritten note**. Just paste the raw data or describe your routine in natural language, and an LLM can generate a structured, ready-to-use configuration in seconds.
+
+--- 
 
 ## 🧠 How It Works
 
