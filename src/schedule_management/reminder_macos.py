@@ -287,7 +287,7 @@ class ScheduleRunner:
 def main():
     import sys
 
-    config_dir = os.getenv("CONFIG_DIR", "config")
+    config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"
