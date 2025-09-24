@@ -3,7 +3,7 @@
 [![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-[🇨🇳 中文版本](README_zh.md)
+[中文版本](README_zh.md)
 
 This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on **macOS**. Built with Python, it leverages native macOS notifications and sounds to keep you on track with healthy habits, focused work sessions, and regular breaks.
 

@@ -1,0 +1,88 @@
+# Schedule Configuration
+# Time format: "HH:MM" (24-hour format)
+# Message: The reminder text to display
+
+[monday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:26" = "long break"
+"13:20" = "napping"
+"14:00" = "pomodoro"
+"14:30" = "pomodoro"
+"15:00" = "pomodoro"
+"15:30" = "pomodoro"
+
+
+[tuesday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:26" = "long break"
+"13:20" = "napping"
+"16:30" = "pomodoro"
+"17:00" = "pomodoro"
+"17:30" = "pomodoro"
+
+
+[wednesday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:26" = "long break"
+
+"13:20" = "napping"
+"14:00" = "pomodoro"
+"14:30" = "pomodoro"
+"15:00" = "pomodoro"
+"15:30" = "pomodoro"
+"16:00" = "pomodoro"
+
+[thursday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:30" = "pomodoro"
+"10:00" = "pomodoro"
+"10:30" = "pomodoro"
+
+"13:20" = "napping"
+"14:00" = "pomodoro"
+"14:30" = "pomodoro"
+"15:00" = "pomodoro"
+"16:30" = "pomodoro"
+"17:00" = "pomodoro"
+"17:30" = "pomodoro"
+
+[friday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"13:20" = "napping"
+
+
+[saturday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:26" = "long break"
+"13:20" = "napping"
+"14:00" = "pomodoro"
+"14:30" = "pomodoro"
+"15:00" = "pomodoro"
+"15:30" = "pomodoro"
+"16:00" = "pomodoro"
+
+
+[sunday]
+"08:30" = "pomodoro"
+"09:00" = "pomodoro"
+"09:26" = "long break"
+"13:20" = "napping"
+"14:00" = "pomodoro"
+"14:30" = "pomodoro"
+"15:00" = "pomodoro"
+"15:30" = "pomodoro"
+"16:00" = "pomodoro"
+
+
+[common]
+"19:30" = "pomodoro"
+"20:00" = "pomodoro"
+"20:30" = "pomodoro"
+"21:00" = "summary_time"
+"22:45" = "go_to_bed"
