@@ -51,8 +51,6 @@ check_homebrew() {
     if ! command -v brew &> /dev/null; then
         log_warning "Homebrew not found. Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        
-        # Add Homebrew to PATH if not already there
         if [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; then
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
             eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -65,7 +63,6 @@ check_homebrew() {
 # Check if uv is installed and install if necessary
 check_uv() {
     log_info "Checking uv installation..."
-    
     if ! command -v uv &> /dev/null; then
         log_info "uv not found. Installing uv via Homebrew..."
         brew install uv
@@ -73,11 +70,7 @@ check_uv() {
     else
         log_success "uv is already installed"
     fi
-    
-    # Verify uv is working
-    if uv --version &> /dev/null; then
-        log_success "uv is working correctly"
-    else
+    if ! uv --version &> /dev/null; then
         log_error "uv installation verification failed"
         exit 1
     fi
@@ -86,156 +79,109 @@ check_uv() {
 # Install Python using pyenv
 install_python() {
     log_info "Setting up Python $PYTHON_VERSION..."
-    
-    # Install pyenv if not already installed
     if ! command -v pyenv &> /dev/null; then
         log_info "Installing pyenv..."
         brew install pyenv
         echo 'eval "$(pyenv init -)"' >> ~/.zshrc
         eval "$(pyenv init -)"
     fi
-    
-    # Install Python version if not already installed
-    if ! pyenv versions | grep -q "$PYTHON_VERSION"; then
+    if ! pyenv versions --bare | grep -q "^$PYTHON_VERSION$"; then
         log_info "Installing Python $PYTHON_VERSION..."
-        pyenv install $PYTHON_VERSION
-    else
-        log_info "Python $PYTHON_VERSION is already installed"
+        pyenv install "$PYTHON_VERSION"
     fi
-    
-    # Set local Python version
-    pyenv local $PYTHON_VERSION
+    pyenv local "$PYTHON_VERSION"
     log_success "Python $PYTHON_VERSION is ready"
 }
 
-# Create virtual environment
-create_venv() {
-    log_info "Creating virtual environment..."
-    
-    if [[ -d "$INSTALL_DIR/$VENV_NAME" ]]; then
-        log_warning "Virtual environment already exists. Removing old environment..."
-        rm -rf "$INSTALL_DIR/$VENV_NAME"
-    fi
-    
-    log_info "Creating venv at: $INSTALL_DIR/$VENV_NAME"
-    python$PYTHON_VERSION -m venv "$INSTALL_DIR/$VENV_NAME"
-    
-    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
-        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-        log_success "Virtual environment created and activated"
-    else
-        log_error "Virtual environment creation failed - activation script not found"
-        exit 1
-    fi
-}
-
-# Install Python dependencies
-install_dependencies() {
-    log_info "Installing Python dependencies..."
-    
-    # Change to installation directory for package installation
-    cd "$INSTALL_DIR"
-    
-    # Upgrade pip first using uv
-    uv pip install --upgrade pip
-    
-    # Install requirements from requirements.txt if it exists in the original location
-    if [[ -f "../requirements.txt" ]]; then
-        uv pip install -r ../requirements.txt
-        log_success "Dependencies installed from requirements.txt"
-    else
-        log_warning "requirements.txt not found, installing matplotlib manually..."
-        uv pip install matplotlib>=3.5.0
-    fi
-    
-    # Install additional development dependencies if available
-    if [[ -f "../requirements-test.txt" ]]; then
-        uv pip install -r ../requirements-test.txt
-        log_success "Test dependencies installed"
-    fi
-    
-    # Install the local schedule-management package in editable mode
-    log_info "Installing schedule-management package..."
-    uv pip install -e .
-    if [[ $? -eq 0 ]]; then
-        log_success "Schedule-management package installed successfully"
-    else
-        log_error "Failed to install schedule-management package"
-        exit 1
-    fi
-    
-    # Verify the reminder command is available
-    if command -v reminder &> /dev/null; then
-        log_success "CLI tool 'reminder' is available"
-    else
-        log_warning "CLI tool 'reminder' may not be in PATH, but should be available in virtual environment"
-    fi
-    
-    # Return to original directory
-    cd - > /dev/null
-}
-
-# Setup project directory
+# Setup project directory (preserve src layout!)
 setup_project() {
     log_info "Setting up project directory..."
-    
+
     if [[ -d "$INSTALL_DIR" ]]; then
-        log_warning "Installation directory already exists. Backing up..."
+        log_warning "Installation directory exists. Backing up..."
         mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
     fi
-    
+
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR/config"
-    
-    # Copy project files
-    if [[ -d "src/schedule_management" ]]; then
-        cp -r src/schedule_management "$INSTALL_DIR/"
-        log_success "Schedule management files copied"
+
+    if [[ -d "src" ]]; then
+        cp -r src "$INSTALL_DIR/"
+        log_success "src/ directory copied (preserving layout)"
     else
-        log_error "src/schedule_management directory not found!"
+        log_error "src/ directory not found in current working directory!"
         exit 1
     fi
-    
-    # Copy package configuration files for proper installation
-    if [[ -f "pyproject.toml" ]]; then
-        cp "pyproject.toml" "$INSTALL_DIR/"
-        log_success "Package configuration (pyproject.toml) copied"
-    else
-        log_error "pyproject.toml not found!"
-        exit 1
-    fi
-    
-    if [[ -f "README.md" ]]; then
-        cp "README.md" "$INSTALL_DIR/"
-        log_success "README.md copied"
-    fi
-    
-    if [[ -f "uv.lock" ]]; then
-        cp "uv.lock" "$INSTALL_DIR/"
-        log_success "uv.lock copied"
-    fi
-    
-    # Copy configuration files if they exist
+
+    # Copy metadata files
+    for file in pyproject.toml README.md uv.lock; do
+        if [[ -f "$file" ]]; then
+            cp "$file" "$INSTALL_DIR/"
+            log_success "$file copied"
+        fi
+    done
+
+    # Copy config files
     for config_file in settings.toml odd_weeks.toml even_weeks.toml; do
         if [[ -f "config/$config_file" ]]; then
             cp "config/$config_file" "$INSTALL_DIR/config/"
         fi
     done
-    
-    # Create logs directory
+
     mkdir -p "$INSTALL_DIR/logs"
-    
     log_success "Project directory setup complete"
 }
 
-# Create LaunchAgent for automatic startup
+# Create virtual environment
+create_venv() {
+    log_info "Creating virtual environment..."
+    if [[ -d "$INSTALL_DIR/$VENV_NAME" ]]; then
+        rm -rf "$INSTALL_DIR/$VENV_NAME"
+    fi
+    python -m venv "$INSTALL_DIR/$VENV_NAME"
+    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
+        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+        log_success "Virtual environment created and activated"
+    else
+        log_error "Virtual environment creation failed"
+        exit 1
+    fi
+}
+
+# Install dependencies and package
+install_dependencies() {
+    log_info "Installing dependencies and package..."
+
+    cd "$INSTALL_DIR"
+
+    # Upgrade pip
+    uv pip install --upgrade pip
+
+    # Install from requirements if available
+    if [[ -f "../requirements.txt" ]]; then
+        uv pip install -r ../requirements.txt
+    fi
+    if [[ -f "../requirements-test.txt" ]]; then
+        uv pip install -r ../requirements-test.txt
+    fi
+
+    # Install editable package (supports src layout)
+    uv pip install -e .
+    if ! command -v reminder &> /dev/null; then
+        log_warning "CLI 'reminder' not in PATH, but should work via venv"
+    else
+        log_success "CLI tool 'reminder' is available"
+    fi
+
+    cd - > /dev/null
+}
+
+# Create LaunchAgent plist
 create_launch_agent() {
-    log_info "Creating LaunchAgent for automatic startup..."
-    
-    # Create LaunchAgents directory if it doesn't exist
+    log_info "Creating LaunchAgent..."
+
     mkdir -p "$HOME/Library/LaunchAgents"
-    
-    # Create plist file
+
     cat > "$LAUNCH_AGENT_PLIST" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -246,7 +192,7 @@ create_launch_agent() {
     <key>ProgramArguments</key>
     <array>
         <string>$INSTALL_DIR/$VENV_NAME/bin/python</string>
-        <string>$INSTALL_DIR/schedule_management/reminder_macos.py</string>
+        <string>$INSTALL_DIR/src/schedule_management/reminder_macos.py</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -257,268 +203,144 @@ create_launch_agent() {
     <key>StandardErrorPath</key>
     <string>$INSTALL_DIR/logs/healthy_habits.err</string>
     <key>WorkingDirectory</key>
-    <string>$INSTALL_DIR/schedule_management</string>
+    <string>$INSTALL_DIR/src/schedule_management</string>
 </dict>
 </plist>
 EOF
-    
+
     log_success "LaunchAgent created at $LAUNCH_AGENT_PLIST"
 }
 
-# Request necessary permissions
+# Request permissions (info only)
 request_permissions() {
-    log_info "Requesting necessary permissions..."
-    
-    # Check if we need to request accessibility permissions
-    log_info "The reminder system will need accessibility permissions to show dialogs."
-    log_info "You may be prompted to grant these permissions when the app first runs."
-    
-    # Check if we need to request notification permissions
-    log_info "Notification permissions may also be required for the reminder system."
+    log_info "The app will request Accessibility & Notification permissions on first run."
 }
 
 # Create convenience scripts
 create_scripts() {
     log_info "Creating convenience scripts..."
-    
-    # Create start script
+
     cat > "$INSTALL_DIR/start_reminders.sh" << EOF
 #!/bin/bash
 source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-cd "$INSTALL_DIR/schedule_management"
-python reminder_macos.py
+cd "$INSTALL_DIR/src/schedule_management"
+exec python reminder_macos.py
 EOF
-    
-    # Create stop script
+
     cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
 #!/bin/bash
-launchctl unload "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
-pkill -f "python.*reminder_macos.py"
+launchctl unload "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist" 2>/dev/null || true
+pkill -f "python.*reminder_macos.py" 2>/dev/null || true
 EOF
-    
-    # Create restart script
+
     cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
 #!/bin/bash
 "$HOME/healthy_habits/stop_reminders.sh"
 sleep 2
 launchctl load "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
 EOF
-    
-    # Create visualization script
+
     cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
 #!/bin/bash
 source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-cd "$INSTALL_DIR/schedule_management"
-python reminder_macos.py --visualize
+cd "$INSTALL_DIR/src/schedule_management"
+exec python reminder_macos.py --visualize
 EOF
-    
-    # Create CLI tool wrapper script
+
     cat > "$INSTALL_DIR/reminder" << EOF
 #!/bin/bash
-# CLI tool wrapper for the reminder system
 source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-reminder "\$@"
+exec reminder "\$@"
 EOF
-    
-    # Make scripts executable
-    chmod +x "$INSTALL_DIR"/*.sh
-    chmod +x "$INSTALL_DIR/reminder"
-    
-    log_success "Convenience scripts created"
-}
 
-# Create desktop shortcuts (optional)
-create_shortcuts() {
-    log_info "Creating desktop shortcuts..."
-    
-    # Create AppleScript app for easy access
-    mkdir -p "$HOME/Desktop/Healthy Habits.app/Contents/MacOS"
-    
-    cat > "$HOME/Desktop/Healthy Habits.app/Contents/MacOS/Healthy Habits" << 'EOF'
-#!/bin/bash
-open -a Terminal "$HOME/healthy_habits/start_reminders.sh"
-EOF
-    
-    chmod +x "$HOME/Desktop/Healthy Habits.app/Contents/MacOS/Healthy Habits"
-    
-    # Create Info.plist for the app
-    cat > "$HOME/Desktop/Healthy Habits.app/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>Healthy Habits</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.health.habits.app</string>
-    <key>CFBundleName</key>
-    <string>Healthy Habits</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-</dict>
-</plist>
-EOF
-    
-    log_success "Desktop shortcut created"
+    chmod +x "$INSTALL_DIR"/*.sh "$INSTALL_DIR/reminder"
+    log_success "Convenience scripts created"
 }
 
 # Test installation
 test_installation() {
     log_info "Testing installation..."
-    
-    # Test Python import
-    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
-        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-        if python -c "import matplotlib; print('matplotlib imported successfully')"; then
-            log_success "Python dependencies test passed"
-        else
-            log_error "Python dependencies test failed"
-            exit 1
-        fi
-        
-        # Test that the schedule-management package is installed
-        if python -c "import schedule_management; print('schedule_management package imported successfully')"; then
-            log_success "Schedule-management package test passed"
-        else
-            log_error "Schedule-management package test failed"
-            exit 1
-        fi
-        
-        # Test that the reminder CLI command is available
-        if command -v reminder &> /dev/null; then
-            log_success "CLI tool 'reminder' is available"
-            # Test the reminder command help
-            if reminder --help &> /dev/null; then
-                log_success "CLI tool 'reminder' is working correctly"
-            else
-                log_warning "CLI tool 'reminder' is available but may have issues"
-            fi
-        else
-            log_error "CLI tool 'reminder' is not available"
-            exit 1
-        fi
+
+    source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+
+    if python -c "import schedule_management; print('OK')" &>/dev/null; then
+        log_success "schedule_management import test passed"
     else
-        log_warning "Virtual environment activation script not found, skipping Python test"
+        log_error "Failed to import schedule_management"
+        exit 1
     fi
-    
-    # Test configuration files
-    if [[ -f "$INSTALL_DIR/config/settings.toml" ]]; then
-        log_success "Configuration files test passed"
+
+    if reminder --help &>/dev/null; then
+        log_success "CLI 'reminder' works correctly"
     else
-        log_warning "Configuration files not found - will use defaults"
+        log_error "CLI 'reminder' failed"
+        exit 1
     fi
-    
-    log_success "Installation test completed"
+
+    log_success "All tests passed"
 }
 
-# Display usage information
+# Display usage
 display_usage() {
     log_info "Installation completed successfully!"
     echo
-    echo "=== CLI Tool Usage ==="
-    echo "Add $INSTALL_DIR to your PATH or use full path:"
-    echo "  $INSTALL_DIR/reminder update    # Update configuration and restart service"
-    echo "  $INSTALL_DIR/reminder view      # Generate schedule visualizations"
-    echo "  $INSTALL_DIR/reminder status    # Show current status and next events"
-    echo "  $INSTALL_DIR/reminder status -v # Show detailed status with full schedule"
+    echo "=== Usage ==="
+    echo "Add to PATH (optional):"
+    echo "  echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.zshrc"
     echo
-    echo "=== Manual Scripts ==="
-    echo "1. Manual start: $INSTALL_DIR/start_reminders.sh"
-    echo "2. Manual stop: $INSTALL_DIR/stop_reminders.sh"
-    echo "3. Restart service: $INSTALL_DIR/restart_reminders.sh"
-    echo "4. Generate visualizations: $INSTALL_DIR/visualize_schedule.sh"
+    echo "Manual control:"
+    echo "  $INSTALL_DIR/start_reminders.sh"
+    echo "  $INSTALL_DIR/stop_reminders.sh"
     echo
-    echo "=== LaunchAgent Management ==="
-    echo "Load service: launchctl load $LAUNCH_AGENT_PLIST"
-    echo "Unload service: launchctl unload $LAUNCH_AGENT_PLIST"
+    echo "LaunchAgent:"
+    echo "  launchctl load $LAUNCH_AGENT_PLIST   # Enable auto-start"
+    echo "  launchctl unload $LAUNCH_AGENT_PLIST # Disable"
     echo
-    echo "=== Configuration ==="
-    echo "Settings: $INSTALL_DIR/config/settings.toml"
-    echo "Odd week schedule: $INSTALL_DIR/config/odd_weeks.toml"
-    echo "Even week schedule: $INSTALL_DIR/config/even_weeks.toml"
+    echo "Logs: $INSTALL_DIR/logs/"
     echo
-    echo "=== Logs ==="
-    echo "Output logs: $INSTALL_DIR/logs/healthy_habits.out"
-    echo "Error logs: $INSTALL_DIR/logs/healthy_habits.err"
-    echo
-    echo "=== Setup CLI Tool ==="
-    echo "To use 'reminder' command globally, add to your PATH:"
-    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
-    echo "Add this line to your ~/.zshrc or ~/.bash_profile"
-    echo
-    log_warning "You may need to grant accessibility permissions when the app first runs."
-    log_info "The reminder system will start automatically on next login if LaunchAgent is loaded."
+    log_warning "First run will prompt for Accessibility permissions in System Settings."
 }
 
-# Cleanup function
+# Cleanup
 cleanup() {
     if [[ -n "${VIRTUAL_ENV:-}" ]]; then
         deactivate 2>/dev/null || true
     fi
 }
 
-# Main installation function
+# Main
 main() {
     echo "=== $SCRIPT_NAME ==="
-    echo "Setting up Awesome Healthy Habits reminder system for macOS"
-    echo
-    
-    # Set trap for cleanup
     trap cleanup EXIT
-    
-    # Run installation steps
+
     check_macos
     check_homebrew
     check_uv
-    install_python
+    # install_python
     setup_project
     create_venv
     install_dependencies
     create_launch_agent
     request_permissions
     create_scripts
-    create_shortcuts
     test_installation
     display_usage
-    
-    log_success "Installation completed! 🎉"
-    log_info "Your healthy habits reminder system is ready to use."
+
+    log_success "Installation complete! 🎉"
 }
 
-# Handle command line arguments
+# Parse args (minimal)
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
-            echo "Usage: $0 [OPTIONS]"
-            echo
-            echo "Options:"
-            echo "  -h, --help     Show this help message"
-            echo "  -v, --verbose  Enable verbose output"
-            echo "  --no-launch    Skip LaunchAgent creation"
-            echo "  --no-desktop   Skip desktop shortcut creation"
-            echo
-            echo "This script installs the Awesome Healthy Habits reminder system on macOS."
+            echo "Usage: $0"
             exit 0
-            ;;
-        -v|--verbose)
-            set -x
-            shift
-            ;;
-        --no-launch)
-            SKIP_LAUNCH=true
-            shift
-            ;;
-        --no-desktop)
-            SKIP_DESKTOP=true
-            shift
             ;;
         *)
             log_error "Unknown option: $1"
-            echo "Use -h or --help for usage information"
             exit 1
             ;;
     esac
 done
 
-# Run main function
 main

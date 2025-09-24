@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Reminder CLI Tool - Command line interface for the schedule management system.
 
@@ -13,24 +12,26 @@ import os
 import sys
 import subprocess
 import time
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple, Optional
 
-# Import functions from the existing reminder_macos module
 from schedule_management.reminder_macos import (
-    load_settings,
-    load_odd_week_schedule,
-    load_even_week_schedule,
-    get_today_schedule,
-    visualize_schedule,
-    should_skip_today,
+    ScheduleConfig,
+    WeeklySchedule,
+    ScheduleVisualizer,
 )
 
 from schedule_management.utils import get_week_parity, parse_time
 
 
-def get_config_paths(config_dir="config") -> Dict[str, Path]:
+CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR", "config")
+SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
+ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
+EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
+
+
+def get_config_paths(config_dir: str = "config") -> Dict[str, Path]:
     """Get the paths to configuration files."""
     base_dir = Path(config_dir)
     if not base_dir.is_dir():
@@ -46,71 +47,50 @@ def update_command(args):
     """Handle the 'update' command - reload configuration and restart service."""
     print("🔄 Updating reminder configuration...")
 
-    # Get configuration paths
-    config_paths = get_config_paths("config")
+    config_paths = get_config_paths(CONFIG_DIR)
 
-    # Validate configuration files exist
-    missing_files = []
-    for name, path in config_paths.items():
-        if not path.exists():
-            missing_files.append(str(path))
-
+    # Validate files exist
+    missing_files = [str(p) for p in config_paths.values() if not p.exists()]
     if missing_files:
         print("❌ Error: Missing configuration files:")
-        for file_path in missing_files:
-            print(f"   - {file_path}")
+        for fp in missing_files:
+            print(f"   - {fp}")
         return 1
 
-    # Try to reload configuration to validate it's valid
+    # Validate TOML structure using new classes
     try:
         print("📋 Validating configuration files...")
-        settings, time_blocks, time_points = load_settings("config/settings.toml")
-        odd_schedule = load_odd_week_schedule("config/odd_weeks.toml")
-        even_schedule = load_even_week_schedule("config/even_weeks.toml")
+        config = ScheduleConfig(SETTINGS_PATH)
+        weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
+        # Trigger loading to validate
+        _ = config.settings
+        _ = weekly.odd_data
+        _ = weekly.even_data
         print("✅ Configuration files are valid")
     except Exception as e:
         print(f"❌ Error: Invalid configuration - {e}")
         return 1
 
-    # Restart the reminder service
+    # Restart LaunchAgent (macOS-specific)
     print("🔄 Restarting reminder service...")
+    plist_path = "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
     try:
-        # Stop the service if it's running
-        result = subprocess.run(
-            [
-                "launchctl",
-                "unload",
-                "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist",
-            ],
-            capture_output=True,
-            text=True,
+        subprocess.run(
+            ["launchctl", "unload", plist_path], capture_output=True, text=True
         )
-
-        # Wait a moment
         time.sleep(2)
-
-        # Start the service
         result = subprocess.run(
-            [
-                "launchctl",
-                "load",
-                "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist",
-            ],
-            capture_output=True,
-            text=True,
+            ["launchctl", "load", plist_path], capture_output=True, text=True
         )
 
         if result.returncode == 0:
             print("✅ Reminder service restarted successfully")
         else:
-            print(f"⚠️  Warning: Could not restart LaunchAgent service: {result.stderr}")
-            print("   You may need to restart the service manually")
-
+            print(f"⚠️  Warning: Could not restart LaunchAgent: {result.stderr.strip()}")
+            print("   You may need to restart manually")
     except Exception as e:
         print(f"⚠️  Warning: Could not restart service automatically: {e}")
-        print(
-            "   Configuration updated, but you may need to restart the service manually"
-        )
+        print("   Configuration updated, but manual restart may be needed")
 
     print("✅ Update completed successfully!")
     return 0
@@ -121,24 +101,29 @@ def view_command(args):
     print("📊 Generating schedule visualizations...")
 
     try:
-        # Call the existing visualization function
-        visualize_schedule()
+        config = ScheduleConfig(SETTINGS_PATH)
+        weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
+        visualizer = ScheduleVisualizer(config, weekly.odd_data, weekly.even_data)
+        visualizer.visualize()
 
-        # Show the output paths
         print("\n📁 Visualization files generated:")
         print("   - schedule_visualization/odd_week_schedule.png")
         print("   - schedule_visualization/even_week_schedule.png")
 
-        # Try to open the files if on macOS
+        # Open on macOS
         if sys.platform == "darwin":
             print("\n🖼️  Opening visualizations...")
             try:
-                subprocess.run(["open", "schedule_visualization/odd_week_schedule.png"])
                 subprocess.run(
-                    ["open", "schedule_visualization/even_week_schedule.png"]
+                    ["open", "schedule_visualization/odd_week_schedule.png"],
+                    check=False,
+                )
+                subprocess.run(
+                    ["open", "schedule_visualization/even_week_schedule.png"],
+                    check=False,
                 )
             except Exception as e:
-                print(f"⚠️  Could not open files automatically: {e}")
+                print(f"⚠️  Could not open files: {e}")
 
         return 0
 
@@ -147,71 +132,72 @@ def view_command(args):
         return 1
 
 
-def get_current_and_next_events():
-    """Get current and next scheduled events."""
-    try:
-        # Get today's schedule
-        today_schedule = get_today_schedule()
+def get_today_schedule_for_status() -> Tuple[dict, str, bool]:
+    """Helper to get today's schedule with metadata for status command."""
+    config = ScheduleConfig(SETTINGS_PATH)
+    weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
 
-        if not today_schedule:
-            return None, None, "No schedule for today (skipped day)"
+    is_skipped = config.should_skip_today()
+    parity = get_week_parity()
+    schedule = {} if is_skipped else weekly.get_today_schedule(config)
 
-        # Get current time
-        now = datetime.now()
-        current_time = now.time()
-        current_time_str = now.strftime("%H:%M")
+    return schedule, parity, is_skipped
 
-        # Parse all scheduled times for today
-        scheduled_times = []
-        for time_str in today_schedule.keys():
-            try:
-                scheduled_time = parse_time(time_str)
-                scheduled_times.append((time_str, scheduled_time))
-            except ValueError:
-                continue
 
-        # Sort by time
-        scheduled_times.sort(key=lambda x: x[1])
+def get_current_and_next_events(
+    schedule: dict,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Get current and next scheduled events from today's schedule."""
+    if not schedule:
+        return None, None, None
 
-        current_event = None
-        next_event = None
-        time_to_next = None
+    now = datetime.now()
+    current_time = now.time()
+    current_time_str = now.strftime("%H:%M")
 
-        # Find current and next events
-        for i, (time_str, scheduled_time) in enumerate(scheduled_times):
-            if scheduled_time <= current_time:
-                # This event has passed or is happening now
-                event = today_schedule[time_str]
-                if isinstance(event, str):
-                    current_event = f"{event} at {time_str}"
-                elif isinstance(event, dict) and "block" in event:
-                    title = event.get("title", event["block"])
-                    current_event = f"{title} at {time_str}"
+    # Parse and sort scheduled times
+    scheduled_times = []
+    for time_str in schedule.keys():
+        try:
+            t = parse_time(time_str)
+            scheduled_times.append((time_str, t))
+        except ValueError:
+            continue
+
+    scheduled_times.sort(key=lambda x: x[1])
+
+    current_event = None
+    next_event = None
+    time_to_next = None
+
+    for time_str, scheduled_time in scheduled_times:
+        event = schedule[time_str]
+        if isinstance(event, str):
+            event_name = event
+        elif isinstance(event, dict) and "block" in event:
+            event_name = event.get("title", event["block"])
+        else:
+            event_name = str(event)
+
+        if scheduled_time <= current_time:
+            current_event = f"{event_name} at {time_str}"
+        else:
+            next_event = f"{event_name} at {time_str}"
+            # Calculate time difference
+            today = date.today()
+            event_dt = datetime.combine(today, scheduled_time)
+            now_dt = datetime.combine(today, current_time)
+            diff = event_dt - now_dt
+            total_minutes = int(diff.total_seconds() // 60)
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            if hours > 0:
+                time_to_next = f"{hours}h {minutes}m"
             else:
-                # This is the next upcoming event
-                event = today_schedule[time_str]
-                if isinstance(event, str):
-                    next_event = f"{event} at {time_str}"
-                elif isinstance(event, dict) and "block" in event:
-                    title = event.get("title", event["block"])
-                    next_event = f"{title} at {time_str}"
+                time_to_next = f"{minutes}m"
+            break
 
-                # Calculate time until next event
-                time_diff = datetime.combine(
-                    now.date(), scheduled_time
-                ) - datetime.combine(now.date(), current_time)
-                hours = time_diff.seconds // 3600
-                minutes = (time_diff.seconds % 3600) // 60
-                if hours > 0:
-                    time_to_next = f"{hours}h {minutes}m"
-                else:
-                    time_to_next = f"{minutes}m"
-                break
-
-        return current_event, next_event, time_to_next
-
-    except Exception as e:
-        return None, None, f"Error: {e}"
+    return current_event, next_event, time_to_next
 
 
 def status_command(args):
@@ -219,43 +205,40 @@ def status_command(args):
     print("📅 Checking reminder status...\n")
 
     try:
-        # Get current week parity
-        week_parity = get_week_parity()
-        print(f"📊 Current week: {week_parity}")
+        schedule, parity, is_skipped = get_today_schedule_for_status()
+        print(f"📊 Current week: {parity}")
 
-        # Check if today is skipped
-        settings, _, _ = load_settings("config/settings.toml")
-        if should_skip_today(settings):
+        if is_skipped:
             print("⏭️  Today is a skipped day - no reminders scheduled")
             return 0
 
-        # Get current and next events
-        current_event, next_event, time_to_next = get_current_and_next_events()
+        current, next_ev, time_until = get_current_and_next_events(schedule)
 
-        if current_event:
-            print(f"🔔 Current event: {current_event}")
+        if current:
+            print(f"🔔 Current event: {current}")
         else:
             print("🔕 No current event")
 
-        if next_event and time_to_next:
-            print(f"⏰ Next event: {next_event} (in {time_to_next})")
-        elif next_event:
-            print(f"⏰ Next event: {next_event}")
+        if next_ev:
+            if time_until:
+                print(f"⏰ Next event: {next_ev} (in {time_until})")
+            else:
+                print(f"⏰ Next event: {next_ev}")
         else:
             print("📭 No more events scheduled for today")
 
-        # Show today's full schedule if verbose
         if args.verbose:
             print("\n📋 Today's schedule:")
-            today_schedule = get_today_schedule()
-            if today_schedule:
-                for time_str in sorted(today_schedule.keys()):
-                    event = today_schedule[time_str]
+            if schedule:
+                for time_str in sorted(schedule.keys()):
+                    event = schedule[time_str]
                     if isinstance(event, str):
-                        print(f"   {time_str}: {event}")
+                        name = event
                     elif isinstance(event, dict) and "block" in event:
-                        title = event.get("title", event["block"])
-                        print(f"   {time_str}: {title}")
+                        name = event.get("title", event["block"])
+                    else:
+                        name = str(event)
+                    print(f"   {time_str}: {name}")
 
         return 0
 
@@ -266,10 +249,15 @@ def status_command(args):
 
 def main():
     """Main entry point for the CLI tool."""
+    # Get config directory path for display
+    config_dir_path = os.path.abspath(CONFIG_DIR)
+    
     parser = argparse.ArgumentParser(
         description="Reminder CLI - Manage your schedule management system",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
+Configuration directory: {config_dir_path}
+
 Examples:
   reminder update          # Update configuration and restart service
   reminder view            # Generate schedule visualizations
@@ -278,20 +266,16 @@ Examples:
         """,
     )
 
-    # Add subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Update command
     update_parser = subparsers.add_parser(
         "update", help="Update configuration and restart service"
     )
     update_parser.set_defaults(func=update_command)
 
-    # View command
     view_parser = subparsers.add_parser("view", help="Generate schedule visualizations")
     view_parser.set_defaults(func=view_command)
 
-    # Status command
     status_parser = subparsers.add_parser(
         "status", help="Show current status and next events"
     )
@@ -300,15 +284,12 @@ Examples:
     )
     status_parser.set_defaults(func=status_command)
 
-    # Parse arguments
     args = parser.parse_args()
 
-    # If no command specified, show help
     if not args.command:
         parser.print_help()
         return 1
 
-    # Execute the appropriate command
     try:
         return args.func(args)
     except KeyboardInterrupt:

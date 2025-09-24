@@ -1,44 +1,57 @@
 # Schedule Management
 
-[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
+[![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-This project provides a simple way to manage your daily schedule and receive reminders on macOS. It uses a Python script to trigger notifications based on a predefined schedule.
+This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on **macOS**. Built with Python, it leverages native macOS notifications and sounds to keep you on track with healthy habits, focused work sessions, and regular breaks.
 
-> [!NOTE]
-> This script is designed for macOS. Support for other operating systems may be added in the future.
+> [!NOTE]  
+> This tool is currently optimized for **macOS**. Support for Linux and Windows is planned for future releases.
 
-## Features
+---
 
-- **Customizable Schedule**: Easily define your own schedule and reminder messages in the `reminder_macos.py` script.
-- **Audible and Visual Alerts**: Get both a sound notification and a dialog box for each reminder.
-- **Persistent Reminders**: The alarm will repeat until you dismiss the dialog.
-- **Automatic Execution**: Can be configured to run automatically on system startup using `launchd`.
+## ✨ Features
 
-## How It Works
+- **Customizable Schedules**: Define your routine using intuitive TOML configuration files.
+- **Dual Alerts**: Each reminder triggers both an **audible sound** and a **modal dialog**.
+- **Persistent Notifications**: Alarms repeat until manually dismissed—perfect for staying accountable.
+- **Smart Weekly Rotation**: Automatically alternates between **odd-week** and **even-week** schedules using ISO week numbering.
+- **Flexible Event Types**:
+  - **Time blocks** (e.g., Pomodoro sessions with start/end alerts)
+  - **Time points** (one-time reminders)
+  - **Common events** (apply to all days)
+- **CLI Tool**: Easy-to-use command-line interface for managing and inspecting your schedule.
+- **Auto-start via `launchd`**: Runs silently in the background after system boot.
 
-The [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/src/reminder_macos.py) script reads your schedule from multiple TOML configuration files and runs in a loop, checking the current time and triggering alarms when scheduled events occur. The system supports:
+---
 
-- **Weekly alternation**: Automatically switches between odd and even week schedules
-- **Time blocks**: Activities with start and end alarms (e.g., pomodoro sessions)
-- **Time points**: One-time reminders
-- **Common schedules**: Events that apply to all days of the week
+## 🧠 How It Works
 
-## Configuration
+The core script, [`reminder_macos.py`](https://github.com/sergiudm/awesome-healthy-habits-for-developers/blob/main/schedule_management/src/reminder_macos.py), continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
 
-The configuration system uses multiple TOML files for flexible schedule management:
+The system supports:
+- **Time blocks**: Activities with defined durations (e.g., 25-minute Pomodoro → start + end alerts).
+- **Time points**: Instant reminders (e.g., “Go to bed!” at 22:45).
+- **Weekly alternation**: Uses ISO calendar weeks to switch between `odd_weeks.toml` and `even_weeks.toml`.
+- **Common section**: Events that repeat every day (e.g., nightly wind-down routine).
 
-### 1. Settings Configuration (`settings.toml`)
+---
 
-This file contains general settings, time blocks, and time points:
+## ⚙️ Configuration
+
+All configuration lives in the `config/` directory at the project root. Use the provided templates to get started.
+
+### 1. Settings (`settings.toml`)
+
+Configure global behavior, reusable time blocks, and reminder messages:
 
 ```toml
 [settings]
 sound_file = "/System/Library/Sounds/Ping.aiff"
-alarm_interval = 5  # seconds between alarm repeats
-max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)
+alarm_interval = 5        # seconds between repeated alerts
+max_alarm_duration = 300  # max alert duration (5 minutes)
 
 [time_blocks]
-# Define reusable time blocks with duration in minutes
 pomodoro = 25
 long_break = 40
 meeting = 50
@@ -47,193 +60,170 @@ lunch = 60
 napping = 30
 
 [time_points]
-# Define one-time reminders
 go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
 ```
 
-### 2. Weekly Schedules (`odd_weeks.toml` and `even_weeks.toml`)
+### 2. Weekly Schedules (`odd_weeks.toml` & `even_weeks.toml`)
 
-The system alternates between odd and even week schedules based on ISO calendar weeks. Each file can contain:
+Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
-- **Day-specific sections**: `[monday]`, `[tuesday]`, etc.
-- **Common section**: `[common]` - applies to all days
-- **Time entries**: Use "HH:MM" format as keys
+#### Supported Entry Types:
 
-**Schedule Entry Types:**
+| Type | Example | Description |
+|------|--------|-------------|
+| **Time Block Reference** | `"09:00" = "pomodoro"` | Triggers start + end alerts (25 min) |
+| **Time Point Reference** | `"22:45" = "go_to_bed"` | One-time reminder |
+| **Direct Message** | `"12:00" = "Lunch time! 🍽️"` | Immediate alert with custom text |
+| **Block with Title** | `"14:00" = { block = "meeting", title = "Team Standup" }` | Custom title for time block |
 
-1. **Time Block References** (triggers start and end alarms):
-   ```toml
-   "09:00" = "pomodoro"  # References time_blocks.pomodoro (25 min)
-   ```
+#### Example Schedule:
 
-2. **Time Point References** (one-time reminders):
-   ```toml
-   "22:45" = "go_to_bed"  # References time_points.go_to_bed
-   ```
-
-3. **Direct Messages** (immediate display):
-   ```toml
-   "12:00" = "Lunch time! 🍽️"
-   ```
-
-4. **Block Objects** (custom titles for time blocks):
-   ```toml
-   "14:00" = { block = "meeting", title = "Team Standup" }
-   ```
-
-**Example schedule structure:**
 ```toml
 [monday]
 "08:30" = "pomodoro"
-"09:00" = "pomodoro"
 "09:30" = "long_break"
 "13:00" = { block = "meeting", title = "Sprint Planning" }
 
-[common]  # Applied to all days
+[common]  # Applies to all days
 "19:30" = "pomodoro"
 "21:00" = "summary_time"
 "22:45" = "go_to_bed"
 ```
 
-## 3. Setup Instructions
+> [!WARNING]  
+> **Avoid overlapping time blocks!** A 25-minute Pomodoro starting at `09:00` ends at `09:25`. Do not schedule another block between these times—overlaps may cause conflicting alerts.
 
-Configuration files are now located in the top-level `config/` directory.
+---
 
-1. **Create your settings file**:
+## 🚀 Setup
+
+1. **Initialize config files**:
    ```bash
    cp config/settings_template.toml config/settings.toml
-   ```
-
-2. **Create your weekly schedules** (or modify existing ones):
-   ```bash
    cp config/week_schedule_template.toml config/odd_weeks.toml
    cp config/week_schedule_template.toml config/even_weeks.toml
    ```
 
-3. **Customize your schedules** by editing the TOML files in the `config/` directory to fit your needs.
+2. **Edit the TOML files** in `config/` to match your routine.
 
-> [!IMPORTANT]
-> Template files are for reference only. The system reads from `config/settings.toml`, `config/odd_weeks.toml`, and `config/even_weeks.toml`.
+> [!IMPORTANT]  
+> The system reads from:  
+> - `config/settings.toml`  
+> - `config/odd_weeks.toml`  
+> - `config/even_weeks.toml`  
+> Template files are for reference only.
 
-> [!WARNING]
-> **Avoid Overlapping Time Blocks**: Time blocks create both start and end alarms. Ensure that time blocks don't overlap, as this can cause conflicting notifications. For example, if you schedule a 25-minute pomodoro at "09:00", avoid scheduling another time block between "09:00" and "09:25".
+---
+
+## ▶️ Usage
 
 ### Manual Execution
-
-You can run the script manually from your terminal:
-
 ```bash
 uv run src/schedule_management/reminder_macos.py
 ```
 
-### View Schedule
-To view your schedule, you can pass `--view` flag:
+### View Your Schedule
+Generates a visual representation in `schedule_visualization/`:
 ```bash
 uv run src/schedule_management/reminder_macos.py --view
 ```
 
-Then you can check the output schedule in the `schedule_visualization` folder.
+---
 
-### CLI Tool Usage
+## 🛠️ CLI Tool
 
-After installation using the [`install.sh`](install.sh) script, you'll have access to the `reminder` command-line tool. This provides a convenient way to manage your schedule without directly running Python scripts.
+After running the installer (`install.sh`), you’ll have access to the `reminder` command.
 
-#### Available Commands
-
-```bash
-# Update configuration and restart the reminder service
-reminder update
-
-# Generate schedule visualizations
-reminder view
-
-# Show current status and next events
-reminder status
-
-# Show detailed status with full schedule
-reminder status -v
-```
-
-#### Adding to PATH
-
-To use the `reminder` command globally, add the installation directory to your PATH:
+### Setup (Add to Shell Profile)
+Add these lines to `~/.zshrc` or `~/.bash_profile`:
 
 ```bash
 export PATH="$HOME/healthy_habits:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/healthy_habits/config"
+alias reminder="$HOME/healthy_habits/reminder"
 ```
 
-Add this line to your `~/.zshrc` or `~/.bash_profile` to make it permanent.
-
-#### Using the Wrapper Script
-
-Alternatively, you can use the full path to the wrapper script:
-
+Then reload your shell:
 ```bash
-$HOME/healthy_habits/reminder status
+source ~/.zshrc  # or source ~/.bash_profile
 ```
 
-The CLI tool provides the same functionality as running the Python scripts directly, but with a more user-friendly interface and better integration with your shell environment.
+### Commands
 
-### Deployment
+| Command | Description |
+|--------|-------------|
+| `reminder update` | Reload config and restart the background service |
+| `reminder view` | Generate schedule visualization |
+| `reminder status` | Show next upcoming events |
+| `reminder status -v` | Show full schedule with details |
 
-#### Deploying with the installation script
-To deploy the script, you can use the provided installation script:
+---
+
+## 📦 Deployment
+
+### Option 1: Use the Installer (Recommended)
 ```bash
 ./install.sh
 ```
-
-#### Deploying manually
-
-To run the script automatically in the background, you can use [launchd](https://www.launchd.info/?lang=en), the standard way to manage daemons and agents on macOS. A sample `.plist` file is provided:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.user.schedule_notify</string>
-
-    <key>ProgramArguments</key>
-    <array>
-        <string>/Users/usrname/awesome-health-habits/.venv/bin/python</string>
-        <string>/Users/usrname/awesome-health-habits/src/schedule_management/reminder_macos.py</string>
-    </array>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <true/>
-</dict>
-</plist>
-
-```
-
-1.  **Edit the `.plist` file**: You will need to create a file like `com.user.schedule_notify.plist` in `~/Library/LaunchAgents/`. Make sure the `ProgramArguments` key points to the correct path of your python interpreter and the `reminder_macos.py` script.
-2.  **Load the agent**:
-    ```bash
-    launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist
-    ```
-3.  **Start the agent**:
-    ```bash
-    launchctl start com.user.schedule_notify
-    ```
-
-To stop the agent:
-
+To uninstall:
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+rm -rf "$HOME/healthy_habits"
 ```
 
-## Roadmap
-- [x] Time point alarms
-- [x] Default schedule
-- [x] Schedule visualization
-- [ ] Install script
-- [x] Skip days
-- [x] Add CLI tools
-- [ ] Add support for Linux and Windows
-- [ ] MCP to write schedule files based on Notion Calendar or Google Calendar
+### Option 2: Manual `launchd` Setup
+
+1. Create `~/Library/LaunchAgents/com.user.schedule_notify.plist`:
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>com.user.schedule_notify</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/path/to/your/.venv/bin/python</string>
+           <string>/path/to/awesome-healthy-habits/src/schedule_management/reminder_macos.py</string>
+       </array>
+       <key>RunAtLoad</key>
+       <true/>
+       <key>KeepAlive</key>
+       <true/>
+   </dict>
+   </plist>
+   ```
+
+2. Load and start:
+   ```bash
+   launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist
+   launchctl start com.user.schedule_notify
+   ```
+
+3. To stop:
+   ```bash
+   launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+   ```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Time point alarms  
+- [x] Default schedule templates  
+- [x] Schedule visualization  
+- [x] Installation script  
+- [x] Skip-day logic  
+- [x] CLI tool  
+- [ ] **Cross-platform support** (Linux & Windows)  
+- [ ] **MCP integration** with Notion Calendar / Google Calendar  
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+---
+
+> 💡 **Pro Tip**: Pair this with a digital wellness routine—hydrate, stretch, and take real breaks! Your future self will thank you.
