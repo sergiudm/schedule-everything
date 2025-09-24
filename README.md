@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/awesome-healthy-habits-for-developers/actions/workflows/tests.yml)
 
-This script provides a simple way to manage your daily schedule and receive reminders on macOS. It uses a Python script to trigger notifications based on a predefined schedule.
+This project provides a simple way to manage your daily schedule and receive reminders on macOS. It uses a Python script to trigger notifications based on a predefined schedule.
 
 > [!NOTE]
 > This script is designed for macOS. Support for other operating systems may be added in the future.
@@ -134,6 +134,46 @@ uv run src/schedule_management/reminder_macos.py --view
 ```
 
 Then you can check the output schedule in the `schedule_visualization` folder.
+
+### CLI Tool Usage
+
+After installation using the [`install.sh`](install.sh) script, you'll have access to the `reminder` command-line tool. This provides a convenient way to manage your schedule without directly running Python scripts.
+
+#### Available Commands
+
+```bash
+# Update configuration and restart the reminder service
+reminder update
+
+# Generate schedule visualizations
+reminder view
+
+# Show current status and next events
+reminder status
+
+# Show detailed status with full schedule
+reminder status -v
+```
+
+#### Adding to PATH
+
+To use the `reminder` command globally, add the installation directory to your PATH:
+
+```bash
+export PATH="$HOME/healthy_habits:$PATH"
+```
+
+Add this line to your `~/.zshrc` or `~/.bash_profile` to make it permanent.
+
+#### Using the Wrapper Script
+
+Alternatively, you can use the full path to the wrapper script:
+
+```bash
+$HOME/healthy_habits/reminder status
+```
+
+The CLI tool provides the same functionality as running the Python scripts directly, but with a more user-friendly interface and better integration with your shell environment.
 
 ### Deployment
 

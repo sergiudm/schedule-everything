@@ -62,6 +62,27 @@ check_homebrew() {
     fi
 }
 
+# Check if uv is installed and install if necessary
+check_uv() {
+    log_info "Checking uv installation..."
+    
+    if ! command -v uv &> /dev/null; then
+        log_info "uv not found. Installing uv via Homebrew..."
+        brew install uv
+        log_success "uv installed successfully"
+    else
+        log_success "uv is already installed"
+    fi
+    
+    # Verify uv is working
+    if uv --version &> /dev/null; then
+        log_success "uv is working correctly"
+    else
+        log_error "uv installation verification failed"
+        exit 1
+    fi
+}
+
 # Install Python using pyenv
 install_python() {
     log_info "Setting up Python $PYTHON_VERSION..."
@@ -112,23 +133,46 @@ create_venv() {
 install_dependencies() {
     log_info "Installing Python dependencies..."
     
-    # Upgrade pip first
-    pip install --upgrade pip
+    # Change to installation directory for package installation
+    cd "$INSTALL_DIR"
     
-    # Install requirements
-    if [[ -f "requirements.txt" ]]; then
-        pip install -r requirements.txt
+    # Upgrade pip first using uv
+    uv pip install --upgrade pip
+    
+    # Install requirements from requirements.txt if it exists in the original location
+    if [[ -f "../requirements.txt" ]]; then
+        uv pip install -r ../requirements.txt
         log_success "Dependencies installed from requirements.txt"
     else
         log_warning "requirements.txt not found, installing matplotlib manually..."
-        pip install matplotlib>=3.5.0
+        uv pip install matplotlib>=3.5.0
     fi
     
     # Install additional development dependencies if available
-    if [[ -f "requirements-test.txt" ]]; then
-        pip install -r requirements-test.txt
+    if [[ -f "../requirements-test.txt" ]]; then
+        uv pip install -r ../requirements-test.txt
         log_success "Test dependencies installed"
     fi
+    
+    # Install the local schedule-management package in editable mode
+    log_info "Installing schedule-management package..."
+    uv pip install -e .
+    if [[ $? -eq 0 ]]; then
+        log_success "Schedule-management package installed successfully"
+    else
+        log_error "Failed to install schedule-management package"
+        exit 1
+    fi
+    
+    # Verify the reminder command is available
+    if command -v reminder &> /dev/null; then
+        log_success "CLI tool 'reminder' is available"
+    else
+        log_warning "CLI tool 'reminder' may not be in PATH, but should be available in virtual environment"
+    fi
+    
+    # Return to original directory
+    cd - > /dev/null
 }
 
 # Setup project directory
@@ -150,6 +194,25 @@ setup_project() {
     else
         log_error "src/schedule_management directory not found!"
         exit 1
+    fi
+    
+    # Copy package configuration files for proper installation
+    if [[ -f "pyproject.toml" ]]; then
+        cp "pyproject.toml" "$INSTALL_DIR/"
+        log_success "Package configuration (pyproject.toml) copied"
+    else
+        log_error "pyproject.toml not found!"
+        exit 1
+    fi
+    
+    if [[ -f "README.md" ]]; then
+        cp "README.md" "$INSTALL_DIR/"
+        log_success "README.md copied"
+    fi
+    
+    if [[ -f "uv.lock" ]]; then
+        cp "uv.lock" "$INSTALL_DIR/"
+        log_success "uv.lock copied"
     fi
     
     # Copy configuration files if they exist
@@ -254,7 +317,7 @@ EOF
 #!/bin/bash
 # CLI tool wrapper for the reminder system
 source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-python "$INSTALL_DIR/schedule_management/reminder.py" "\$@"
+reminder "\$@"
 EOF
     
     # Make scripts executable
@@ -310,6 +373,28 @@ test_installation() {
             log_success "Python dependencies test passed"
         else
             log_error "Python dependencies test failed"
+            exit 1
+        fi
+        
+        # Test that the schedule-management package is installed
+        if python -c "import schedule_management; print('schedule_management package imported successfully')"; then
+            log_success "Schedule-management package test passed"
+        else
+            log_error "Schedule-management package test failed"
+            exit 1
+        fi
+        
+        # Test that the reminder CLI command is available
+        if command -v reminder &> /dev/null; then
+            log_success "CLI tool 'reminder' is available"
+            # Test the reminder command help
+            if reminder --help &> /dev/null; then
+                log_success "CLI tool 'reminder' is working correctly"
+            else
+                log_warning "CLI tool 'reminder' is available but may have issues"
+            fi
+        else
+            log_error "CLI tool 'reminder' is not available"
             exit 1
         fi
     else
@@ -384,6 +469,7 @@ main() {
     # Run installation steps
     check_macos
     check_homebrew
+    check_uv
     install_python
     setup_project
     create_venv
