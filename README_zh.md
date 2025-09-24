@@ -162,6 +162,9 @@ uv run src/schedule_management/reminder_macos.py --view
 
 运行安装脚本（`install.sh`）后，你将获得 `reminder` 命令。
 
+> [!NOTE]  
+> 根据脚本的输出，你可能需要运行`launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist`命令来开启自动日程提示。然后通过`launchctl list|grep schedule`命令查看服务状态。
+
 ### 设置（添加到 Shell 配置）
 将以下内容加入 `~/.zshrc` 或 `~/.bash_profile`：
 

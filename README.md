@@ -194,6 +194,9 @@ source ~/.zshrc  # or source ~/.bash_profile
 ```bash
 ./install.sh
 ```
+> [!NOTE]
+> You may need to run `launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist` following the instructions in the script output. And then run `launchctl list|grep schedule` to check if the service is running.
+
 To uninstall:
 ```bash
 rm -rf "$HOME/healthy_habits"
