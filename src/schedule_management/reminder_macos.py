@@ -1,31 +1,21 @@
 import time
 import os
-import subprocess
-import tomllib
 from datetime import datetime, timedelta
-from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from collections import defaultdict
+from typing import Dict, Tuple
+from schedule_management.utils import (
+    load_toml_file,
+    alarm,
+    get_week_parity,
+    add_minutes_to_time,
+)
 
 
-def load_toml_file(filename):
-    """Helper to load a single TOML file from config directory"""
-    # Get the project root directory (parent of src/)
-    project_root = Path(__file__).parent.parent
-    config_dir = project_root / "config"
-    file_path = config_dir / filename
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {file_path}")
-
-    with open(file_path, "rb") as f:
-        return tomllib.load(f)
-
-
-def load_settings(file_path):
+def load_settings(file_path) -> Tuple:
     """Load settings from settings.toml"""
-    config = load_toml_file(filename=file_path)
+    config = load_toml_file(file_path)
     settings = config.get("settings", {})
     time_blocks = config.get("time_blocks", {})
     time_points = config.get("time_points", {})
@@ -42,50 +32,12 @@ def load_even_week_schedule(file_path):
     return load_toml_file(file_path)
 
 
-def _play_sound(sound_file):
-    """Play system sound using afplay"""
-    subprocess.Popen(["afplay", sound_file])
-
-
-def _show_dialog(message):
-    """Show AppleScript dialog with '停止闹铃' button"""
-    result = subprocess.run(
-        [
-            "osascript",
-            "-e",
-            f'display dialog "{message}" buttons {{"停止闹铃"}} default button "停止闹铃"',
-        ],
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip()
-
-
-def alarm(title, message, sound_file, alarm_interval, max_alarm_duration):
-    """Trigger repeating alarm until dismissed or timeout"""
-    start_time = time.time()
-    while True:
-        _play_sound(sound_file)
-        button = _show_dialog(message)
-        if "停止闹铃" in button:
-            break
-        if time.time() - start_time > max_alarm_duration:
-            break
-        time.sleep(alarm_interval)
-
-
-def get_week_parity():
-    """Return 'odd' or 'even' based on ISO calendar week number"""
-    week_number = datetime.now().isocalendar().week
-    return "odd" if week_number % 2 == 1 else "even"
-
-
 def should_skip_today(settings):
     """Check if today should be skipped based on skip_days setting"""
     skip_days = settings.get("skip_days", [])
     if not skip_days:
         return False
-    
+
     current_weekday = datetime.now().strftime("%A").lower()
     return current_weekday in skip_days
 
@@ -96,8 +48,8 @@ def get_today_schedule():
     Returns empty dict if today should be skipped based on skip_days setting.
     """
     # Load settings to check if today should be skipped
-    settings, _, _ = load_settings("settings.toml")
-    
+    settings, _, _ = load_settings("config/settings.toml")
+
     # Check if today should be skipped
     if should_skip_today(settings):
         return {}
@@ -122,9 +74,9 @@ def get_today_schedule():
     # Load the correct schedule file based on week parity
     parity = get_week_parity()
     if parity == "odd":
-        schedule_data = load_odd_week_schedule("odd_weeks.toml")
+        schedule_data = load_odd_week_schedule("config/odd_weeks.toml")
     else:
-        schedule_data = load_even_week_schedule("even_weeks.toml")
+        schedule_data = load_even_week_schedule("config/even_weeks.toml")
 
     # Get the common schedule (defaults to empty dict if not found)
     common_schedule = schedule_data.get("common", {})
@@ -140,32 +92,15 @@ def get_today_schedule():
     return final_schedule
 
 
-def parse_time(timestr):
-    """Convert 'HH:MM' string to datetime.time object"""
-    return datetime.strptime(timestr, "%H:%M").time()
-
-
-def time_to_str(t):
-    """Convert datetime.time to 'HH:MM' string"""
-    return t.strftime("%H:%M")
-
-
-def add_minutes_to_time(timestr, minutes):
-    """Add minutes to 'HH:MM' and return new 'HH:MM' string"""
-    dt = datetime.strptime(timestr, "%H:%M")
-    new_dt = dt + timedelta(minutes=minutes)
-    return new_dt.strftime("%H:%M")
-
-
 def visualize_schedule():
     """
     Create visual schedule charts for both odd and even weeks.
     Generates two PNG files: 'odd_week_schedule.png' and 'even_week_schedule.png'
     """
     # Load settings and schedules
-    settings, time_blocks, time_points = load_settings("settings.toml")
-    odd_schedule = load_odd_week_schedule("odd_weeks.toml")
-    even_schedule = load_even_week_schedule("even_weeks.toml")
+    settings, time_blocks, time_points = load_settings("config/settings.toml")
+    odd_schedule = load_odd_week_schedule("config/odd_weeks.toml")
+    even_schedule = load_even_week_schedule("config/even_weeks.toml")
 
     # Color mapping for different activity types
     colors = {
@@ -343,7 +278,7 @@ def visualize_schedule():
 
 def main():
     # Load settings and time blocks
-    settings, time_blocks, time_points = load_settings("settings.toml")
+    settings, time_blocks, time_points = load_settings("config/settings.toml")
     SOUND_FILE = settings.get("sound_file", "/System/Library/Sounds/Ping.aiff")
     ALARM_INTERVAL = settings.get("alarm_interval", 5)
     MAX_ALARM_DURATION = settings.get("max_alarm_duration", 300)

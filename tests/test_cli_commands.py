@@ -104,7 +104,7 @@ class TestStatusCommand:
     """Test the status command functionality."""
     
     @patch('schedule_management.reminder.get_today_schedule')
-    @patch('schedule_management.reminder.get_week_parity')
+    @patch('schedule_management.utils.get_week_parity')
     @patch('schedule_management.reminder.load_settings')
     @patch('schedule_management.reminder.should_skip_today')
     def test_status_normal_day(self, mock_should_skip, mock_load_settings, 
@@ -188,7 +188,7 @@ class TestHelperFunctions:
         with patch('schedule_management.reminder.get_today_schedule') as mock_schedule:
             mock_schedule.return_value = test_schedule
             
-            with patch('schedule_management.reminder.parse_time') as mock_parse:
+            with patch('schedule_management.utils.parse_time') as mock_parse:
                 # Mock parse_time to return proper time objects
                 def mock_parse_func(time_str):
                     if time_str == "08:00":

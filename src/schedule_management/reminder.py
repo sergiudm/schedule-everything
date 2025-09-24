@@ -15,6 +15,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Dict
 
 # Import functions from the existing reminder_macos module
 from schedule_management.reminder_macos import (
@@ -22,22 +23,22 @@ from schedule_management.reminder_macos import (
     load_odd_week_schedule,
     load_even_week_schedule,
     get_today_schedule,
-    get_week_parity,
-    parse_time,
     visualize_schedule,
     should_skip_today,
 )
 
+from schedule_management.utils import get_week_parity, parse_time
 
-def get_config_paths():
+
+def get_config_paths(config_dir="config") -> Dict[str, Path]:
     """Get the paths to configuration files."""
-    project_root = Path(__file__).parent.parent
-    config_dir = project_root / "config"
-
+    base_dir = Path(config_dir)
+    if not base_dir.is_dir():
+        raise ValueError(f"Directory not found: {base_dir}")
     return {
-        "settings": config_dir / "settings.toml",
-        "odd_weeks": config_dir / "odd_weeks.toml",
-        "even_weeks": config_dir / "even_weeks.toml",
+        "settings": base_dir / "settings.toml",
+        "odd_weeks": base_dir / "odd_weeks.toml",
+        "even_weeks": base_dir / "even_weeks.toml",
     }
 
 
@@ -46,7 +47,7 @@ def update_command(args):
     print("🔄 Updating reminder configuration...")
 
     # Get configuration paths
-    config_paths = get_config_paths()
+    config_paths = get_config_paths("config")
 
     # Validate configuration files exist
     missing_files = []
@@ -63,9 +64,9 @@ def update_command(args):
     # Try to reload configuration to validate it's valid
     try:
         print("📋 Validating configuration files...")
-        settings, time_blocks, time_points = load_settings("settings.toml")
-        odd_schedule = load_odd_week_schedule("odd_weeks.toml")
-        even_schedule = load_even_week_schedule("even_weeks.toml")
+        settings, time_blocks, time_points = load_settings("config/settings.toml")
+        odd_schedule = load_odd_week_schedule("config/odd_weeks.toml")
+        even_schedule = load_even_week_schedule("config/even_weeks.toml")
         print("✅ Configuration files are valid")
     except Exception as e:
         print(f"❌ Error: Invalid configuration - {e}")
@@ -223,7 +224,7 @@ def status_command(args):
         print(f"📊 Current week: {week_parity}")
 
         # Check if today is skipped
-        settings, _, _ = load_settings("settings.toml")
+        settings, _, _ = load_settings("config/settings.toml")
         if should_skip_today(settings):
             print("⏭️  Today is a skipped day - no reminders scheduled")
             return 0
