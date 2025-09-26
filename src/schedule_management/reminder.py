@@ -14,7 +14,7 @@ import sys
 import time
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from schedule_management.reminder_macos import (
     ScheduleConfig,
@@ -144,7 +144,7 @@ def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool]:
 
 def get_current_and_next_events(
     schedule: dict[str, Any],
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None, str | None]:
     """Get current and next scheduled events from today's schedule."""
     if not schedule:
         return None, None, None
@@ -198,7 +198,7 @@ def get_current_and_next_events(
     return current_event, next_event, time_to_next
 
 
-def status_command(args: Optional[dict[str, Any]] = None):
+def status_command(args: argparse.Namespace):
     """Handle the 'status' command - show current status and next events."""
     print("📅 Checking reminder status...\n")
 
