@@ -9,21 +9,19 @@ This tool provides commands to:
 
 import argparse
 import os
-import sys
 import subprocess
+import sys
 import time
-from datetime import datetime, date
+from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, Tuple, Optional
+from typing import Any, Optional
 
 from schedule_management.reminder_macos import (
     ScheduleConfig,
-    WeeklySchedule,
     ScheduleVisualizer,
+    WeeklySchedule,
 )
-
 from schedule_management.utils import get_week_parity, parse_time
-
 
 CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR", "config")
 SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
@@ -31,7 +29,7 @@ ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
 
 
-def get_config_paths(config_dir: str = "config") -> Dict[str, Path]:
+def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
     """Get the paths to configuration files."""
     base_dir = Path(config_dir)
     if not base_dir.is_dir():
@@ -132,7 +130,7 @@ def view_command(args):
         return 1
 
 
-def get_today_schedule_for_status() -> Tuple[dict, str, bool]:
+def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool]:
     """Helper to get today's schedule with metadata for status command."""
     config = ScheduleConfig(SETTINGS_PATH)
     weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
@@ -145,7 +143,7 @@ def get_today_schedule_for_status() -> Tuple[dict, str, bool]:
 
 
 def get_current_and_next_events(
-    schedule: dict,
+    schedule: dict[str, Any],
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Get current and next scheduled events from today's schedule."""
     if not schedule:
@@ -200,7 +198,7 @@ def get_current_and_next_events(
     return current_event, next_event, time_to_next
 
 
-def status_command(args):
+def status_command(args: Optional[dict[str, Any]] = None):
     """Handle the 'status' command - show current status and next events."""
     print("📅 Checking reminder status...\n")
 
@@ -251,7 +249,7 @@ def main():
     """Main entry point for the CLI tool."""
     # Get config directory path for display
     config_dir_path = os.path.abspath(CONFIG_DIR)
-    
+
     parser = argparse.ArgumentParser(
         description="Reminder CLI - Manage your schedule management system",
         formatter_class=argparse.RawDescriptionHelpFormatter,
