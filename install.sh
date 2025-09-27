@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Script configuration
 SCRIPT_NAME="Schedule Management Installer"
 PYTHON_VERSION="3.12"
-VENV_NAME="schedule_management_env"
+# VENV_NAME="schedule_management_env"
 INSTALL_DIR="$HOME/schedule_management"
 LAUNCH_AGENT_NAME="com.health.habits.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
@@ -187,7 +187,7 @@ create_launch_agent() {
     <string>${LAUNCH_AGENT_NAME}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$INSTALL_DIR/$VENV_NAME/bin/python</string>
+        <string>$INSTALL_DIR/.venv/bin/python</string>
         <string>$INSTALL_DIR/src/schedule_management/reminder_macos.py</string>
     </array>
     <key>RunAtLoad</key>
@@ -218,7 +218,7 @@ create_scripts() {
 
     cat > "$INSTALL_DIR/start_reminders.sh" << EOF
 #!/bin/bash
-source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+source "$INSTALL_DIR/.venv/bin/activate"
 cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py
 EOF
@@ -238,14 +238,14 @@ EOF
 
     cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
 #!/bin/bash
-source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+source "$INSTALL_DIR/.venv/bin/activate"
 cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py --visualize
 EOF
 
     cat > "$INSTALL_DIR/reminder" << EOF
 #!/bin/bash
-source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+source "$INSTALL_DIR/.venv/bin/activate"
 exec reminder "\$@"
 EOF
 
