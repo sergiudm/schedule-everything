@@ -133,14 +133,11 @@ setup_project() {
 
 # Create virtual environment
 create_venv() {
-    log_info "Creating virtual environment..."
-    if [[ -d "$INSTALL_DIR/$VENV_NAME" ]]; then
-        rm -rf "$INSTALL_DIR/$VENV_NAME"
-    fi
-    python -m venv "$INSTALL_DIR/$VENV_NAME"
-    if [[ -f "$INSTALL_DIR/$VENV_NAME/bin/activate" ]]; then
-        source "$INSTALL_DIR/$VENV_NAME/bin/activate"
-        log_success "Virtual environment created and activated"
+    log_info "Creating virtual environment with uv..."
+    uv venv --python=3.12 --clear "$INSTALL_DIR/.venv"
+    if [[ -f "$INSTALL_DIR/.venv/bin/activate" ]]; then
+        source "$INSTALL_DIR/.venv/bin/activate"
+        log_success "Virtual environment created and activated with uv"
     else
         log_error "Virtual environment creation failed"
         exit 1
@@ -260,7 +257,7 @@ EOF
 test_installation() {
     log_info "Testing installation..."
 
-    source "$INSTALL_DIR/$VENV_NAME/bin/activate"
+    source "$INSTALL_DIR/.venv/bin/activate"
 
     if python -c "import schedule_management; print('OK')" &>/dev/null; then
         log_success "schedule_management import test passed"
