@@ -7,9 +7,11 @@ __pycache__/
 *.pyo
 *.egg-info/
 build/
+uv.lock
 
 schedule_visualization/
 
 config/even_weeks.toml
 config/odd_weeks.toml
 config/settings.toml
+config/tasks.json

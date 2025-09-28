@@ -5,10 +5,10 @@
 
 [中文版本](README_zh.md)
 
-This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on **macOS**. Built with Python, it leverages native macOS notifications and sounds to keep you on track with healthy habits, focused work sessions, and regular breaks.
+This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on your **local** machine. Built with Python, it leverages native system notifications and sounds to keep you on track with healthy habits, focused work sessions, and regular breaks.
 
 > [!NOTE]  
-> This tool is currently optimized for **macOS**. Support for Linux and Windows is planned for future releases.
+> This tool is currently optimized for **macOS and Linux**. Windows support is planned for future releases.
 
 ---
 
@@ -272,7 +272,7 @@ reminder delete "groceries"
 - [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
 - [ ] Better alarm UI
-- [ ] **Cross-platform support** (Linux & Windows)  
+- [ ] **Windows support**
 
 ---
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script sets up the schedule management reminder system for macOS
+# This script sets up the schedule management reminder system for macOS and Linux
 
 set -euo pipefail
 
@@ -18,6 +18,21 @@ PYTHON_VERSION="3.12"
 INSTALL_DIR="$HOME/schedule_management"
 LAUNCH_AGENT_NAME="com.sergiudm.schedule.management.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
+SYSTEMD_SERVICE_NAME="schedule-management.service"
+SYSTEMD_SERVICE_PATH="$HOME/.config/systemd/user/${SYSTEMD_SERVICE_NAME}"
+
+# Detect OS
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "linux"
+    else
+        echo "unknown"
+    fi
+}
+
+OS_TYPE=$(detect_os)
 
 # Logging functions
 log_info() {
@@ -36,17 +51,63 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running on macOS
-check_macos() {
-    if [[ "$OSTYPE" != "darwin"* ]]; then
-        log_error "This script is designed for macOS only. Detected OS: $OSTYPE"
+# Check OS compatibility
+check_os() {
+    if [[ "$OS_TYPE" == "unknown" ]]; then
+        log_error "Unsupported operating system: $OSTYPE"
+        log_info "Supported systems: macOS (darwin) and Linux (linux-gnu)"
         exit 1
     fi
-    log_success "macOS detected"
+    log_success "$OS_TYPE detected"
 }
 
-# Check if Homebrew is installed
+# Get Linux distribution info
+get_linux_distro() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        echo "$ID"
+    else
+        echo "unknown"
+    fi
+}
+
+# Install package manager dependencies for Linux
+install_linux_dependencies() {
+    log_info "Installing Linux dependencies..."
+    
+    DISTRO=$(get_linux_distro)
+    log_info "Detected Linux distribution: $DISTRO"
+    
+    case "$DISTRO" in
+        ubuntu|debian)
+            sudo apt update
+            sudo apt install -y curl build-essential libssl-dev zlib1g-dev \
+                libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev \
+                xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+            ;;
+        fedora)
+            sudo dnf install -y curl gcc zlib-devel bzip2 bzip2-devel \
+                readline-devel sqlite sqlite-devel openssl-devel xz xz-devel \
+                libffi-devel findutils
+            ;;
+        arch|manjaro)
+            sudo pacman -S --needed curl base-devel openssl zlib xz
+            ;;
+        *)
+            log_warning "Unknown distribution: $DISTRO. Please install dependencies manually:"
+            log_info "Required: curl, build tools, Python development headers, OpenSSL"
+            ;;
+    esac
+    
+    log_success "Linux dependencies installed"
+}
+
+# Check if Homebrew is installed (macOS only)
 check_homebrew() {
+    if [[ "$OS_TYPE" != "macos" ]]; then
+        return 0
+    fi
+    
     if ! command -v brew &> /dev/null; then
         log_warning "Homebrew not found. Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -59,36 +120,69 @@ check_homebrew() {
     fi
 }
 
-# Check if uv is installed and install if necessary
-check_uv() {
+# Install uv package manager
+install_uv() {
     log_info "Checking uv installation..."
     if ! command -v uv &> /dev/null; then
-        log_info "uv not found. Installing uv via Homebrew..."
-        brew install uv
+        log_info "uv not found. Installing uv..."
+        
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            brew install uv
+        elif [[ "$OS_TYPE" == "linux" ]]; then
+            # Install uv using the official installer
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            # Add to PATH
+            export PATH="$HOME/.cargo/bin:$PATH"
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+        fi
         log_success "uv installed successfully"
     else
         log_success "uv is already installed"
     fi
+    
     if ! uv --version &> /dev/null; then
         log_error "uv installation verification failed"
         exit 1
     fi
 }
 
-# Install Python using pyenv
+# Install Python (platform-specific)
 install_python() {
     log_info "Setting up Python $PYTHON_VERSION..."
-    if ! command -v pyenv &> /dev/null; then
-        log_info "Installing pyenv..."
-        brew install pyenv
-        echo 'eval "$(pyenv init -)"' >> ~/.zshrc
-        eval "$(pyenv init -)"
+    
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        # macOS: use pyenv
+        if ! command -v pyenv &> /dev/null; then
+            log_info "Installing pyenv..."
+            brew install pyenv
+            echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+            eval "$(pyenv init -)"
+        fi
+        if ! pyenv versions --bare | grep -q "^$PYTHON_VERSION$"; then
+            log_info "Installing Python $PYTHON_VERSION..."
+            pyenv install "$PYTHON_VERSION"
+        fi
+        pyenv local "$PYTHON_VERSION"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        # Linux: use system Python or pyenv
+        if command -v python3.$PYTHON_VERSION &> /dev/null; then
+            log_success "Python $PYTHON_VERSION found in system"
+        else
+            log_info "Installing Python $PYTHON_VERSION using pyenv..."
+            if ! command -v pyenv &> /dev/null; then
+                curl https://pyenv.run | bash
+                export PATH="$HOME/.pyenv/bin:$PATH"
+                eval "$(pyenv init -)"
+                echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.bashrc
+                echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+            fi
+            if ! pyenv versions --bare | grep -q "^$PYTHON_VERSION$"; then
+                pyenv install "$PYTHON_VERSION"
+            fi
+            pyenv local "$PYTHON_VERSION"
+        fi
     fi
-    if ! pyenv versions --bare | grep -q "^$PYTHON_VERSION$"; then
-        log_info "Installing Python $PYTHON_VERSION..."
-        pyenv install "$PYTHON_VERSION"
-    fi
-    pyenv local "$PYTHON_VERSION"
+    
     log_success "Python $PYTHON_VERSION is ready"
 }
 
@@ -172,8 +266,46 @@ install_dependencies() {
     cd - > /dev/null
 }
 
-# Create LaunchAgent plist
+# Create systemd service (Linux only)
+create_systemd_service() {
+    if [[ "$OS_TYPE" != "linux" ]]; then
+        return 0
+    fi
+    
+    log_info "Creating systemd service..."
+    
+    mkdir -p "$HOME/.config/systemd/user"
+    
+    cat > "$SYSTEMD_SERVICE_PATH" << EOF
+[Unit]
+Description=Schedule Management Reminder
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/src/schedule_management/reminder_macos.py
+Restart=always
+RestartSec=10
+Environment=DISPLAY=:0
+Environment=REMINDER_CONFIG_DIR=$INSTALL_DIR/config
+StandardOutput=$INSTALL_DIR/logs/schedule_management.out
+StandardError=$INSTALL_DIR/logs/schedule_management.err
+
+[Install]
+WantedBy=default.target
+EOF
+
+    systemctl --user daemon-reload
+    systemctl --user enable "$SYSTEMD_SERVICE_NAME"
+    log_success "systemd service created and enabled"
+}
+
+# Create LaunchAgent plist (macOS only)
 create_launch_agent() {
+    if [[ "$OS_TYPE" != "macos" ]]; then
+        return 0
+    fi
+    
     log_info "Creating LaunchAgent..."
 
     mkdir -p "$HOME/Library/LaunchAgents"
@@ -212,15 +344,20 @@ EOF
     log_success "LaunchAgent created at $LAUNCH_AGENT_PLIST"
 }
 
-# Request permissions (info only)
+# Request permissions (platform-specific)
 request_permissions() {
-    log_info "The app will request Accessibility & Notification permissions on first run."
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        log_info "The app will request Accessibility & Notification permissions on first run."
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        log_info "The app will use desktop notifications. Ensure notification daemon is running."
+    fi
 }
 
-# Create convenience scripts
+# Create convenience scripts (platform-specific)
 create_scripts() {
     log_info "Creating convenience scripts..."
 
+    # Start script (common)
     cat > "$INSTALL_DIR/start_reminders.sh" << EOF
 #!/bin/bash
 source "$INSTALL_DIR/.venv/bin/activate"
@@ -228,19 +365,40 @@ cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py
 EOF
 
-    cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
+    # Stop script (platform-specific)
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
 #!/bin/bash
 launchctl unload "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist" 2>/dev/null || true
 pkill -f "python.*reminder_macos.py" 2>/dev/null || true
 EOF
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
+#!/bin/bash
+systemctl --user stop schedule-management.service 2>/dev/null || true
+systemctl --user disable schedule-management.service 2>/dev/null || true
+pkill -f "python.*reminder_macos.py" 2>/dev/null || true
+EOF
+    fi
 
-    cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
+    # Restart script (platform-specific)
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
 #!/bin/bash
 "$HOME/schedule_management/stop_reminders.sh"
 sleep 2
 launchctl load "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
 EOF
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
+#!/bin/bash
+"$HOME/schedule_management/stop_reminders.sh"
+sleep 2
+systemctl --user start schedule-management.service
+EOF
+    fi
 
+    # Visualize script (common)
     cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
 #!/bin/bash
 source "$INSTALL_DIR/.venv/bin/activate"
@@ -248,6 +406,7 @@ cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py --visualize
 EOF
 
+    # CLI wrapper (common)
     cat > "$INSTALL_DIR/reminder" << EOF
 #!/bin/bash
 source "$INSTALL_DIR/.venv/bin/activate"
@@ -281,25 +440,42 @@ test_installation() {
     log_success "All tests passed"
 }
 
-# Display usage
+# Display usage (platform-specific)
 display_usage() {
     log_info "Installation completed successfully!"
     echo
     echo "=== Usage ==="
     echo "Add to PATH (optional):"
-    echo "  echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.zshrc"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo "  echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.zshrc"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        echo "  echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.bashrc"
+    fi
     echo
     echo "Manual control:"
     echo "  $INSTALL_DIR/start_reminders.sh"
     echo "  $INSTALL_DIR/stop_reminders.sh"
     echo
-    echo "LaunchAgent:"
-    echo "  launchctl load $LAUNCH_AGENT_PLIST   # Enable auto-start"
-    echo "  launchctl unload $LAUNCH_AGENT_PLIST # Disable"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo "LaunchAgent:"
+        echo "  launchctl load $LAUNCH_AGENT_PLIST   # Enable auto-start"
+        echo "  launchctl unload $LAUNCH_AGENT_PLIST # Disable"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        echo "systemd service:"
+        echo "  systemctl --user start $SYSTEMD_SERVICE_NAME   # Start service"
+        echo "  systemctl --user stop $SYSTEMD_SERVICE_NAME    # Stop service"
+        echo "  systemctl --user enable $SYSTEMD_SERVICE_NAME  # Enable auto-start"
+        echo "  systemctl --user disable $SYSTEMD_SERVICE_NAME # Disable auto-start"
+        echo "  systemctl --user status $SYSTEMD_SERVICE_NAME  # Check status"
+    fi
     echo
     echo "Logs: $INSTALL_DIR/logs/"
     echo
-    log_warning "First run will prompt for Accessibility permissions in System Settings."
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        log_warning "First run will prompt for Accessibility permissions in System Settings."
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        log_info "First run will use desktop notifications. Ensure notification daemon is running."
+    fi
 }
 
 # Cleanup
@@ -314,14 +490,25 @@ main() {
     echo "=== $SCRIPT_NAME ==="
     trap cleanup EXIT
 
-    check_macos
+    check_os
+    
+    if [[ "$OS_TYPE" == "linux" ]]; then
+        install_linux_dependencies
+    fi
+    
     check_homebrew
-    check_uv
-    # install_python
+    install_uv
+    install_python
     setup_project
     create_venv
     install_dependencies
-    create_launch_agent
+    
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        create_launch_agent
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        create_systemd_service
+    fi
+    
     request_permissions
     create_scripts
     test_installation
