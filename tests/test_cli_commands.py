@@ -9,6 +9,10 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import datetime, time, date
 
+# Set up test environment variables before importing reminder module
+test_config_dir = os.path.join(os.path.dirname(__file__), "config")
+os.environ["REMINDER_CONFIG_DIR"] = test_config_dir
+
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -306,7 +310,9 @@ class TestConfigPaths:
 
     def test_get_config_paths(self):
         """Test the get_config_paths function."""
-        paths = reminder.get_config_paths()
+        # Test with the test config directory
+        test_config_dir = os.path.join(os.path.dirname(__file__), "config")
+        paths = reminder.get_config_paths(test_config_dir)
 
         assert "settings" in paths
         assert "odd_weeks" in paths
@@ -315,3 +321,5 @@ class TestConfigPaths:
         for path in paths.values():
             assert isinstance(path, Path)
             assert "config" in str(path)
+            # Verify the test config files actually exist
+            assert path.exists(), f"Test config file not found: {path}"
