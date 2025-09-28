@@ -1,10 +1,11 @@
-# J人日程管理工具（Schedule Everything）
+# 日程管理工具
 
-[![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)  
+[![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-本项目提供了一种简单而强大的方式，帮助你在 **macOS** 上管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息，J人神器！
-该工具使用 Python 编写，充分利用 macOS 原生通知和系统声音，让你时刻保持节奏。
+[English Version](README.md)
+
+本项目提供了一种简单而强大的方式，帮助你在 **macOS** 上管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，充分利用 macOS 原生通知和系统声音，让你时刻保持节奏, J人福利！
 
 > [!NOTE]  
 > 当前版本专为 **macOS** 优化。未来计划支持 Linux 和 Windows。
@@ -47,28 +48,32 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 ### ✅ 无厂商锁定  
 你的数据完全由你掌控——无需账号、无需订阅、不依赖云端。可用任意文本编辑器修改，备份到任何地方。
 
-### 🤖 支持 AI 辅助生成  
-借助现代**大语言模型（LLM）**，你可以轻松将各种形式的日程信息（如 **Google 日历导出**、**团队共享时间表截图**、**PDF 日程表**，甚至**手写笔记**）转换为有效的 TOML 配置。只需粘贴原始数据或用自然语言描述你的日常安排，AI 即可秒级生成结构化、可直接使用的配置文件。
+### 🤖 AI 驱动的灵活性  
+借助**大模型（LLM）**，你可以轻松将几乎任何形式的日程信息转换为有效的 TOML 配置——无论是 **Google 日历导出**、**团队共享时间表截图**、**PDF 日程表**，甚至**手写笔记**。只需粘贴原始数据或用自然语言描述你的日常安排，LLM 即可秒级生成结构化、可直接使用的配置文件。
 
 ---
 
 ## 🧠 工作原理
 
-核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/schedule_management/src/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
+核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/src/schedule_management/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
 
 支持以下功能：
 - **时间段事件**：具有明确持续时间的活动（如 25 分钟番茄钟 → 触发开始和结束提醒）
-- **时间点提醒**：即时通知（如 22:45 提醒“该睡觉了！”）
+- **时间点提醒**：即时通知（如 22:45 提醒"该睡觉了！"）
 - **周循环切换**：使用 ISO 周编号自动在 `odd_weeks.toml` 和 `even_weeks.toml` 之间切换
 - **通用事件区段**：适用于每天的重复事件（如每晚的放松例行程序）
 
 ---
 
-## ⚙️ 配置说明
+## 快速开始
+### 配置说明
 
 所有配置文件位于项目根目录下的 `config/` 文件夹中。请使用提供的模板快速开始。
 
-### 1. 全局设置（`settings.toml`）
+> [!TIP]
+> 查看[这里](https://github.com/sergiudm/schedule_management/blob/main/docs/prompt)可以在几秒内生成你的日程配置。只需描述你的日常安排，LLM 即可为你创建结构化、可直接使用的配置文件。
+
+#### 1. 全局设置（`settings.toml`）
 
 在此配置全局行为、可复用的时间块和提醒消息：
 
@@ -91,11 +96,11 @@ go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
 ```
 
-### 2. 周计划（`odd_weeks.toml` 与 `even_weeks.toml`）
+#### 2. 周计划（`odd_weeks.toml` 与 `even_weeks.toml`）
 
 通过按天划分的区段和 `[common]` 通用区段定义你的每周节奏。
 
-#### 支持的事件类型：
+##### 支持的事件类型：
 
 | 类型 | 示例 | 说明 |
 |------|--------|-------------|
@@ -104,7 +109,7 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 | **直接消息** | `"12:00" = "Lunch time! 🍽️"` | 立即弹出自定义文本提醒 |
 | **带标题的时间块** | `"14:00" = { block = "meeting", title = "团队站会" }` | 为时间段添加自定义标题 |
 
-#### 示例日程：
+##### 示例日程：
 
 ```toml
 [monday]
@@ -123,7 +128,7 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 
 ---
 
-## 🚀 快速开始
+#### 🚀 设置
 
 1. **初始化配置文件**：
    ```bash
@@ -143,74 +148,31 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 
 ---
 
-## ▶️ 使用方式
+### 📦 部署方式
 
-### 手动运行
-```bash
-uv run src/schedule_management/reminder_macos.py
-```
-
-### 查看日程可视化
-生成日程图表至 `schedule_visualization/` 目录：
-```bash
-uv run src/schedule_management/reminder_macos.py --view
-```
-
----
-
-## 🛠️ 命令行工具（CLI）
-
-运行安装脚本（`install.sh`）后，你将获得 `reminder` 命令。
-
-> [!NOTE]  
-> 根据脚本的输出，你可能需要运行`launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist`命令来开启自动日程提示。然后通过`launchctl list|grep schedule`命令查看服务状态。
-
-### 设置（添加到 Shell 配置）
-将以下内容加入 `~/.zshrc` 或 `~/.bash_profile`：
-
-```bash
-export PATH="$HOME/schedule_management:$PATH"
-export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-alias reminder="$HOME/schedule_management/reminder"
-```
-
-然后重载 Shell 配置：
-```bash
-source ~/.zshrc  # 或 source ~/.bash_profile
-```
-
-### 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `reminder update` | 重新加载配置并重启后台服务 |
-| `reminder view` | 生成日程可视化图表 |
-| `reminder status` | 显示即将到来的下一项事件 |
-| `reminder status -v` | 显示完整日程详情 |
-
----
-
-## 📦 部署方式
-
-### 方式一：使用安装脚本（推荐）
+#### 方式一：使用安装脚本（推荐）
 ```bash
 ./install.sh
 ```
+> [!NOTE]
+> 根据脚本输出的指引，你可能需要运行 `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`。然后运行 `launchctl list|grep schedule` 检查服务是否正在运行。
+
 卸载方法：
 ```bash
+launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
 rm -rf "$HOME/schedule_management"
 ```
 
-### 方式二：手动配置 `launchd`
+#### 方式二：手动配置 `launchd`
 
-1. 创建 `~/Library/LaunchAgents/com.user.schedule_notify.plist`：
+1. 创建 `~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`：
    ```xml
    <?xml version="1.0" encoding="UTF-8"?>
    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
    <plist version="1.0">
    <dict>
        <key>Label</key>
-       <string>com.user.schedule_notify</string>
+       <string>com.sergiudm.schedule_management</string>
        <key>ProgramArguments</key>
        <array>
            <string>/path/to/your/.venv/bin/python</string>
@@ -226,14 +188,44 @@ rm -rf "$HOME/schedule_management"
 
 2. 加载并启动服务：
    ```bash
-   launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist
-   launchctl start com.user.schedule_notify
+   launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
+   launchctl start com.sergiudm.schedule_management
    ```
 
 3. 停止服务：
    ```bash
-   launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+   launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
    ```
+
+---
+
+### 🛠️ 命令行工具（CLI）
+
+运行安装脚本（`install.sh`）后，你将获得 `reminder` 命令。
+
+#### 设置（添加到 Shell 配置）
+将以下内容加入 `~/.zshrc` 或 `~/.bash_profile`：
+
+```bash
+export PATH="$HOME/schedule_management:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+alias reminder="$HOME/schedule_management/reminder"
+```
+
+然后重载 Shell 配置：
+```bash
+source ~/.zshrc  # 或 source ~/.bash_profile
+```
+
+#### 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `reminder update` | 重新加载配置并重启后台服务 |
+| `reminder view` | 生成日程可视化图表 |
+| `reminder status` | 显示即将到来的下一项事件 |
+| `reminder status -v` | 显示完整日程详情 |
+| `reminder <command>` | 更多命令即将推出... |
 
 ---
 
@@ -245,8 +237,9 @@ rm -rf "$HOME/schedule_management"
 - [x] 安装脚本  
 - [x] 跳过某天逻辑  
 - [x] CLI 工具  
-- [ ] **跨平台支持**（Linux & Windows）  
-- [ ] **MCP 集成**（对接 Notion Calendar / Google Calendar）
+- [x] 用于 LLM 生成 TOML 配置的提示词
+- [ ] 配置编辑 CLI
+- [ ] **跨平台支持**（Linux & Windows）
 
 ---
 

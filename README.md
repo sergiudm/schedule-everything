@@ -55,7 +55,7 @@ With the help of modern **Large Language Models (LLMs)**, you can instantly conv
 
 ## 🧠 How It Works
 
-The core script, [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/schedule_management/src/reminder_macos.py), continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
+The core script, [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/src/schedule_management/reminder_macos.py), continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
 
 The system supports:
 - **Time blocks**: Activities with defined durations (e.g., 25-minute Pomodoro → start + end alerts).
@@ -65,11 +65,15 @@ The system supports:
 
 ---
 
-## ⚙️ Configuration
+## Quickstart
+### Configuration
 
 All configuration lives in the `config/` directory at the project root. Use the provided templates to get started.
 
-### 1. Settings (`settings.toml`)
+> [!TIP]
+> Check [here](https://github.com/sergiudm/schedule_management/blob/main/docs/prompt) to generate your schedule config in seconds. Just describe your routine, and an LLM can create a structured, ready-to-use configuration for you.
+
+#### 1. Settings (`settings.toml`)
 
 Configure global behavior, reusable time blocks, and reminder messages:
 
@@ -92,11 +96,11 @@ go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
 ```
 
-### 2. Weekly Schedules (`odd_weeks.toml` & `even_weeks.toml`)
+#### 2. Weekly Schedules (`odd_weeks.toml` & `even_weeks.toml`)
 
 Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
-#### Supported Entry Types:
+##### Supported Entry Types:
 
 | Type | Example | Description |
 |------|--------|-------------|
@@ -105,7 +109,7 @@ Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 | **Direct Message** | `"12:00" = "Lunch time! 🍽️"` | Immediate alert with custom text |
 | **Block with Title** | `"14:00" = { block = "meeting", title = "Team Standup" }` | Custom title for time block |
 
-#### Example Schedule:
+##### Example Schedule:
 
 ```toml
 [monday]
@@ -124,7 +128,7 @@ Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
 ---
 
-## 🚀 Setup
+#### 🚀 Setup
 
 1. **Initialize config files**:
    ```bash
@@ -144,74 +148,31 @@ Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
 ---
 
-## ▶️ Usage
+### 📦 Deployment
 
-### Manual Execution
-```bash
-uv run src/schedule_management/reminder_macos.py
-```
-
-### View Your Schedule
-Generates a visual representation in `schedule_visualization/`:
-```bash
-uv run src/schedule_management/reminder_macos.py --view
-```
-
----
-
-## 🛠️ CLI Tool
-
-After running the installer (`install.sh`), you’ll have access to the `reminder` command.
-
-### Setup (Add to Shell Profile)
-Add these lines to `~/.zshrc` or `~/.bash_profile`:
-
-```bash
-export PATH="$HOME/schedule_management:$PATH"
-export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-alias reminder="$HOME/schedule_management/reminder"
-```
-
-Then reload your shell:
-```bash
-source ~/.zshrc  # or source ~/.bash_profile
-```
-
-### Commands
-
-| Command | Description |
-|--------|-------------|
-| `reminder update` | Reload config and restart the background service |
-| `reminder view` | Generate schedule visualization |
-| `reminder status` | Show next upcoming events |
-| `reminder status -v` | Show full schedule with details |
-
----
-
-## 📦 Deployment
-
-### Option 1: Use the Installer (Recommended)
+#### Option 1: Use the Installer (Recommended)
 ```bash
 ./install.sh
 ```
 > [!NOTE]
-> You may need to run `launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist` following the instructions in the script output. And then run `launchctl list|grep schedule` to check if the service is running.
+> You may need to run `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist` following the instructions in the script output. And then run `launchctl list|grep schedule` to check if the service is running.
 
 To uninstall:
 ```bash
+launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
 rm -rf "$HOME/schedule_management"
 ```
 
-### Option 2: Manual `launchd` Setup
+#### Option 2: Manual `launchd` Setup
 
-1. Create `~/Library/LaunchAgents/com.user.schedule_notify.plist`:
+1. Create `~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`:
    ```xml
    <?xml version="1.0" encoding="UTF-8"?>
    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
    <plist version="1.0">
    <dict>
        <key>Label</key>
-       <string>com.user.schedule_notify</string>
+       <string>com.sergiudm.schedule_management</string>
        <key>ProgramArguments</key>
        <array>
            <string>/path/to/your/.venv/bin/python</string>
@@ -227,14 +188,44 @@ rm -rf "$HOME/schedule_management"
 
 2. Load and start:
    ```bash
-   launchctl load ~/Library/LaunchAgents/com.user.schedule_notify.plist
-   launchctl start com.user.schedule_notify
+   launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
+   launchctl start com.sergiudm.schedule_management
    ```
 
 3. To stop:
    ```bash
-   launchctl unload ~/Library/LaunchAgents/com.user.schedule_notify.plist
+   launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
    ```
+
+---
+
+### 🛠️ CLI Tool
+
+After running the installer (`install.sh`), you’ll have access to the `reminder` command.
+
+#### Setup (Add to Shell Profile)
+Add these lines to `~/.zshrc` or `~/.bash_profile`:
+
+```bash
+export PATH="$HOME/schedule_management:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+alias reminder="$HOME/schedule_management/reminder"
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bash_profile
+```
+
+#### Commands
+
+| Command | Description |
+|--------|-------------|
+| `reminder update` | Reload config and restart the background service |
+| `reminder view` | Generate schedule visualization |
+| `reminder status` | Show next upcoming events |
+| `reminder status -v` | Show full schedule with details |
+| `reminder <command>` | more commands are coming soon... |
 
 ---
 
@@ -246,8 +237,9 @@ rm -rf "$HOME/schedule_management"
 - [x] Installation script  
 - [x] Skip-day logic  
 - [x] CLI tool  
+- [x] Prompts for LLMs to create TOML configs
+- [ ] CLI for config editing
 - [ ] **Cross-platform support** (Linux & Windows)  
-- [ ] **MCP integration** with Notion Calendar / Google Calendar  
 
 ---
 
