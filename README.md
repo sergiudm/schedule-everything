@@ -23,6 +23,7 @@ This project provides a simple yet powerful way to manage your daily schedule an
   - **Time points** (one-time reminders)
   - **Common events** (apply to all days)
 - **CLI Tool**: Easy-to-use command-line interface for managing and inspecting your schedule.
+- **Task Management**: Built-in task list with importance levels and smart duplicate handling.
 - **Auto-start via `launchd`**: Runs silently in the background after system boot.
 
 ---
@@ -219,13 +220,44 @@ source ~/.zshrc  # or source ~/.bash_profile
 
 #### Commands
 
+##### Schedule Management
 | Command | Description |
 |--------|-------------|
 | `reminder update` | Reload config and restart the background service |
 | `reminder view` | Generate schedule visualization |
 | `reminder status` | Show next upcoming events |
 | `reminder status -v` | Show full schedule with details |
-| `reminder <command>` | more commands are coming soon... |
+
+##### Task Management
+| Command | Description |
+|--------|-------------|
+| `reminder add "task description" importance` | Add a new task or update existing one with importance level |
+| `reminder delete "task description"` | Delete a task by its description |
+| `reminder show` | Show all tasks sorted by importance (highest first) |
+
+**Task Management Examples:**
+```bash
+# Add tasks with importance levels (higher number = more important)
+reminder add "biology homework" 8
+reminder add "groceries" 3
+reminder add "call mom" 5
+
+# Update existing task (replaces old importance level)
+reminder add "biology homework" 10
+
+# View all tasks sorted by importance
+reminder show
+
+# Delete a specific task
+reminder delete "groceries"
+```
+
+> [!TIP]  
+> **Task Management Features:**
+> - **No Duplicates**: Adding a task with an existing name updates the importance level
+> - **Smart Sorting**: Tasks are always displayed by importance (highest first)
+> - **Persistent**: Tasks are stored in `config/tasks.json` and persist across CLI sessions
+> - **Timestamps**: Each task includes creation/update time for reference
 
 ---
 
@@ -237,8 +269,9 @@ source ~/.zshrc  # or source ~/.bash_profile
 - [x] Installation script  
 - [x] Skip-day logic  
 - [x] CLI tool  
+- [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
-- [ ] CLI for config editing
+- [ ] Better alarm UI
 - [ ] **Cross-platform support** (Linux & Windows)  
 
 ---

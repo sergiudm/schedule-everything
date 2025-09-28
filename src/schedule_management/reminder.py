@@ -8,6 +8,7 @@ This tool provides commands to:
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -27,6 +28,7 @@ CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR", "config")
 SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
 ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
+TASKS_PATH = f"{CONFIG_DIR}/tasks.json"
 
 
 def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
@@ -39,6 +41,138 @@ def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
         "odd_weeks": base_dir / "odd_weeks.toml",
         "even_weeks": base_dir / "even_weeks.toml",
     }
+
+
+def load_tasks() -> list[dict[str, Any]]:
+    """Load tasks from the JSON file."""
+    if not os.path.exists(TASKS_PATH):
+        return []
+
+    try:
+        with open(TASKS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+def save_tasks(tasks: list[dict[str, Any]]) -> None:
+    """Save tasks to the JSON file."""
+    # Ensure config directory exists
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+
+    with open(TASKS_PATH, "w", encoding="utf-8") as f:
+        json.dump(tasks, f, indent=2, ensure_ascii=False)
+
+
+def add_task(args):
+    """Handle the 'add' command - add a new task to reminder."""
+    print("➕ Adding a new task to the reminder...")
+
+    task_description = args.task
+    importance = args.importance
+
+    # Validate importance is positive
+    if importance <= 0:
+        print("❌ Error: Importance must be a positive integer")
+        return 1
+
+    # Load existing tasks
+    tasks = load_tasks()
+
+    # Check if task with same description already exists
+    existing_task_index = None
+    for i, task in enumerate(tasks):
+        if task["description"] == task_description:
+            existing_task_index = i
+            break
+
+    # Create new task
+    new_task = {
+        "description": task_description,
+        "importance": importance,
+    }
+
+    # Replace existing task or add new one
+    if existing_task_index is not None:
+        old_importance = tasks[existing_task_index]["importance"]
+        tasks[existing_task_index] = new_task
+        action_msg = f"✅ Task '{task_description}' updated! Importance changed from {old_importance} to {importance}"
+    else:
+        tasks.append(new_task)
+        action_msg = f"✅ Task '{task_description}' added successfully with importance {importance}!"
+
+    # Save tasks
+    try:
+        save_tasks(tasks)
+        print(action_msg)
+        return 0
+    except Exception as e:
+        print(f"❌ Error saving task: {e}")
+        return 1
+
+
+def delete_task(args):
+    """Handle the 'delete' command - delete a task from reminder."""
+    print("🗑️ Deleting a task from the reminder...")
+
+    task_description = args.task
+
+    # Load existing tasks
+    tasks = load_tasks()
+
+    if not tasks:
+        print("⚠️  No tasks found to delete")
+        return 1
+
+    # Find and remove the task
+    original_count = len(tasks)
+    tasks = [task for task in tasks if task["description"] != task_description]
+
+    if len(tasks) == original_count:
+        print(f"❌ Task '{task_description}' not found")
+        return 1
+
+    # Save updated tasks
+    try:
+        save_tasks(tasks)
+        deleted_count = original_count - len(tasks)
+        if deleted_count == 1:
+            print(f"✅ Task '{task_description}' deleted successfully!")
+        else:
+            print(
+                f"✅ {deleted_count} tasks with description '{task_description}' deleted successfully!"
+            )
+        return 0
+    except Exception as e:
+        print(f"❌ Error saving tasks: {e}")
+        return 1
+
+
+def show_tasks(args):
+    """Handle the 'show' command - show all tasks in reminder."""
+    print("📋 Showing all tasks...\n")
+
+    # Load existing tasks
+    tasks = load_tasks()
+
+    if not tasks:
+        print("📋 No tasks found")
+        return 0
+
+    # Sort tasks by importance (descending order - higher importance first)
+    sorted_tasks = sorted(tasks, key=lambda x: x["importance"], reverse=True)
+
+    print(f"Found {len(tasks)} task(s), sorted by importance:\n")
+
+    for i, task in enumerate(sorted_tasks, 1):
+        description = task["description"]
+        importance = task["importance"]
+
+        print(f"{i:2d}. {description}")
+        print(f"    Importance: {importance}")
+        print()
+
+    return 0
 
 
 def update_command(args):
@@ -257,14 +391,43 @@ def main():
 Configuration directory: {config_dir_path}
 
 Examples:
-  reminder update          # Update configuration and restart service
-  reminder view            # Generate schedule visualizations
-  reminder status          # Show current status and next events
-  reminder status -v       # Show detailed status with full schedule
+  reminder add "biology homework" 8    # Add a task with importance 8
+  reminder add "groceries" 3           # Add a task with importance 3  
+  reminder delete "biology homework"    # Delete a specific task
+  reminder show                        # Show all tasks sorted by importance
+  reminder update                      # Update configuration and restart service
+  reminder view                        # Generate schedule visualizations
+  reminder status                      # Show current status and next events
+  reminder status -v                   # Show detailed status with full schedule
         """,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Add command
+    add_parser = subparsers.add_parser(
+        "add", help="Add a new task with description and importance level"
+    )
+    add_parser.add_argument(
+        "task", help="Description of the task (e.g., 'biology homework')"
+    )
+    add_parser.add_argument(
+        "importance",
+        type=int,
+        help="Importance level (positive integer, higher = more important)",
+    )
+    add_parser.set_defaults(func=add_task)
+
+    # Delete command
+    delete_parser = subparsers.add_parser("delete", help="Delete a task by description")
+    delete_parser.add_argument("task", help="Description of the task to delete")
+    delete_parser.set_defaults(func=delete_task)
+
+    # Show command
+    show_parser = subparsers.add_parser(
+        "show", help="Show all tasks sorted by importance"
+    )
+    show_parser.set_defaults(func=show_tasks)
 
     update_parser = subparsers.add_parser(
         "update", help="Update configuration and restart service"
