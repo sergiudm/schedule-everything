@@ -150,7 +150,6 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 
 ### 📦 部署方式
 
-#### 方式一：使用安装脚本（推荐）
 ```bash
 ./install.sh
 ```
@@ -162,40 +161,6 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
 rm -rf "$HOME/schedule_management"
 ```
-
-#### 方式二：手动配置 `launchd`
-
-1. 创建 `~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`：
-   ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
-   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-   <plist version="1.0">
-   <dict>
-       <key>Label</key>
-       <string>com.sergiudm.schedule_management</string>
-       <key>ProgramArguments</key>
-       <array>
-           <string>/path/to/your/.venv/bin/python</string>
-           <string>/path/to/schedule_management/src/schedule_management/reminder_macos.py</string>
-       </array>
-       <key>RunAtLoad</key>
-       <true/>
-       <key>KeepAlive</key>
-       <true/>
-   </dict>
-   </plist>
-   ```
-
-2. 加载并启动服务：
-   ```bash
-   launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
-   launchctl start com.sergiudm.schedule_management
-   ```
-
-3. 停止服务：
-   ```bash
-   launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
-   ```
 
 ---
 

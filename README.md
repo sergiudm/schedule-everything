@@ -151,52 +151,17 @@ Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
 ### 📦 Deployment
 
-#### Option 1: Use the Installer (Recommended)
 ```bash
 ./install.sh
 ```
 > [!NOTE]
-> You may need to run `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist` following the instructions in the script output. And then run `launchctl list|grep schedule` to check if the service is running.
+> You may need to run `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist` according to the script output. And then run `launchctl list|grep schedule` to check if the service is running.
 
 To uninstall:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
 rm -rf "$HOME/schedule_management"
 ```
-
-#### Option 2: Manual `launchd` Setup
-
-1. Create `~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`:
-   ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
-   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-   <plist version="1.0">
-   <dict>
-       <key>Label</key>
-       <string>com.sergiudm.schedule_management</string>
-       <key>ProgramArguments</key>
-       <array>
-           <string>/path/to/your/.venv/bin/python</string>
-           <string>/path/to/schedule_management/src/schedule_management/reminder_macos.py</string>
-       </array>
-       <key>RunAtLoad</key>
-       <true/>
-       <key>KeepAlive</key>
-       <true/>
-   </dict>
-   </plist>
-   ```
-
-2. Load and start:
-   ```bash
-   launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
-   launchctl start com.sergiudm.schedule_management
-   ```
-
-3. To stop:
-   ```bash
-   launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
-   ```
 
 ---
 
