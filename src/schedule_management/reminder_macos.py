@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from typing import Dict, Tuple, Any, Optional
+from typing import Any, Optional
 from schedule_management.utils import (
     load_toml_file,
     alarm,
@@ -288,6 +288,7 @@ def main():
     import sys
 
     config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+    print(f"Using config directory: {config_dir}")
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"

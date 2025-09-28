@@ -16,7 +16,7 @@ SCRIPT_NAME="Schedule Management Installer"
 PYTHON_VERSION="3.12"
 # VENV_NAME="schedule_management_env"
 INSTALL_DIR="$HOME/schedule_management"
-LAUNCH_AGENT_NAME="com.health.habits.reminder"
+LAUNCH_AGENT_NAME="com.sergiudm.schedule.management.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
 
 # Logging functions
@@ -199,7 +199,12 @@ create_launch_agent() {
     <key>StandardErrorPath</key>
     <string>$INSTALL_DIR/logs/schedule_management.err</string>
     <key>WorkingDirectory</key>
-    <string>$INSTALL_DIR/src/schedule_management</string>
+    <string>$INSTALL_DIR</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>REMINDER_CONFIG_DIR</key>
+        <string>$INSTALL_DIR/config</string>
+    </dict>
 </dict>
 </plist>
 EOF
@@ -225,7 +230,7 @@ EOF
 
     cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
 #!/bin/bash
-launchctl unload "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist" 2>/dev/null || true
+launchctl unload "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist" 2>/dev/null || true
 pkill -f "python.*reminder_macos.py" 2>/dev/null || true
 EOF
 
@@ -233,7 +238,7 @@ EOF
 #!/bin/bash
 "$HOME/schedule_management/stop_reminders.sh"
 sleep 2
-launchctl load "$HOME/Library/LaunchAgents/com.health.habits.reminder.plist"
+launchctl load "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
 EOF
 
     cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
