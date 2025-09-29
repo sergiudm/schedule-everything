@@ -370,10 +370,6 @@ def get_current_and_next_events(
 
 def status_command(args: argparse.Namespace):
     """Handle the 'status' command - show current status and next events."""
-    print("📅 " + "=" * 50)
-    print("📅  REMINDER STATUS CHECK")
-    print("📅 " + "=" * 50)
-    print()
 
     try:
         schedule, parity, is_skipped = get_today_schedule_for_status()
@@ -461,10 +457,6 @@ def status_command(args: argparse.Namespace):
                             )
                             print(f"   {event_icon} {time_str}: {name}")
                         print()
-
-        print("=" * 50)
-        print("📋 Status check completed")
-        print("=" * 50)
 
         return 0
 
