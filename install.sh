@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 SCRIPT_NAME="Schedule Management Installer"
 PYTHON_VERSION="3.12"
 # VENV_NAME="schedule_management_env"
-INSTALL_DIR="$HOME/schedule_management"
+INSTALL_DIR="$HOME/SCHEDULE_MANAGEMENT"
 LAUNCH_AGENT_NAME="com.sergiudm.schedule.management.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
 SYSTEMD_SERVICE_NAME="schedule-management.service"
@@ -385,14 +385,14 @@ EOF
     if [[ "$OS_TYPE" == "macos" ]]; then
         cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
 #!/bin/bash
-"$HOME/schedule_management/stop_reminders.sh"
+"$INSTALL_DIR/stop_reminders.sh"
 sleep 2
 launchctl load "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
 EOF
     elif [[ "$OS_TYPE" == "linux" ]]; then
         cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
 #!/bin/bash
-"$HOME/schedule_management/stop_reminders.sh"
+"$INSTALL_DIR/stop_reminders.sh"
 sleep 2
 systemctl --user start schedule-management.service
 EOF
@@ -498,7 +498,7 @@ main() {
     
     check_homebrew
     install_uv
-    install_python
+    # install_python
     setup_project
     create_venv
     install_dependencies

@@ -196,8 +196,8 @@ source ~/.zshrc  # 或 source ~/.bash_profile
 | 命令 | 说明 |
 |------|------|
 | `reminder add "任务描述" 重要性` | 添加新任务或更新现有任务的重要性级别 |
-| `reminder delete "任务描述"` | 根据描述删除任务 |
-| `reminder show` | 按重要性排序显示所有任务（重要性高的优先） |
+| `reminder rm "任务描述"` | 根据描述删除任务 |
+| `reminder ls` | 按重要性排序显示所有任务（重要性高的优先） |
 
 **任务管理示例：**
 ```bash
@@ -210,10 +210,10 @@ reminder add "给妈妈打电话" 5
 reminder add "生物作业" 10
 
 # 查看按重要性排序的所有任务
-reminder show
+reminder ls
 
 # 删除特定任务
-reminder delete "买菜"
+reminder rm "买菜"
 ```
 
 > [!TIP]

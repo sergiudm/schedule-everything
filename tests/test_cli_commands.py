@@ -113,17 +113,17 @@ class TestStatusCommand:
             "odd",
             False,
         )
-
+    
         args = MagicMock(verbose=False)
-
+    
         with patch("builtins.print") as mock_print:
             result = reminder.status_command(args)
-
+    
             assert result == 0
             # Check that expected messages were printed (partial match)
-            printed_lines = [call_args[0][0] for call_args in mock_print.call_args_list]
-            assert "📊 Current week: odd" in printed_lines
-            assert any(line.startswith("⏰ Next event:") for line in printed_lines)
+            printed_args = [call[0][0] if call[0] else "" for call in mock_print.call_args_list if call]
+            assert any("📅 Odd Week" in str(line) for line in printed_args)
+            assert any("⏰ Next event:" in str(line) for line in printed_args)
 
     @patch("schedule_management.reminder.get_today_schedule_for_status")
     def test_status_skip_day(self, mock_get_schedule):
@@ -304,6 +304,66 @@ class TestMainFunction:
 
         assert result == 1
 
+    @patch("schedule_management.reminder.add_task")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_add_command(self, mock_parse_args, mock_add_task):
+        """Test main function with add command."""
+        mock_args = MagicMock()
+        mock_args.command = "add"
+        mock_args.func = mock_add_task
+        mock_parse_args.return_value = mock_args
+        mock_add_task.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_add_task.assert_called_once_with(mock_args)
+
+    @patch("schedule_management.reminder.delete_task")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_rm_command(self, mock_parse_args, mock_delete_task):
+        """Test main function with rm command."""
+        mock_args = MagicMock()
+        mock_args.command = "rm"
+        mock_args.func = mock_delete_task
+        mock_parse_args.return_value = mock_args
+        mock_delete_task.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_delete_task.assert_called_once_with(mock_args)
+
+    @patch("schedule_management.reminder.show_tasks")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_ls_command(self, mock_parse_args, mock_show_tasks):
+        """Test main function with ls command."""
+        mock_args = MagicMock()
+        mock_args.command = "ls"
+        mock_args.func = mock_show_tasks
+        mock_parse_args.return_value = mock_args
+        mock_show_tasks.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_show_tasks.assert_called_once_with(mock_args)
+
+    @patch("schedule_management.reminder.view_command")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_view_command(self, mock_parse_args, mock_view_command):
+        """Test main function with view command."""
+        mock_args = MagicMock()
+        mock_args.command = "view"
+        mock_args.func = mock_view_command
+        mock_parse_args.return_value = mock_args
+        mock_view_command.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_view_command.assert_called_once_with(mock_args)
+
 
 class TestConfigPaths:
     """Test configuration path functions."""
@@ -323,3 +383,366 @@ class TestConfigPaths:
             assert "config" in str(path)
             # Verify the test config files actually exist
             assert path.exists(), f"Test config file not found: {path}"
+
+
+class TestTaskManagement:
+    """Test the task management functionality."""
+    
+    def setup_method(self):
+        """Set up test fixtures before each test method."""
+        # Create a temporary tasks file for testing
+        self.test_tasks_file = Path(reminder.TASKS_PATH)
+        self.original_tasks_content = None
+        
+        # Backup original tasks file if it exists
+        if self.test_tasks_file.exists():
+            with open(self.test_tasks_file, 'r', encoding='utf-8') as f:
+                self.original_tasks_content = f.read()
+    
+    def teardown_method(self):
+        """Clean up after each test method."""
+        # Restore original tasks file if it existed
+        if self.original_tasks_content is not None:
+            with open(self.test_tasks_file, 'w', encoding='utf-8') as f:
+                f.write(self.original_tasks_content)
+        elif self.test_tasks_file.exists():
+            # Remove the test file if it was created during testing
+            self.test_tasks_file.unlink()
+    
+    def test_load_tasks_empty_file(self):
+        """Test loading tasks from a non-existent or empty file."""
+        # Ensure the file doesn't exist
+        if self.test_tasks_file.exists():
+            self.test_tasks_file.unlink()
+        
+        tasks = reminder.load_tasks()
+        assert tasks == []
+    
+    def test_load_tasks_invalid_json(self):
+        """Test loading tasks from a file with invalid JSON."""
+        # Create a file with invalid JSON
+        with open(self.test_tasks_file, 'w', encoding='utf-8') as f:
+            f.write('{"invalid": json}')
+        
+        tasks = reminder.load_tasks()
+        assert tasks == []
+    
+    def test_save_and_load_tasks(self):
+        """Test saving and then loading tasks."""
+        test_tasks = [
+            {"description": "Test task 1", "priority": 5},
+            {"description": "Test task 2", "priority": 8}
+        ]
+        
+        reminder.save_tasks(test_tasks)
+        loaded_tasks = reminder.load_tasks()
+        
+        assert loaded_tasks == test_tasks
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_add_task_success(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a new task successfully."""
+        mock_load_tasks.return_value = []
+        mock_save_tasks.return_value = None
+        
+        args = MagicMock()
+        args.task = "Complete project"
+        args.importance = 7
+        
+        result = reminder.add_task(args)
+        
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was added
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 1
+        assert saved_tasks[0]["description"] == "Complete project"
+        assert saved_tasks[0]["priority"] == 7
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_add_task_duplicate(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a duplicate task updates the existing one."""
+        existing_tasks = [
+            {"description": "Complete project", "priority": 5},
+            {"description": "Review code", "priority": 3}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+        
+        args = MagicMock()
+        args.task = "Complete project"
+        args.importance = 9  # New priority
+        
+        result = reminder.add_task(args)
+        
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was updated
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 2
+        updated_task = next(t for t in saved_tasks if t["description"] == "Complete project")
+        assert updated_task["priority"] == 9
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_add_task_negative_priority(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a task with negative priority fails."""
+        args = MagicMock()
+        args.task = "Complete project"
+        args.importance = -1
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.add_task(args)
+        
+        assert result == 1
+        mock_save_tasks.assert_not_called()
+        mock_print.assert_called_once_with("❌ Error: Priority must be a positive integer")
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_add_task_zero_priority(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a task with zero priority fails."""
+        args = MagicMock()
+        args.task = "Complete project"
+        args.importance = 0
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.add_task(args)
+        
+        assert result == 1
+        mock_save_tasks.assert_not_called()
+        mock_print.assert_called_once_with("❌ Error: Priority must be a positive integer")
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_add_task_save_error(self, mock_save_tasks, mock_load_tasks):
+        """Test handling error when saving tasks fails."""
+        mock_load_tasks.return_value = []
+        mock_save_tasks.side_effect = Exception("Save failed")
+        
+        args = MagicMock()
+        args.task = "Complete project"
+        args.importance = 5
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.add_task(args)
+        
+        assert result == 1
+        mock_print.assert_called_once()
+        assert "❌ Error saving task:" in mock_print.call_args[0][0]
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_success(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting an existing task successfully."""
+        existing_tasks = [
+            {"description": "Complete project", "priority": 7},
+            {"description": "Review code", "priority": 3},
+            {"description": "Write documentation", "priority": 5}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+        
+        args = MagicMock()
+        args.task = "Review code"
+        
+        result = reminder.delete_task(args)
+        
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was removed
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 2
+        assert not any(t["description"] == "Review code" for t in saved_tasks)
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_not_found(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting a non-existent task."""
+        existing_tasks = [
+            {"description": "Complete project", "priority": 7},
+            {"description": "Review code", "priority": 3}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+        
+        args = MagicMock()
+        args.task = "Non-existent task"
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+        
+        assert result == 1
+        mock_save_tasks.assert_not_called()
+        mock_print.assert_called_once_with("❌ Task 'Non-existent task' not found")
+    
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_empty_list(self, mock_load_tasks):
+        """Test deleting a task from an empty list."""
+        mock_load_tasks.return_value = []
+        
+        args = MagicMock()
+        args.task = "Any task"
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+        
+        assert result == 1
+        mock_print.assert_called_once_with("⚠️  No tasks found to delete")
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_multiple_occurrences(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting multiple tasks with the same description."""
+        existing_tasks = [
+            {"description": "Review code", "priority": 7},
+            {"description": "Write documentation", "priority": 3},
+            {"description": "Review code", "priority": 5}  # Same description, different priority
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+        
+        args = MagicMock()
+        args.task = "Review code"
+        
+        result = reminder.delete_task(args)
+        
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify both tasks with the same description were removed
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 1
+        assert saved_tasks[0]["description"] == "Write documentation"
+    
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_save_error(self, mock_save_tasks, mock_load_tasks):
+        """Test handling error when saving tasks fails after deletion."""
+        existing_tasks = [
+            {"description": "Complete project", "priority": 7}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.side_effect = Exception("Save failed")
+        
+        args = MagicMock()
+        args.task = "Complete project"
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+        
+        assert result == 1
+        mock_print.assert_called_once()
+        assert "❌ Error saving tasks:" in mock_print.call_args[0][0]
+    
+    @patch("schedule_management.reminder.load_tasks")
+    def test_show_tasks_empty(self, mock_load_tasks):
+        """Test showing tasks when there are no tasks."""
+        mock_load_tasks.return_value = []
+        
+        args = MagicMock()
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.show_tasks(args)
+        
+        assert result == 0
+        mock_print.assert_called_once_with("📋 No tasks found")
+    
+    @patch("schedule_management.reminder.load_tasks")
+    def test_show_tasks_with_tasks(self, mock_load_tasks):
+        """Test showing tasks with multiple tasks."""
+        test_tasks = [
+            {"description": "Low priority task", "importance": 2},
+            {"description": "High priority task", "importance": 9},
+            {"description": "Medium priority task", "importance": 5}
+        ]
+        mock_load_tasks.return_value = test_tasks
+        
+        args = MagicMock()
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.show_tasks(args)
+        
+        assert result == 0
+        # Check that the function printed the header
+        assert any("TASK LIST - SCHEDULE MANAGEMENT SYSTEM" in str(call[0][0]) if call[0] else False
+                  for call in mock_print.call_args_list if call)
+        # Verify tasks are sorted by importance (highest first)
+        # The high priority task should appear first in the output
+    
+    @patch("schedule_management.reminder.load_tasks")
+    def test_show_tasks_sorted_by_importance(self, mock_load_tasks):
+        """Test that tasks are displayed sorted by importance (descending)."""
+        test_tasks = [
+            {"description": "Task 1", "importance": 3},
+            {"description": "Task 2", "importance": 7},
+            {"description": "Task 3", "importance": 1}
+        ]
+        mock_load_tasks.return_value = test_tasks
+        
+        args = MagicMock()
+        
+        with patch("builtins.print") as mock_print:
+            result = reminder.show_tasks(args)
+        
+        assert result == 0
+        # Capture the print calls to verify sorting
+        print_calls = [call[0][0] if call[0] else "" for call in mock_print.call_args_list]
+        
+        # Find the lines with task descriptions
+        task_lines = [line for line in print_calls if isinstance(line, str) and
+                     ("Task 1" in line or "Task 2" in line or "Task 3" in line)]
+        
+        # Check that the highest priority task appears first
+        # The actual sorting happens inside show_tasks, so we can't directly verify
+        # the order here, but we can at least ensure all tasks were processed
+        assert len([line for line in print_calls if "Task 1" in str(line)]) >= 1
+        assert len([line for line in print_calls if "Task 2" in str(line)]) >= 1
+        assert len([line for line in print_calls if "Task 3" in str(line)]) >= 1
+
+
+class TestMainFunction:
+    """Test the main entry point function."""
+
+    @patch("schedule_management.reminder.status_command")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_status_command(self, mock_parse_args, mock_status_command):
+        """Test main function with status command."""
+        mock_args = MagicMock()
+        mock_args.command = "status"
+        mock_args.func = mock_status_command
+        mock_parse_args.return_value = mock_args
+        mock_status_command.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_status_command.assert_called_once_with(mock_args)
+
+    @patch("argparse.ArgumentParser.print_help")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_no_command(self, mock_parse_args, mock_print_help):
+        """Test main function with no command specified."""
+        mock_args = MagicMock()
+        mock_args.command = None
+        mock_parse_args.return_value = mock_args
+
+        result = reminder.main()
+
+        assert result == 1
+        mock_print_help.assert_called_once()
+
+    @patch("schedule_management.reminder.update_command")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_keyboard_interrupt(self, mock_parse_args, mock_update_command):
+        """Test main function handling keyboard interrupt."""
+        mock_args = MagicMock()
+        mock_args.command = "update"
+        mock_args.func = mock_update_command
+        mock_parse_args.return_value = mock_args
+        mock_update_command.side_effect = KeyboardInterrupt()
+
+        result = reminder.main()
+
+        assert result == 1

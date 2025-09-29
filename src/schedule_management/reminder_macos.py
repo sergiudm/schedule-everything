@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.backends.backend_pdf import PdfPages
 from typing import Any, Optional
 from schedule_management.utils import (
     load_toml_file,
@@ -98,8 +99,7 @@ class ScheduleVisualizer:
         else:
             return str(activity)
 
-    def _create_chart(self, schedule_data: dict, title: str, filename: str):
-        fig, ax = plt.subplots(figsize=(16, 10))
+    def _create_chart(self, ax, schedule_data: dict, title: str):
         used_activities = set()
 
         for day_idx, day in enumerate(self.DAYS_ORDER):
@@ -174,27 +174,36 @@ class ScheduleVisualizer:
         ]
         ax.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
 
-        os.makedirs("schedule_visualization", exist_ok=True)
-        plt.tight_layout()
-        plt.savefig(filename, dpi=300, bbox_inches="tight")
-        plt.close()
-        print(f"Schedule visualization saved as '{filename}'")
-
     def visualize(self):
-        self._create_chart(
-            self.odd_schedule,
-            "Odd Week Schedule",
-            "schedule_visualization/odd_week_schedule.png",
-        )
-        self._create_chart(
-            self.even_schedule,
-            "Even Week Schedule",
-            "schedule_visualization/even_week_schedule.png",
-        )
+        import platform
+        if platform.system() == "Windows":
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        else:
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        
+        pdf_filename = os.path.join(desktop_path, "schedule_visualization.pdf")
+        
+        with PdfPages(pdf_filename) as pdf:
+            # Create first page: Odd Week Schedule
+            fig1, ax1 = plt.subplots(figsize=(16, 10))
+            self._create_chart(ax1, self.odd_schedule, "Odd Week Schedule")
+            plt.tight_layout()
+            pdf.savefig(fig1, dpi=300, bbox_inches="tight")
+            plt.close(fig1)
+            
+            # Create second page: Even Week Schedule
+            fig2, ax2 = plt.subplots(figsize=(16, 10))
+            self._create_chart(ax2, self.even_schedule, "Even Week Schedule")
+            plt.tight_layout()
+            pdf.savefig(fig2, dpi=300, bbox_inches="tight")
+            plt.close(fig2)
+        
+        print(f"Schedule visualization saved as '{pdf_filename}'")
         print("\nSchedule visualization complete!")
-        print("Generated files:")
-        print("- odd_week_schedule.png")
-        print("- even_week_schedule.png")
+        print("Generated file:")
+        print("- schedule_visualization.pdf (on Desktop)")
+        print("  - Page 1: Odd Week Schedule")
+        print("  - Page 2: Even Week Schedule")
 
 
 class ScheduleRunner:

@@ -197,8 +197,8 @@ source ~/.zshrc  # or source ~/.bash_profile
 | Command | Description |
 |--------|-------------|
 | `reminder add "task description" importance` | Add a new task or update existing one with importance level |
-| `reminder delete "task description"` | Delete a task by its description |
-| `reminder show` | Show all tasks sorted by importance (highest first) |
+| `reminder rm "task description"` | Delete a task by its description |
+| `reminder ls` | Show all tasks sorted by importance (highest first) |
 
 **Task Management Examples:**
 ```bash
@@ -211,7 +211,7 @@ reminder add "call mom" 5
 reminder add "biology homework" 10
 
 # View all tasks sorted by importance
-reminder show
+reminder ls
 
 # Delete a specific task
 reminder delete "groceries"
