@@ -448,7 +448,7 @@ class TestTaskManagement:
         
         args = MagicMock()
         args.task = "Complete project"
-        args.importance = 7
+        args.priority = 7
         
         result = reminder.add_task(args)
         
@@ -473,8 +473,8 @@ class TestTaskManagement:
         
         args = MagicMock()
         args.task = "Complete project"
-        args.importance = 9  # New priority
-        
+        args.priority = 9  # New priority
+
         result = reminder.add_task(args)
         
         assert result == 0
@@ -491,7 +491,7 @@ class TestTaskManagement:
         """Test adding a task with negative priority fails."""
         args = MagicMock()
         args.task = "Complete project"
-        args.importance = -1
+        args.priority = -1
         
         with patch("builtins.print") as mock_print:
             result = reminder.add_task(args)
@@ -506,7 +506,7 @@ class TestTaskManagement:
         """Test adding a task with zero priority fails."""
         args = MagicMock()
         args.task = "Complete project"
-        args.importance = 0
+        args.priority = 0
         
         with patch("builtins.print") as mock_print:
             result = reminder.add_task(args)
@@ -524,7 +524,7 @@ class TestTaskManagement:
         
         args = MagicMock()
         args.task = "Complete project"
-        args.importance = 5
+        args.priority = 5
         
         with patch("builtins.print") as mock_print:
             result = reminder.add_task(args)
@@ -649,35 +649,14 @@ class TestTaskManagement:
         assert result == 0
         mock_print.assert_called_once_with("📋 No tasks found")
     
-    @patch("schedule_management.reminder.load_tasks")
-    def test_show_tasks_with_tasks(self, mock_load_tasks):
-        """Test showing tasks with multiple tasks."""
-        test_tasks = [
-            {"description": "Low priority task", "importance": 2},
-            {"description": "High priority task", "importance": 9},
-            {"description": "Medium priority task", "importance": 5}
-        ]
-        mock_load_tasks.return_value = test_tasks
-        
-        args = MagicMock()
-        
-        with patch("builtins.print") as mock_print:
-            result = reminder.show_tasks(args)
-        
-        assert result == 0
-        # Check that the function printed the header
-        assert any("TASK LIST - SCHEDULE MANAGEMENT SYSTEM" in str(call[0][0]) if call[0] else False
-                  for call in mock_print.call_args_list if call)
-        # Verify tasks are sorted by importance (highest first)
-        # The high priority task should appear first in the output
     
     @patch("schedule_management.reminder.load_tasks")
     def test_show_tasks_sorted_by_importance(self, mock_load_tasks):
         """Test that tasks are displayed sorted by importance (descending)."""
         test_tasks = [
-            {"description": "Task 1", "importance": 3},
-            {"description": "Task 2", "importance": 7},
-            {"description": "Task 3", "importance": 1}
+            {"description": "Task 1", "priority": 3},
+            {"description": "Task 2", "priority": 7},
+            {"description": "Task 3", "priority": 1},
         ]
         mock_load_tasks.return_value = test_tasks
         

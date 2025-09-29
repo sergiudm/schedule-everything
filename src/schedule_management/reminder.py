@@ -19,15 +19,15 @@ from typing import Any
 
 # ANSI color codes
 COLORS = {
-    'HEADER': '\033[95m',
-    'BLUE': '\033[94m',
-    'CYAN': '\033[96m',
-    'GREEN': '\033[92m',
-    'YELLOW': '\033[93m',
-    'RED': '\033[91m',
-    'BOLD': '\033[1m',
-    'UNDERLINE': '\033[4m',
-    'RESET': '\033[0m'
+    "HEADER": "\033[95m",
+    "BLUE": "\033[94m",
+    "CYAN": "\033[96m",
+    "GREEN": "\033[92m",
+    "YELLOW": "\033[93m",
+    "RED": "\033[91m",
+    "BOLD": "\033[1m",
+    "UNDERLINE": "\033[4m",
+    "RESET": "\033[0m",
 }
 
 from schedule_management.reminder_macos import (
@@ -80,10 +80,10 @@ def save_tasks(tasks: list[dict[str, Any]]) -> None:
 def add_task(args):
     """Handle the 'add' command - add a new task to reminder."""
     task_description = args.task
-    importance = args.importance
+    priority = args.priority
 
     # Validate priority is positive
-    if importance <= 0:
+    if priority <= 0:
         print("❌ Error: Priority must be a positive integer")
         return 1
 
@@ -100,17 +100,19 @@ def add_task(args):
     # Create new task
     new_task = {
         "description": task_description,
-        "priority": importance,
+        "priority": priority,
     }
 
     # Replace existing task or add new one
     if existing_task_index is not None:
         old_priority = tasks[existing_task_index]["priority"]
         tasks[existing_task_index] = new_task
-        action_msg = f"✅ Task '{task_description}' updated! Priority changed from {old_priority} to {importance}"
+        action_msg = f"✅ Task '{task_description}' updated! Priority changed from {old_priority} to {priority}"
     else:
         tasks.append(new_task)
-        action_msg = f"✅ Task '{task_description}' added successfully with priority {importance}!"
+        action_msg = (
+            f"✅ Task '{task_description}' added successfully with priority {priority}!"
+        )
 
     # Save tasks
     try:
@@ -166,47 +168,44 @@ def show_tasks(args):
         print("📋 No tasks found")
         return 0
 
-    # Sort tasks by importance (descending order - higher importance first)
-    sorted_tasks = sorted(tasks, key=lambda x: x["importance"], reverse=True)
-
-    print("📋 " + "="*50)
-    print("📋  TASK LIST - SCHEDULE MANAGEMENT SYSTEM")
-    print("📋 " + "="*50)
-    print(f"📋 Total Tasks: {len(tasks)}\n")
+    # Sort tasks by priority (descending order - higher priority first)
+    sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
 
     # Determine max description length for formatting
-    max_desc_len = max(len(task["description"]) for task in sorted_tasks) if sorted_tasks else 20
+    max_desc_len = (
+        max(len(task["description"]) for task in sorted_tasks) if sorted_tasks else 20
+    )
     max_desc_len = min(max_desc_len, 50)  # Limit max width
 
     for i, task in enumerate(sorted_tasks, 1):
         description = task["description"]
-        importance = task["importance"]
-        
-        # Create visual importance indicator
-        importance_bar = "█" * importance + "░" * (10 - min(importance, 10)) if importance <= 10 else "█" * 10
-        importance_display = f"{importance_bar} ({importance})"
+        priority = task["priority"]
 
-        # Color coding based on importance (using ANSI escape codes)
-        if importance >= 8:
-            color = "\033[91m"  # Red for high importance
+        # Create visual priority indicator
+        priority_bar = (
+            "█" * priority + "░" * (10 - min(priority, 10))
+            if priority <= 10
+            else "█" * 10
+        )
+        priority_display = f"{priority_bar} ({priority})"
+
+        # Color coding based on priority (using ANSI escape codes)
+        if priority >= 8:
+            color = COLORS["RED"]  # Red for high priority
             icon = "🔴"
-        elif importance >= 5:
-            color = "\033[93m"  # Yellow for medium importance
+        elif priority >= 5:
+            color = COLORS["YELLOW"]  # Yellow for medium priority
             icon = "🟡"
         else:
-            color = "\033[94m"  # Blue for low importance
+            color = COLORS["BLUE"]  # Blue for low priority
             icon = "🔵"
-        
-        reset_color = "\033[0m"
+
+        reset_color = COLORS["RESET"]
 
         print(f"{icon} {color}{i:2d}. {description:<{max_desc_len}} {reset_color}")
-        print(f"     Priority: {importance_display}")
+        print(f"     Priority: {priority_display}")
         print("     " + "-" * (max_desc_len + 20))
         print()
-
-    print("📋 " + "="*50)
-    print("📋  END OF TASK LIST")
-    print("📋 " + "="*50)
 
     return 0
 
@@ -280,11 +279,12 @@ def view_command(args):
             print("\n🖼️  Opening visualization...")
             try:
                 import platform
+
                 if platform.system() == "Windows":
                     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
                 else:
                     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-                
+
                 pdf_path = os.path.join(desktop_path, "schedule_visualization.pdf")
                 subprocess.run(
                     ["open", pdf_path],
@@ -370,28 +370,28 @@ def get_current_and_next_events(
 
 def status_command(args: argparse.Namespace):
     """Handle the 'status' command - show current status and next events."""
-    print("📅 " + "="*50)
+    print("📅 " + "=" * 50)
     print("📅  REMINDER STATUS CHECK")
-    print("📅 " + "="*50)
+    print("📅 " + "=" * 50)
     print()
 
     try:
         schedule, parity, is_skipped = get_today_schedule_for_status()
-        
+
         # Display week information
         parity_icon = "📅 Odd Week" if parity == "odd" else "📅 Even Week"
         print(f"📊 {parity_icon}")
-        
+
         if is_skipped:
             print("⏭️  Today is a skipped day - no reminders scheduled")
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             return 0
 
         current, next_ev, time_until = get_current_and_next_events(schedule)
 
         # Display current and next events in a structured way
-        print("\n" + "🎯" + "="*23 + " EVENTS " + "="*23 + "🎯")
-        
+        print("\n" + "🎯" + "=" * 23 + " EVENTS " + "=" * 23 + "🎯")
+
         if current:
             print(f"🔔 Current event: {current}")
         else:
@@ -404,18 +404,18 @@ def status_command(args: argparse.Namespace):
                 print(f"⏰ Next event: {next_ev}")
         else:
             print("📭 No more events scheduled for today")
-        
+
         if args.verbose:
-            print("\n" + "📋" + "="*21 + " SCHEDULE " + "="*21 + "📋")
+            print("\n" + "📋" + "=" * 21 + " SCHEDULE " + "=" * 21 + "📋")
             print(f"Total events for today: {len(schedule)}")
             print()
-            
+
             if schedule:
                 # Group events by time of day
                 morning_events = []
                 afternoon_events = []
                 evening_events = []
-                
+
                 for time_str in sorted(schedule.keys()):
                     event = schedule[time_str]
                     if isinstance(event, str):
@@ -424,12 +424,12 @@ def status_command(args: argparse.Namespace):
                         name = event.get("title", event["block"])
                     else:
                         name = str(event)
-                    
+
                     # Parse time to categorize events
                     try:
-                        hour = int(time_str.split(':')[0])
+                        hour = int(time_str.split(":")[0])
                         event_data = (time_str, name)
-                        
+
                         if 5 <= hour < 12:
                             morning_events.append(event_data)
                         elif 12 <= hour < 18:
@@ -439,14 +439,14 @@ def status_command(args: argparse.Namespace):
                     except ValueError:
                         # If time parsing fails, add to general list
                         evening_events.append((time_str, name))
-                
+
                 # Define time period names and icons
                 time_periods = [
                     ("🌅 MORNING (5:00-11:59)", morning_events),
                     ("☀️  AFTERNOON (12:00-17:59)", afternoon_events),
-                    ("🌆 EVENING (18:00-23:59)", evening_events)
+                    ("🌆 EVENING (18:00-23:59)", evening_events),
                 ]
-                
+
                 # Print events by time period
                 for period_name, events in time_periods:
                     if events:
@@ -454,13 +454,17 @@ def status_command(args: argparse.Namespace):
                         print("-" * len(period_name))
                         for time_str, name in events:
                             # Determine event type icon
-                            event_icon = "⏱️" if "pomodoro" in name.lower() or "break" in name.lower() else "📅"
+                            event_icon = (
+                                "⏱️"
+                                if "pomodoro" in name.lower() or "break" in name.lower()
+                                else "📅"
+                            )
                             print(f"   {event_icon} {time_str}: {name}")
                         print()
-        
-        print("="*50)
+
+        print("=" * 50)
         print("📋 Status check completed")
-        print("="*50)
+        print("=" * 50)
 
         return 0
 
@@ -476,28 +480,9 @@ def main():
 
     # Colored help text
     colored_description = f"{COLORS['BOLD']}{COLORS['CYAN']}Reminder CLI{COLORS['RESET']} - {COLORS['GREEN']}Manage your schedule management system{COLORS['RESET']}"
-    
+
     colored_epilog = f"""
-{COLORS['UNDERLINE']}{COLORS['YELLOW']}Configuration directory:{COLORS['RESET']} {COLORS['BLUE']}{config_dir_path}{COLORS['RESET']}
-
-{COLORS['UNDERLINE']}{COLORS['YELLOW']}Available Commands:{COLORS['RESET']}
-  {COLORS['GREEN']}reminder add{COLORS['RESET']} "task" <priority>     {COLORS['CYAN']}# Add a new task with importance level{COLORS['RESET']}
-  {COLORS['GREEN']}reminder rm{COLORS['RESET']} "task"               {COLORS['CYAN']}# Delete a specific task by description{COLORS['RESET']}
-  {COLORS['GREEN']}reminder ls{COLORS['RESET']}                      {COLORS['CYAN']}# Show all tasks sorted by importance{COLORS['RESET']}
-  {COLORS['GREEN']}reminder update{COLORS['RESET']}                  {COLORS['CYAN']}# Update configuration and restart service{COLORS['RESET']}
-  {COLORS['GREEN']}reminder view{COLORS['RESET']}                    {COLORS['CYAN']}# Generate schedule visualizations{COLORS['RESET']}
-  {COLORS['GREEN']}reminder status{COLORS['RESET']}                  {COLORS['CYAN']}# Show current status and next events{COLORS['RESET']}
-  {COLORS['GREEN']}reminder status -v{COLORS['RESET']}               {COLORS['CYAN']}# Show detailed status with full schedule{COLORS['RESET']}
-
-{COLORS['UNDERLINE']}{COLORS['YELLOW']}Examples:{COLORS['RESET']}
-  {COLORS['GREEN']}reminder add{COLORS['RESET']} "biology homework" {COLORS['YELLOW']}8{COLORS['RESET']}    {COLORS['CYAN']}# Add a task with importance 8{COLORS['RESET']}
-  {COLORS['GREEN']}reminder add{COLORS['RESET']} "groceries" {COLORS['YELLOW']}3{COLORS['RESET']}           {COLORS['CYAN']}# Add a task with importance 3{COLORS['RESET']}
-  {COLORS['GREEN']}reminder rm{COLORS['RESET']} "biology homework"       {COLORS['CYAN']}# Delete a specific task{COLORS['RESET']}
-  {COLORS['GREEN']}reminder ls{COLORS['RESET']}                          {COLORS['CYAN']}# Show all tasks sorted by importance{COLORS['RESET']}
-  {COLORS['GREEN']}reminder update{COLORS['RESET']}                      {COLORS['CYAN']}# Update configuration and restart service{COLORS['RESET']}
-  {COLORS['GREEN']}reminder view{COLORS['RESET']}                        {COLORS['CYAN']}# Generate schedule visualizations{COLORS['RESET']}
-  {COLORS['GREEN']}reminder status{COLORS['RESET']}                      {COLORS['CYAN']}# Show current status and next events{COLORS['RESET']}
-  {COLORS['GREEN']}reminder status -v{COLORS['RESET']}                   {COLORS['CYAN']}# Show detailed status with full schedule{COLORS['RESET']}
+{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Configuration directory:{COLORS["RESET"]} {COLORS["BLUE"]}{config_dir_path}{COLORS["RESET"]}
         """
 
     parser = argparse.ArgumentParser(
@@ -510,15 +495,15 @@ def main():
 
     # Add command
     add_parser = subparsers.add_parser(
-        "add", help="Add a new task with description and importance level"
+        "add", help="Add a new task with description and priority level (1-10)"
     )
     add_parser.add_argument(
         "task", help="Description of the task (e.g., 'biology homework')"
     )
     add_parser.add_argument(
-        "importance",
+        "priority",
         type=int,
-        help="Importance level (positive integer, higher = more important)",
+        help="Priority level (1-10, higher = more important)",
     )
     add_parser.set_defaults(func=add_task)
 
