@@ -13,7 +13,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +42,7 @@ SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
 ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
 TASKS_PATH = os.getenv("REMINDER_TASKS_PATH")
+LOG_PATH = os.getenv("REMINDER_LOG_PATH")
 
 
 def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
@@ -77,6 +78,51 @@ def save_tasks(tasks: list[dict[str, Any]]) -> None:
         json.dump(tasks, f, indent=2, ensure_ascii=False)
 
 
+def load_task_log() -> list[dict[str, Any]]:
+    """Load task log from the JSON file."""
+    if not LOG_PATH or not os.path.exists(LOG_PATH):
+        return []
+
+    try:
+        with open(LOG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+def save_task_log(log_entries: list[dict[str, Any]]) -> None:
+    """Save task log to the JSON file."""
+    if not LOG_PATH:
+        return
+
+    # Ensure config directory exists
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+
+    with open(LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(log_entries, f, indent=2, ensure_ascii=False)
+
+
+def log_task_action(
+    action: str, task: dict[str, Any], metadata: dict[str, Any] | None = None
+) -> None:
+    """Log a task action (added/updated/deleted) with timestamp."""
+    if not LOG_PATH:
+        return
+
+    log_entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": action,
+        "task": task.copy(),
+    }
+
+    if metadata:
+        log_entry["metadata"] = metadata.copy()
+
+    log_entries = load_task_log()
+    log_entries.append(log_entry)
+    save_task_log(log_entries)
+
+
 def add_task(args):
     """Handle the 'add' command - add a new task to reminder."""
     task_description = args.task
@@ -108,11 +154,23 @@ def add_task(args):
         old_priority = tasks[existing_task_index]["priority"]
         tasks[existing_task_index] = new_task
         action_msg = f"✅ Task '{task_description}' updated! Priority changed from {old_priority} to {priority}"
+
+        # Log task update
+        try:
+            log_task_action("updated", new_task, {"old_priority": old_priority})
+        except Exception as e:
+            print(f"⚠️  Warning: Could not log task update: {e}")
     else:
         tasks.append(new_task)
         action_msg = (
             f"✅ Task '{task_description}' added successfully with priority {priority}!"
         )
+
+        # Log task addition
+        try:
+            log_task_action("added", new_task)
+        except Exception as e:
+            print(f"⚠️  Warning: Could not log task addition: {e}")
 
     # Save tasks
     try:
@@ -143,7 +201,9 @@ def delete_task(args):
         task_id = int(task_identifier)
         # Check if ID is valid
         if task_id < 1 or task_id > len(sorted_tasks):
-            print(f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}")
+            print(
+                f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}"
+            )
             return 1
 
         # Get task description by ID
@@ -152,17 +212,30 @@ def delete_task(args):
 
         # Find and remove the task by description from original tasks list
         original_count = len(tasks)
+        deleted_tasks = [
+            task for task in tasks if task["description"] == task_description
+        ]
         tasks = [task for task in tasks if task["description"] != task_description]
 
     except ValueError:
         # Treat as string description
         task_description = task_identifier
         original_count = len(tasks)
+        deleted_tasks = [
+            task for task in tasks if task["description"] == task_description
+        ]
         tasks = [task for task in tasks if task["description"] != task_description]
 
     if len(tasks) == original_count:
         print(f"❌ Task '{task_description}' not found")
         return 1
+
+    # Log task deletions
+    try:
+        for deleted_task in deleted_tasks:
+            log_task_action("deleted", deleted_task)
+    except Exception as e:
+        print(f"⚠️  Warning: Could not log task deletion: {e}")
 
     # Save updated tasks
     try:
@@ -393,13 +466,13 @@ def stop_command(args):
     """Handle the 'stop' command - unload the LaunchAgent plist to stop the service."""
     print("🛑 Stopping reminder service...")
 
-    plist_path = "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
+    plist_path = (
+        "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
+    )
 
     try:
         result = subprocess.run(
-            ["launchctl", "unload", plist_path],
-            capture_output=True,
-            text=True
+            ["launchctl", "unload", plist_path], capture_output=True, text=True
         )
 
         if result.returncode == 0:
@@ -546,8 +619,13 @@ def main():
     add_parser.set_defaults(func=add_task)
 
     # Delete command
-    delete_parser = subparsers.add_parser("rm", help="Delete a task by description or ID number")
-    delete_parser.add_argument("task", help="Description of the task to delete or ID number (from 'reminder ls')")
+    delete_parser = subparsers.add_parser(
+        "rm", help="Delete a task by description or ID number"
+    )
+    delete_parser.add_argument(
+        "task",
+        help="Description of the task to delete or ID number (from 'reminder ls')",
+    )
     delete_parser.set_defaults(func=delete_task)
 
     # Show command

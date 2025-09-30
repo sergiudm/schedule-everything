@@ -191,6 +191,7 @@ source ~/.zshrc  # 或 source ~/.bash_profile
 | `reminder view` | 生成日程可视化图表 |
 | `reminder status` | 显示即将到来的下一项事件 |
 | `reminder status -v` | 显示完整日程详情 |
+| `reminder stop` | 停止后台提醒服务 |
 
 ##### 任务管理
 | 命令 | 说明 |

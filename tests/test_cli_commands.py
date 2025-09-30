@@ -14,6 +14,8 @@ test_config_dir = os.path.join(os.path.dirname(__file__), "config")
 os.environ["REMINDER_CONFIG_DIR"] = test_config_dir
 test_tasks_path = os.path.join(test_config_dir, "test_tasks.json")
 os.environ["REMINDER_TASKS_PATH"] = test_tasks_path
+test_log_path = os.path.join(test_config_dir, "test_tasks_log.json")
+os.environ["REMINDER_LOG_PATH"] = test_log_path
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))

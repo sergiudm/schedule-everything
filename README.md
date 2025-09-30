@@ -192,6 +192,7 @@ source ~/.zshrc  # or source ~/.bash_profile
 | `reminder view` | Generate schedule visualization |
 | `reminder status` | Show next upcoming events |
 | `reminder status -v` | Show full schedule with details |
+| `reminder stop` | Stop the alarm service |
 
 ##### Task Management
 | Command | Description |
@@ -236,6 +237,8 @@ reminder delete "groceries"
 - [x] CLI tool  
 - [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
+- [ ] Mental status logging
+- [ ] History analysis
 - [ ] Better alarm UI
 - [ ] **Windows support**
 
