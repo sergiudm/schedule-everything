@@ -389,6 +389,31 @@ def get_current_and_next_events(
     return current_event, next_event, time_to_next
 
 
+def stop_command(args):
+    """Handle the 'stop' command - unload the LaunchAgent plist to stop the service."""
+    print("🛑 Stopping reminder service...")
+
+    plist_path = "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
+
+    try:
+        result = subprocess.run(
+            ["launchctl", "unload", plist_path],
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0:
+            print("✅ Reminder service stopped successfully")
+            return 0
+        else:
+            print(f"❌ Error stopping service: {result.stderr.strip()}")
+            return 1
+
+    except Exception as e:
+        print(f"❌ Error stopping reminder service: {e}")
+        return 1
+
+
 def status_command(args: argparse.Namespace):
     """Handle the 'status' command - show current status and next events."""
 
@@ -538,6 +563,9 @@ def main():
 
     view_parser = subparsers.add_parser("view", help="Generate schedule visualizations")
     view_parser.set_defaults(func=view_command)
+
+    stop_parser = subparsers.add_parser("stop", help="Stop the reminder service")
+    stop_parser.set_defaults(func=stop_command)
 
     status_parser = subparsers.add_parser(
         "status", help="Show current status and next events"
