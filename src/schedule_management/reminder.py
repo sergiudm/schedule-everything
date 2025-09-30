@@ -37,11 +37,11 @@ from schedule_management.reminder_macos import (
 )
 from schedule_management.utils import get_week_parity, parse_time
 
-CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR", "config")
+CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR")
 SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
 ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
-TASKS_PATH = f"{CONFIG_DIR}/tasks.json"
+TASKS_PATH = os.getenv("REMINDER_TASKS_PATH")
 
 
 def get_config_paths(config_dir: str = "config") -> dict[str, Path]:

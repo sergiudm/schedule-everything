@@ -336,6 +336,8 @@ create_launch_agent() {
     <dict>
         <key>REMINDER_CONFIG_DIR</key>
         <string>$INSTALL_DIR/config</string>
+        <key>REMINDER_TASK_DIR</key>
+        <string>$INSTALL_DIR/task/tasks.json</string>
     </dict>
 </dict>
 </plist>
