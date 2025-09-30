@@ -12,6 +12,8 @@ from datetime import datetime, time, date
 # Set up test environment variables before importing reminder module
 test_config_dir = os.path.join(os.path.dirname(__file__), "config")
 os.environ["REMINDER_CONFIG_DIR"] = test_config_dir
+test_tasks_path = os.path.join(test_config_dir, "test_tasks.json")
+os.environ["REMINDER_TASKS_PATH"] = test_tasks_path
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -625,16 +627,208 @@ class TestTaskManagement:
         ]
         mock_load_tasks.return_value = existing_tasks
         mock_save_tasks.side_effect = Exception("Save failed")
-        
+
         args = MagicMock()
         args.task = "Complete project"
-        
+
         with patch("builtins.print") as mock_print:
             result = reminder.delete_task(args)
-        
+
         assert result == 1
         mock_print.assert_called_once()
         assert "❌ Error saving tasks:" in mock_print.call_args[0][0]
+
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_by_id_success(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting a task by ID successfully."""
+        existing_tasks = [
+            {"description": "High priority task", "priority": 9},
+            {"description": "Medium priority task", "priority": 5},
+            {"description": "Low priority task", "priority": 2}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "2"  # ID 2 should be "Medium priority task" after sorting by priority
+
+        result = reminder.delete_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was removed
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 2
+        assert not any(t["description"] == "Medium priority task" for t in saved_tasks)
+        # High priority task should still be there
+        assert any(t["description"] == "High priority task" for t in saved_tasks)
+        # Low priority task should still be there
+        assert any(t["description"] == "Low priority task" for t in saved_tasks)
+
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_by_id_first_item(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting the first task (highest priority) by ID."""
+        existing_tasks = [
+            {"description": "High priority task", "priority": 9},
+            {"description": "Medium priority task", "priority": 5},
+            {"description": "Low priority task", "priority": 2}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "1"  # ID 1 should be "High priority task" after sorting
+
+        result = reminder.delete_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was removed
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 2
+        assert not any(t["description"] == "High priority task" for t in saved_tasks)
+
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_by_id_last_item(self, mock_save_tasks, mock_load_tasks):
+        """Test deleting the last task (lowest priority) by ID."""
+        existing_tasks = [
+            {"description": "High priority task", "priority": 9},
+            {"description": "Medium priority task", "priority": 5},
+            {"description": "Low priority task", "priority": 2}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "3"  # ID 3 should be "Low priority task" after sorting
+
+        result = reminder.delete_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Verify the task was removed
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 2
+        assert not any(t["description"] == "Low priority task" for t in saved_tasks)
+
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_by_id_invalid_id_too_high(self, mock_load_tasks):
+        """Test deleting a task with ID that's too high."""
+        existing_tasks = [
+            {"description": "Task 1", "priority": 5},
+            {"description": "Task 2", "priority": 3}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+
+        args = MagicMock()
+        args.task = "5"  # Invalid ID
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+
+        assert result == 1
+        mock_print.assert_called_once()
+        assert "Invalid task ID: 5" in mock_print.call_args[0][0]
+        assert "Please use a number between 1 and 2" in mock_print.call_args[0][0]
+
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_by_id_invalid_id_zero(self, mock_load_tasks):
+        """Test deleting a task with ID of zero."""
+        existing_tasks = [
+            {"description": "Task 1", "priority": 5},
+            {"description": "Task 2", "priority": 3}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+
+        args = MagicMock()
+        args.task = "0"  # Invalid ID
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+
+        assert result == 1
+        mock_print.assert_called_once()
+        assert "Invalid task ID: 0" in mock_print.call_args[0][0]
+
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_by_id_invalid_id_negative(self, mock_load_tasks):
+        """Test deleting a task with negative ID."""
+        existing_tasks = [
+            {"description": "Task 1", "priority": 5},
+            {"description": "Task 2", "priority": 3}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+
+        args = MagicMock()
+        args.task = "-1"  # Invalid ID
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+
+        assert result == 1
+        mock_print.assert_called_once()
+        assert "Invalid task ID: -1" in mock_print.call_args[0][0]
+
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_by_id_empty_list(self, mock_load_tasks):
+        """Test deleting a task by ID from an empty list."""
+        mock_load_tasks.return_value = []
+
+        args = MagicMock()
+        args.task = "1"
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+
+        assert result == 1
+        mock_print.assert_called_once_with("⚠️  No tasks found to delete")
+
+    @patch("schedule_management.reminder.load_tasks")
+    def test_delete_task_by_id_numeric_string_fallback(self, mock_load_tasks):
+        """Test that numeric string descriptions are treated as IDs first, not descriptions."""
+        existing_tasks = [
+            {"description": "123", "priority": 9},  # Task description is a numeric string
+            {"description": "Regular task", "priority": 5}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+
+        args = MagicMock()
+        args.task = "123"  # This should be treated as an ID first (invalid in this case)
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.delete_task(args)
+
+        assert result == 1
+        # Should treat "123" as an ID (invalid since there are only 2 tasks)
+        mock_print.assert_called_once()
+        assert "Invalid task ID: 123" in mock_print.call_args[0][0]
+        assert "Please use a number between 1 and 2" in mock_print.call_args[0][0]
+
+    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.reminder.save_tasks")
+    def test_delete_task_by_id_with_valid_id_as_string(self, mock_save_tasks, mock_load_tasks):
+        """Test that valid numeric IDs work even when passed as strings."""
+        existing_tasks = [
+            {"description": "High priority task", "priority": 9},
+            {"description": "Regular task", "priority": 5}
+        ]
+        mock_load_tasks.return_value = existing_tasks
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "1"  # Valid ID as string
+
+        result = reminder.delete_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        # Should delete the task with ID 1 (highest priority)
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 1
+        assert saved_tasks[0]["description"] == "Regular task"
     
     @patch("schedule_management.reminder.load_tasks")
     def test_show_tasks_empty(self, mock_load_tasks):

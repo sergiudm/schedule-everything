@@ -126,7 +126,7 @@ def add_task(args):
 
 def delete_task(args):
     """Handle the 'rm' command - delete a task from reminder."""
-    task_description = args.task
+    task_identifier = args.task
 
     # Load existing tasks
     tasks = load_tasks()
@@ -135,9 +135,30 @@ def delete_task(args):
         print("⚠️  No tasks found to delete")
         return 1
 
-    # Find and remove the task
-    original_count = len(tasks)
-    tasks = [task for task in tasks if task["description"] != task_description]
+    # Sort tasks by priority (descending order) to match show_tasks display
+    sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
+
+    # Try to parse as integer ID first
+    try:
+        task_id = int(task_identifier)
+        # Check if ID is valid
+        if task_id < 1 or task_id > len(sorted_tasks):
+            print(f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}")
+            return 1
+
+        # Get task description by ID
+        task_to_delete = sorted_tasks[task_id - 1]
+        task_description = task_to_delete["description"]
+
+        # Find and remove the task by description from original tasks list
+        original_count = len(tasks)
+        tasks = [task for task in tasks if task["description"] != task_description]
+
+    except ValueError:
+        # Treat as string description
+        task_description = task_identifier
+        original_count = len(tasks)
+        tasks = [task for task in tasks if task["description"] != task_description]
 
     if len(tasks) == original_count:
         print(f"❌ Task '{task_description}' not found")
@@ -500,8 +521,8 @@ def main():
     add_parser.set_defaults(func=add_task)
 
     # Delete command
-    delete_parser = subparsers.add_parser("rm", help="Delete a task by description")
-    delete_parser.add_argument("task", help="Description of the task to delete")
+    delete_parser = subparsers.add_parser("rm", help="Delete a task by description or ID number")
+    delete_parser.add_argument("task", help="Description of the task to delete or ID number (from 'reminder ls')")
     delete_parser.set_defaults(func=delete_task)
 
     # Show command
