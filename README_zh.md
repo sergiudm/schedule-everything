@@ -1,4 +1,4 @@
-# 日程管理工具
+# 晨钟暮鼓
 
 [![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -7,8 +7,8 @@
 
 本项目提供了一种简单而强大的方式，帮助你在 **本地** 上管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，让你时刻保持节奏, J人福利！
 
-> [!NOTE]  
-> 当前版本专为 **macOS** 优化。未来计划支持 Linux 和 Windows。
+> [!NOTE]
+> 当前版本专为 **macOS和Linux** 优化。未来计划支持 Windows。
 
 ---
 

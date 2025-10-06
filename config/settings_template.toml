@@ -16,3 +16,6 @@ napping = 30
 [time_points]
 go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
+
+[tasks]
+daily_summary = "23:00"

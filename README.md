@@ -199,23 +199,25 @@ source ~/.zshrc  # or source ~/.bash_profile
 |--------|-------------|
 | `reminder add "task description" importance` | Add a new task or update existing one with importance level |
 | `reminder rm "task description"` | Delete a task by its description |
+| `reminder rm task_id list` | Delete a task by its ID number from 'reminder ls' |
 | `reminder ls` | Show all tasks sorted by importance (highest first) |
 
 **Task Management Examples:**
 ```bash
 # Add tasks with importance levels (higher number = more important)
-reminder add "biology homework" 8
+reminder add "homework" 8
 reminder add "groceries" 3
-reminder add "call mom" 5
+reminder add "call boss" 5
 
 # Update existing task (replaces old importance level)
-reminder add "biology homework" 10
+reminder add "homework" 10
 
 # View all tasks sorted by importance
 reminder ls
 
-# Delete a specific task
-reminder delete "groceries"
+# Delete specific tasks
+reminder rm "groceries" "homework"
+reminder rm 2 4 5  # Remove task by its ID number from 'reminder ls'
 ```
 
 > [!TIP]  
@@ -229,18 +231,19 @@ reminder delete "groceries"
 
 ## 🗺️ Roadmap
 
-- [x] Time point alarms  
-- [x] Default schedule templates  
-- [x] Schedule visualization  
-- [x] Installation script  
-- [x] Skip-day logic  
-- [x] CLI tool  
+- [x] Time point alarms
+- [x] Default schedule templates
+- [x] Schedule visualization
+- [x] Installation script
+- [x] Skip-day logic 
+- [x] CLI tool
 - [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
-- [ ] Mental status logging
-- [ ] Daily summary before bedtime
+- [x] Daily summary before bedtime
 - [ ] Today's tasks overview
+- [ ] Self rewarding system
 - [ ] History analysis
+- [ ] Website for schedule sharing
 - [ ] Better alarm UI
 - [ ] **Windows support**
 

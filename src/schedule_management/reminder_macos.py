@@ -1,6 +1,7 @@
 import time
 import os
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.backends.backend_pdf import PdfPages
@@ -10,6 +11,8 @@ from schedule_management.utils import (
     alarm,
     get_week_parity,
     add_minutes_to_time,
+    show_dialog,
+    play_sound,
 )
 
 
@@ -19,6 +22,7 @@ class ScheduleConfig:
         self.settings = config.get("settings", {})
         self.time_blocks = config.get("time_blocks", {})
         self.time_points = config.get("time_points", {})
+        self.tasks = config.get("tasks", {})
 
     @property
     def sound_file(self) -> str:
@@ -38,6 +42,10 @@ class ScheduleConfig:
             return False
         current_weekday = datetime.now().strftime("%A").lower()
         return current_weekday in skip_days
+
+    @property
+    def daily_summary_time(self) -> str:
+        return self.tasks.get("daily_summary", "22:00")
 
 
 class WeeklySchedule:
@@ -176,13 +184,14 @@ class ScheduleVisualizer:
 
     def visualize(self):
         import platform
+
         if platform.system() == "Windows":
             desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
         else:
             desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-        
+
         pdf_filename = os.path.join(desktop_path, "schedule_visualization.pdf")
-        
+
         with PdfPages(pdf_filename) as pdf:
             # Create first page: Odd Week Schedule
             fig1, ax1 = plt.subplots(figsize=(16, 10))
@@ -190,20 +199,88 @@ class ScheduleVisualizer:
             plt.tight_layout()
             pdf.savefig(fig1, dpi=300, bbox_inches="tight")
             plt.close(fig1)
-            
+
             # Create second page: Even Week Schedule
             fig2, ax2 = plt.subplots(figsize=(16, 10))
             self._create_chart(ax2, self.even_schedule, "Even Week Schedule")
             plt.tight_layout()
             pdf.savefig(fig2, dpi=300, bbox_inches="tight")
             plt.close(fig2)
-        
+
         print(f"Schedule visualization saved as '{pdf_filename}'")
         print("\nSchedule visualization complete!")
         print("Generated file:")
         print("- schedule_visualization.pdf (on Desktop)")
         print("  - Page 1: Odd Week Schedule")
         print("  - Page 2: Even Week Schedule")
+
+
+def load_task_log() -> list[dict[str, Any]]:
+    """Load task log from the JSON file."""
+    log_path = os.getenv("REMINDER_LOG_PATH")
+    if not log_path or not os.path.exists(log_path):
+        return []
+
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+def get_today_completed_tasks() -> list[dict[str, Any]]:
+    """Get tasks that were completed (deleted) today."""
+    task_log = load_task_log()
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    completed_tasks = []
+    for entry in task_log:
+        if entry.get("action") == "deleted":
+            # Parse timestamp and check if it's today
+            try:
+                timestamp = entry.get("timestamp", "")
+                entry_date = timestamp.split("T")[0] if "T" in timestamp else ""
+                if entry_date == today:
+                    task_info = entry.get("task", {})
+                    completed_tasks.append(task_info)
+            except Exception:
+                continue
+
+    return completed_tasks
+
+
+def show_daily_summary_popup():
+    """Show a popup window with today's completed tasks."""
+    completed_tasks = get_today_completed_tasks()
+
+    if not completed_tasks:
+        summary_message = "📋 今日完成任务\n\n✨ 今天没有完成的任务哦，明天继续加油！"
+    else:
+        # Sort tasks by priority (descending)
+        sorted_tasks = sorted(
+            completed_tasks, key=lambda x: x.get("priority", 0), reverse=True
+        )
+
+        task_lines = []
+        for i, task in enumerate(sorted_tasks, 1):
+            description = task.get("description", "未知任务")
+            priority = task.get("priority", 0)
+            task_lines.append(f"{i}. {description} (优先级: {priority})")
+
+        summary_message = (
+            f"📋 今日完成任务总结\n\n🎉 今天完成了 {len(sorted_tasks)} 个任务：\n\n"
+            + "\n".join(task_lines)
+        )
+
+    # Play a sound and show the dialog
+    sound_file = os.getenv("REMINDER_CONFIG_DIR", "config") + "/settings.toml"
+    try:
+        config = ScheduleConfig(sound_file)
+        play_sound(config.sound_file)
+    except Exception:
+        pass  # Ignore sound errors
+
+    show_dialog(summary_message)
 
 
 class ScheduleRunner:
@@ -260,6 +337,15 @@ class ScheduleRunner:
         while True:
             now_str = datetime.now().strftime("%H:%M")
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
+
+            # Handle daily summary time
+            if (
+                now_str == self.config.daily_summary_time
+                and now_str not in self.notified_today
+                and not self.config.should_skip_today()
+            ):
+                show_daily_summary_popup()
+                self.notified_today.add(now_str)
 
             if not today_schedule:
                 time.sleep(20)
