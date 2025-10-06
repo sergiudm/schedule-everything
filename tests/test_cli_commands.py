@@ -8,7 +8,6 @@ import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import datetime, time, date
-import schedule_management.reminder as reminder
 
 # Set up test environment variables before importing reminder module
 test_config_dir = os.path.join(os.path.dirname(__file__), "config")
@@ -20,6 +19,7 @@ os.environ["REMINDER_LOG_PATH"] = test_log_path
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+import schedule_management.reminder as reminder
 
 
 class TestUpdateCommand:
