@@ -438,7 +438,6 @@ def get_current_and_next_events(
 
     now = datetime.now()
     current_time = now.time()
-    current_time_str = now.strftime("%H:%M")
 
     # Parse and sort scheduled times
     scheduled_times = []
