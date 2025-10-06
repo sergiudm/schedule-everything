@@ -17,6 +17,13 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from schedule_management.reminder_macos import (
+    ScheduleConfig,
+    ScheduleVisualizer,
+    WeeklySchedule,
+)
+from schedule_management.utils import get_week_parity, parse_time
+
 # ANSI color codes
 COLORS = {
     "HEADER": "\033[95m",
@@ -29,13 +36,6 @@ COLORS = {
     "UNDERLINE": "\033[4m",
     "RESET": "\033[0m",
 }
-
-from schedule_management.reminder_macos import (
-    ScheduleConfig,
-    ScheduleVisualizer,
-    WeeklySchedule,
-)
-from schedule_management.utils import get_week_parity, parse_time
 
 CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR")
 SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
@@ -183,8 +183,8 @@ def add_task(args):
 
 
 def delete_task(args):
-    """Handle the 'rm' command - delete a task from reminder."""
-    task_identifier = args.task
+    """Handle the 'rm' command - delete one or more tasks from reminder."""
+    task_identifiers = args.tasks
 
     # Load existing tasks
     tasks = load_tasks()
@@ -196,60 +196,83 @@ def delete_task(args):
     # Sort tasks by priority (descending order) to match show_tasks display
     sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
 
-    # Try to parse as integer ID first
-    try:
-        task_id = int(task_identifier)
-        # Check if ID is valid
-        if task_id < 1 or task_id > len(sorted_tasks):
-            print(
-                f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}"
-            )
-            return 1
+    total_deleted_count = 0
+    all_errors = []
+    successful_deletions = []
 
-        # Get task description by ID
-        task_to_delete = sorted_tasks[task_id - 1]
-        task_description = task_to_delete["description"]
+    for task_identifier in task_identifiers:
+        # Try to parse as integer ID first
+        try:
+            task_id = int(task_identifier)
+            # Check if ID is valid
+            if task_id < 1 or task_id > len(sorted_tasks):
+                error_msg = f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}"
+                all_errors.append(error_msg)
+                continue
 
-        # Find and remove the task by description from original tasks list
-        original_count = len(tasks)
-        deleted_tasks = [
-            task for task in tasks if task["description"] == task_description
-        ]
-        tasks = [task for task in tasks if task["description"] != task_description]
+            # Get task description by ID
+            task_to_delete = sorted_tasks[task_id - 1]
+            task_description = task_to_delete["description"]
 
-    except ValueError:
-        # Treat as string description
-        task_description = task_identifier
-        original_count = len(tasks)
-        deleted_tasks = [
-            task for task in tasks if task["description"] == task_description
-        ]
-        tasks = [task for task in tasks if task["description"] != task_description]
+            # Find and remove the task by description from original tasks list
+            original_count = len(tasks)
+            deleted_tasks = [
+                task for task in tasks if task["description"] == task_description
+            ]
+            tasks = [task for task in tasks if task["description"] != task_description]
 
-    if len(tasks) == original_count:
-        print(f"❌ Task '{task_description}' not found")
-        return 1
+        except ValueError:
+            # Treat as string description
+            task_description = task_identifier
+            original_count = len(tasks)
+            deleted_tasks = [
+                task for task in tasks if task["description"] == task_description
+            ]
+            tasks = [task for task in tasks if task["description"] != task_description]
 
-    # Log task deletions
-    try:
-        for deleted_task in deleted_tasks:
-            log_task_action("deleted", deleted_task)
-    except Exception as e:
-        print(f"⚠️  Warning: Could not log task deletion: {e}")
+        if len(tasks) == original_count:
+            error_msg = f"❌ Task '{task_description}' not found"
+            all_errors.append(error_msg)
+            continue
 
-    # Save updated tasks
-    try:
-        save_tasks(tasks)
+        # Log task deletions
+        try:
+            for deleted_task in deleted_tasks:
+                log_task_action("deleted", deleted_task)
+        except Exception as e:
+            print(f"⚠️  Warning: Could not log task deletion: {e}")
+
         deleted_count = original_count - len(tasks)
+        total_deleted_count += deleted_count
+
         if deleted_count == 1:
-            print(f"✅ Task '{task_description}' deleted successfully!")
+            successful_deletions.append(f"Task '{task_description}'")
         else:
-            print(
-                f"✅ {deleted_count} tasks with description '{task_description}' deleted successfully!"
+            successful_deletions.append(
+                f"{deleted_count} tasks with description '{task_description}'"
             )
-        return 0
-    except Exception as e:
-        print(f"❌ Error saving tasks: {e}")
+
+    # Print results
+    for error in all_errors:
+        print(error)
+
+    if successful_deletions:
+        # Save updated tasks
+        try:
+            save_tasks(tasks)
+            if len(successful_deletions) == 1:
+                print(f"✅ {successful_deletions[0]} deleted successfully!")
+            else:
+                print(
+                    f"✅ {len(successful_deletions)} sets of tasks deleted successfully:"
+                )
+                for deletion in successful_deletions:
+                    print(f"   - {deletion}")
+            return 0 if not all_errors else 1
+        except Exception as e:
+            print(f"❌ Error saving tasks: {e}")
+            return 1
+    else:
         return 1
 
 
@@ -620,11 +643,12 @@ def main():
 
     # Delete command
     delete_parser = subparsers.add_parser(
-        "rm", help="Delete a task by description or ID number"
+        "rm", help="Delete one or more tasks by description or ID number"
     )
     delete_parser.add_argument(
-        "task",
-        help="Description of the task to delete or ID number (from 'reminder ls')",
+        "tasks",
+        nargs="+",
+        help="One or more descriptions of tasks to delete or ID numbers (from 'reminder ls')",
     )
     delete_parser.set_defaults(func=delete_task)
 

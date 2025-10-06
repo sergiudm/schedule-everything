@@ -238,6 +238,8 @@ reminder delete "groceries"
 - [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
 - [ ] Mental status logging
+- [ ] Daily summary before bedtime
+- [ ] Today's tasks overview
 - [ ] History analysis
 - [ ] Better alarm UI
 - [ ] **Windows support**
