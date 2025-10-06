@@ -9,6 +9,8 @@ __pycache__/
 build/
 uv.lock
 
+.claude/
+
 schedule_visualization/
 
 config/even_weeks.toml

@@ -864,5 +864,224 @@
       "description": "Task 3",
       "priority": 3
     }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.605237+00:00",
+    "action": "added",
+    "task": {
+      "description": "Complete project",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.606997+00:00",
+    "action": "updated",
+    "task": {
+      "description": "Complete project",
+      "priority": 9
+    },
+    "metadata": {
+      "old_priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.609478+00:00",
+    "action": "added",
+    "task": {
+      "description": "Complete project",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.610687+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 3
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.612810+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.613362+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.614404+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Complete project",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.616305+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Medium priority task",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.618104+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "High priority task",
+      "priority": 9
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.619622+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Low priority task",
+      "priority": 2
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.623235+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "High priority task",
+      "priority": 9
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.624320+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.624891+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Write documentation",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.626041+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "High priority task",
+      "priority": 9
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.626701+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Low priority task",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.627776+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "High priority task",
+      "priority": 9
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.628477+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Documentation",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.629062+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Testing",
+      "priority": 3
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.630171+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.630776+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Complete project",
+      "priority": 9
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.632764+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Task 1",
+      "priority": 5
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.633418+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Task 2",
+      "priority": 3
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.635156+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.635936+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Review code",
+      "priority": 3
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.636547+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Testing",
+      "priority": 2
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.637903+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Task 1",
+      "priority": 7
+    }
+  },
+  {
+    "timestamp": "2025-10-06T08:04:18.638638+00:00",
+    "action": "deleted",
+    "task": {
+      "description": "Task 3",
+      "priority": 3
+    }
   }
 ]
