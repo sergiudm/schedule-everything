@@ -6,7 +6,7 @@ on:
     types: [published]
   # Trigger on version change in pyproject.toml
   push:
-    branches: [main, master]
+    branches: [main]
     paths: ["pyproject.toml"]
   # Allow manual triggering
   workflow_dispatch:
