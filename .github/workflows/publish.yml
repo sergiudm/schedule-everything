@@ -1,0 +1,125 @@
+name: Publish to PyPI
+
+on:
+  # Trigger on release creation
+  release:
+    types: [published]
+  # Trigger on version change in pyproject.toml
+  push:
+    branches: [main, master]
+    paths: ["pyproject.toml"]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for version analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Check version change
+        id: version_check
+        run: |
+          # Get current version from pyproject.toml
+          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "Current version: $CURRENT_VERSION"
+
+          # Check if this version tag exists in GitHub
+          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "Version v$CURRENT_VERSION already exists, skipping publish"
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version v$CURRENT_VERSION is new, will publish"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build package
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: python -m build
+
+      - name: Check package
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: twine check dist/*
+
+      - name: Publish to Test PyPI
+        if: steps.version_check.outputs.should_publish == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          twine upload --repository testpypi dist/*
+
+      - name: Publish to PyPI
+        if: steps.version_check.outputs.should_publish == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload dist/*
+
+      - name: Create Git tag
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "v${{ steps.version_check.outputs.version }}" -m "Release v${{ steps.version_check.outputs.version }}"
+          git push origin "v${{ steps.version_check.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.version_check.outputs.should_publish == 'true' && github.event_name != 'release'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version_check.outputs.version }}
+          release_name: Release v${{ steps.version_check.outputs.version }}
+          body: |
+            ## Release v${{ steps.version_check.outputs.version }}
+
+            Changes in this release:
+            - Version bump to ${{ steps.version_check.outputs.version }}
+
+            ### Installation
+            ```bash
+            pip install schedule-management==${{ steps.version_check.outputs.version }}
+            ```
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        if: steps.version_check.outputs.should_publish == 'true' && github.event_name != 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/schedule-management-${{ steps.version_check.outputs.version }}-py3-none-any.whl
+          asset_name: schedule-management-${{ steps.version_check.outputs.version }}-py3-none-any.whl
+          asset_content_type: application/zip
+
+      - name: Upload Source Distribution
+        if: steps.version_check.outputs.should_publish == 'true' && github.event_name != 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/schedule-management-${{ steps.version_check.outputs.version }}.tar.gz
+          asset_name: schedule-management-${{ steps.version_check.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
