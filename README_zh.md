@@ -1,6 +1,7 @@
 # 晨钟暮鼓
 
 [![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
+[![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 [English Version](README.md)
