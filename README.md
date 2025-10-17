@@ -241,7 +241,8 @@ reminder rm 2 4 5  # Remove task by its ID number from 'reminder ls'
 - [x] Task management system with importance levels
 - [x] Prompts for LLMs to create TOML configs
 - [x] Daily summary before bedtime
-- [ ] Today's tasks overview
+- [x] Today's tasks overview
+- [ ] Language support
 - [ ] Self rewarding system
 - [ ] History analysis
 - [ ] Website for schedule sharing

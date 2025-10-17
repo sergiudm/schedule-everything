@@ -219,6 +219,7 @@ def load_task_log() -> list[dict[str, Any]]:
     """Load task log from the JSON file."""
     log_path = os.getenv("REMINDER_LOG_PATH")
     if not log_path or not os.path.exists(log_path):
+        print(f"Warning: Log file not found at {log_path}")
         return []
 
     try:
