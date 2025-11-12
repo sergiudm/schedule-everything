@@ -45,27 +45,27 @@ TASKS_PATH = os.getenv("REMINDER_TASKS_PATH")
 LOG_PATH = os.getenv("REMINDER_LOG_PATH")
 
 
-def get_config_dir() -> str:
-    """Get config directory from settings.toml, fallback to environment variable or default."""
+def get_config_dir(path: str = "config/settings.toml") -> str:
+    """Get config directory from settings.toml."""
     try:
-        # Try to read from settings.toml first
-        config = ScheduleConfig("config/settings.toml")
+        config = ScheduleConfig(path)
         return config.config_dir
-    except Exception:
+    except Exception as e:
+        print(f"Error getting config directory: {e}")
         # Fallback to environment variable or default
         return os.getenv("REMINDER_CONFIG_DIR", "config")
 
 
-def get_settings_path() -> str:
+def get_settings_path(path: str = "config/settings.toml") -> str:
     """Get settings.toml path."""
-    config_dir = get_config_dir()
+    config_dir = get_config_dir(path)
     return f"{config_dir}/settings.toml"
 
 
-def get_tasks_path() -> str:
-    """Get tasks JSON path from settings.toml, fallback to environment variable or default."""
+def get_tasks_path(path: str = "config/settings.toml") -> str:
+    """Get tasks JSON path from settings.toml."""
     try:
-        config = ScheduleConfig(get_settings_path())
+        config = ScheduleConfig(get_settings_path(path))
         tasks_path = config.tasks_path
         # If path is relative, make it relative to config_dir
         if not os.path.isabs(tasks_path):
@@ -73,14 +73,13 @@ def get_tasks_path() -> str:
         return tasks_path
     except Exception as e:
         print(f"Error getting tasks path: {e}")
-        # Fallback to environment variable or default
         return os.getenv("REMINDER_TASKS_PATH", "config/tasks.json")
 
 
-def get_log_path() -> str:
-    """Get task log JSON path from settings.toml, fallback to environment variable or default."""
+def get_log_path(path: str = "config/settings.toml") -> str:
+    """Get task log JSON path from settings.toml."""
     try:
-        config = ScheduleConfig(get_settings_path())
+        config = ScheduleConfig(get_settings_path(path))
         log_path = config.log_path
         # If path is relative, make it relative to config_dir
         if not os.path.isabs(log_path):
@@ -91,7 +90,6 @@ def get_log_path() -> str:
         return log_path
     except Exception as e:
         print(f"Error getting log path: {e}")
-        # Fallback to environment variable or default
         return os.getenv("REMINDER_LOG_PATH", os.path.expanduser("~/.schedule_management/task/tasks.log"))
 
 
