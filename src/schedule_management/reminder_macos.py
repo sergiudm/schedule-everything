@@ -23,6 +23,7 @@ class ScheduleConfig:
         self.time_blocks = config.get("time_blocks", {})
         self.time_points = config.get("time_points", {})
         self.tasks = config.get("tasks", {})
+        self.paths = config.get("paths", {})
 
     @property
     def sound_file(self) -> str:
@@ -46,6 +47,22 @@ class ScheduleConfig:
     @property
     def daily_summary_time(self) -> str:
         return self.tasks.get("daily_summary", "22:00")
+
+    @property
+    def config_dir(self) -> str:
+        return self.paths.get("config_dir", "config")
+
+    @property
+    def tasks_path(self) -> str:
+        return self.paths.get("tasks_path", "tasks.json")
+
+    @property
+    def log_path(self) -> str:
+        log_path = self.paths.get("log_path", "~/.schedule_management/task/tasks.log")
+        # Expand ~ or $HOME if present
+        if "~" in log_path or "$HOME" in log_path:
+            return os.path.expanduser(log_path)
+        return log_path
 
 
 class WeeklySchedule:
@@ -217,8 +234,32 @@ class ScheduleVisualizer:
 
 def load_task_log() -> list[dict[str, Any]]:
     """Load task log from the JSON file."""
-    log_path = os.getenv("REMINDER_LOG_PATH")
-    if not log_path or not os.path.exists(log_path):
+    try:
+        # Try to get log path from settings.toml first
+        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+        settings_path = f"{config_dir}/settings.toml"
+        
+        if os.path.exists(settings_path):
+            config = ScheduleConfig(settings_path)
+            log_path = config.log_path
+            # If path is relative, make it relative to config_dir
+            if not os.path.isabs(log_path):
+                log_path = os.path.join(config.config_dir, log_path)
+            # Expand ~ or $HOME if present
+            if "~" in log_path or "$HOME" in log_path:
+                log_path = os.path.expanduser(log_path)
+        else:
+            # Fallback to environment variable
+            log_path = os.getenv("REMINDER_LOG_PATH")
+    except Exception:
+        # Fallback to environment variable
+        log_path = os.getenv("REMINDER_LOG_PATH")
+    
+    # If still no path, use default
+    if not log_path:
+        log_path = os.path.expanduser("~/.schedule_management/task/tasks.log")
+    
+    if not os.path.exists(log_path):
         print(f"Warning: Log file not found at {log_path}")
         return []
 
@@ -274,9 +315,11 @@ def show_daily_summary_popup():
         )
 
     # Play a sound and show the dialog
-    sound_file = os.getenv("REMINDER_CONFIG_DIR", "config") + "/settings.toml"
     try:
-        config = ScheduleConfig(sound_file)
+        # Try to get config from settings.toml first
+        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+        settings_path = f"{config_dir}/settings.toml"
+        config = ScheduleConfig(settings_path)
         play_sound(config.sound_file)
     except Exception:
         pass  # Ignore sound errors
@@ -383,8 +426,16 @@ class ScheduleRunner:
 def main():
     import sys
 
-    config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-    print(f"Using config directory: {config_dir}")
+    try:
+        # Try to get config from settings.toml first
+        config = ScheduleConfig("config/settings.toml")
+        config_dir = config.config_dir
+        print(f"Using config directory from settings.toml: {config_dir}")
+    except Exception:
+        # Fallback to environment variable or default
+        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+        print(f"Using config directory: {config_dir}")
+    
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"

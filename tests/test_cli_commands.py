@@ -9,15 +9,6 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import datetime, time, date
 
-# Set up test environment variables before importing reminder module
-test_config_dir = os.path.join(os.path.dirname(__file__), "config")
-os.environ["REMINDER_CONFIG_DIR"] = test_config_dir
-test_tasks_path = os.path.join(test_config_dir, "test_tasks.json")
-os.environ["REMINDER_TASKS_PATH"] = test_tasks_path
-test_log_path = os.path.join(test_config_dir, "test_tasks_log.json")
-os.environ["REMINDER_LOG_PATH"] = test_log_path
-
-# Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import schedule_management.reminder as reminder
 
@@ -35,6 +26,11 @@ class TestUpdateCommand:
         """Test successful update command."""
         mock_exists.return_value = True
         mock_subprocess.return_value = MagicMock(returncode=0, stderr="")
+        
+        # Configure the mock config to return a proper config_dir
+        mock_config_instance = MagicMock()
+        mock_config_instance.config_dir = "tests/config"
+        mock_config.return_value = mock_config_instance
 
         args = MagicMock()
         result = reminder.update_command(args)
@@ -47,6 +43,9 @@ class TestUpdateCommand:
     def test_update_invalid_config(self, mock_exists, mock_config):
         """Test update command with invalid configuration."""
         mock_exists.return_value = True
+        mock_config_instance = MagicMock()
+        mock_config_instance.config_dir = "tests/config"
+        mock_config.return_value = mock_config_instance
         mock_config.side_effect = Exception("Invalid config")
 
         args = MagicMock()
@@ -79,6 +78,11 @@ class TestViewCommand:
         mock_visualizer_instance = MagicMock()
         mock_visualizer.return_value = mock_visualizer_instance
         mock_subprocess.return_value = MagicMock(returncode=0)
+        
+        # Configure the mock config to return a proper config_dir
+        mock_config_instance = MagicMock()
+        mock_config_instance.config_dir = "tests/config"
+        mock_config.return_value = mock_config_instance
 
         args = MagicMock()
         result = reminder.view_command(args)
@@ -92,6 +96,11 @@ class TestViewCommand:
     def test_view_visualization_error(self, mock_config, mock_weekly, mock_visualizer):
         """Test view command when visualization fails."""
         mock_visualizer.side_effect = Exception("Visualization error")
+        
+        # Configure the mock config to return a proper config_dir
+        mock_config_instance = MagicMock()
+        mock_config_instance.config_dir = "tests/config"
+        mock_config.return_value = mock_config_instance
 
         args = MagicMock()
         result = reminder.view_command(args)
@@ -104,8 +113,17 @@ class TestStatusCommand:
 
     @patch("schedule_management.reminder.get_today_schedule_for_status")
     @patch("schedule_management.reminder.get_week_parity")
-    def test_status_normal_day(self, mock_week_parity, mock_get_schedule):
+    @patch("schedule_management.reminder.datetime")
+    def test_status_normal_day(self, mock_datetime, mock_week_parity, mock_get_schedule):
         """Test status command on a normal day."""
+        # Mock current time as 09:30 to ensure there are upcoming events
+        mock_now = MagicMock()
+        mock_now.time.return_value = time(9, 30)
+        mock_now.strftime.return_value = "09:30"
+        mock_now.date.return_value = date(2024, 1, 1)
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.combine = datetime.combine
+        
         mock_week_parity.return_value = "odd"
         mock_get_schedule.return_value = (
             {
@@ -129,6 +147,7 @@ class TestStatusCommand:
                 for call in mock_print.call_args_list
                 if call
             ]
+            
             assert any("📅 Odd Week" in str(line) for line in printed_args)
             assert any("⏰ Next event:" in str(line) for line in printed_args)
 
@@ -236,6 +255,7 @@ class TestHelperFunctions:
         """Test get_today_schedule_for_status on a normal day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = False
+        mock_config_instance.config_dir = "tests/config"
         mock_config.return_value = mock_config_instance
 
         mock_weekly_instance = MagicMock()
@@ -255,6 +275,7 @@ class TestHelperFunctions:
         """Test get_today_schedule_for_status on a skipped day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = True
+        mock_config_instance.config_dir = "tests/config"
         mock_config.return_value = mock_config_instance
 
         with patch("schedule_management.reminder.get_week_parity") as mock_parity:
@@ -397,8 +418,8 @@ class TestTaskManagement:
 
     def setup_method(self):
         """Set up test fixtures before each test method."""
-        # Create a temporary tasks file for testing
-        self.test_tasks_file = Path(reminder.TASKS_PATH)
+        # Create a temporary tasks file for testing using helper function
+        self.test_tasks_file = Path(reminder.get_tasks_path())
         self.original_tasks_content = None
 
         # Backup original tasks file if it exists

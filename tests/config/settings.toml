@@ -16,3 +16,11 @@ napping = 30
 [time_points]
 go_to_bed = "上床睡觉 😴 该休息了！"
 summary_time = "今天的工作结束 🎉, 总结一下"
+
+[paths]
+# Directory containing configuration files
+config_dir = "tests/config"
+# Path to tasks JSON file (relative to config_dir or absolute)
+tasks_path = "test_tasks.json"
+# Path to task log JSON file (relative to config_dir or absolute)
+log_path = "~/.schedule_management/task/tasks.log"

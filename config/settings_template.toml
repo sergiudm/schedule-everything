@@ -19,3 +19,11 @@ summary_time = "今天的工作结束 🎉, 总结一下"
 
 [tasks]
 daily_summary = "23:00"
+
+[paths]
+# Directory containing configuration files
+config_dir = "config"
+# Path to tasks JSON file (relative to config_dir or absolute)
+tasks_path = "tasks.json"
+# Path to task log JSON file (relative to config_dir or absolute)
+log_path = "~/.schedule_management/task/tasks.log"
