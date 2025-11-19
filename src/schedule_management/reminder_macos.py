@@ -1,6 +1,8 @@
+from math import log
 import time
 import os
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -61,7 +63,7 @@ class ScheduleConfig:
         log_path = self.paths.get("log_path", "~/.schedule_management/task/tasks.log")
         # Expand ~ or $HOME if present
         if "~" in log_path or "$HOME" in log_path:
-            return os.path.expanduser(log_path)
+            return Path(log_path).expanduser()
         return log_path
 
 
@@ -203,12 +205,11 @@ class ScheduleVisualizer:
         import platform
 
         if platform.system() == "Windows":
-            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+            desktop_path = Path.home() / "Desktop"
         else:
-            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+            desktop_path = Path.home() / "Desktop"
 
-        pdf_filename = os.path.join(desktop_path, "schedule_visualization.pdf")
-
+        pdf_filename = desktop_path / "schedule_visualization.pdf"
         with PdfPages(pdf_filename) as pdf:
             # Create first page: Odd Week Schedule
             fig1, ax1 = plt.subplots(figsize=(16, 10))
@@ -239,15 +240,14 @@ def load_task_log() -> list[dict[str, Any]]:
         config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
         settings_path = f"{config_dir}/settings.toml"
         
-        if os.path.exists(settings_path):
+        if Path(settings_path).exists():
             config = ScheduleConfig(settings_path)
             log_path = config.log_path
             # If path is relative, make it relative to config_dir
-            if not os.path.isabs(log_path):
-                log_path = os.path.join(config.config_dir, log_path)
+            log_path = Path(config.config_dir) / log_path
             # Expand ~ or $HOME if present
             if "~" in log_path or "$HOME" in log_path:
-                log_path = os.path.expanduser(log_path)
+                log_path = Path(os.path.expandvars(log_path)).expanduser()
         else:
             # Fallback to environment variable
             log_path = os.getenv("REMINDER_LOG_PATH")
@@ -257,9 +257,9 @@ def load_task_log() -> list[dict[str, Any]]:
     
     # If still no path, use default
     if not log_path:
-        log_path = os.path.expanduser("~/.schedule_management/task/tasks.log")
+        log_path = Path.home() / ".schedule_management" / "task" / "tasks.log"
     
-    if not os.path.exists(log_path):
+    if not log_path.exists():
         print(f"Warning: Log file not found at {log_path}")
         return []
 

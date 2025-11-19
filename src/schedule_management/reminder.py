@@ -9,6 +9,8 @@ This tool provides commands to:
 
 import argparse
 import json
+from logging import config
+from math import log
 import os
 import subprocess
 import sys
@@ -41,60 +43,59 @@ CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR")
 SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
 ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
-TASKS_PATH = os.getenv("REMINDER_TASKS_PATH")
-LOG_PATH = os.getenv("REMINDER_LOG_PATH")
 
 
-def get_config_dir(path: str = "config/settings.toml") -> str:
+def get_config_dir() -> str:
     """Get config directory from settings.toml."""
-    try:
-        config = ScheduleConfig(path)
-        return config.config_dir
-    except Exception as e:
-        print(f"Error getting config directory: {e}")
-        # Fallback to environment variable or default
-        return os.getenv("REMINDER_CONFIG_DIR", "config")
+    return os.getenv("REMINDER_CONFIG_DIR", "config")
 
 
-def get_settings_path(path: str = "config/settings.toml") -> str:
+def get_settings_path() -> str:
     """Get settings.toml path."""
-    config_dir = get_config_dir(path)
+    config_dir = get_config_dir()
     return f"{config_dir}/settings.toml"
 
 
-def get_tasks_path(path: str = "config/settings.toml") -> str:
-    """Get tasks JSON path from settings.toml."""
-    try:
-        config = ScheduleConfig(get_settings_path(path))
-        tasks_path = config.tasks_path
-        # If path is relative, make it relative to config_dir
-        if not os.path.isabs(tasks_path):
-            return os.path.join(config.config_dir, tasks_path)
+def get_tasks_path() -> Path:
+    """Get tasks JSON path from settings.toml with environment overrides."""
+    config = ScheduleConfig(get_settings_path())
+
+    def expand_path(path_value: str) -> Path:
+        """Expand ~ and environment variables in the provided path."""
+        return Path(os.path.expandvars(str(path_value))).expanduser()
+
+    env_config_dir = os.getenv("REMINDER_CONFIG_DIR")
+    if env_config_dir:
+        base_dir = expand_path(env_config_dir)
+    else:
+        base_dir = expand_path(config.config_dir)
+
+    tasks_path = expand_path(config.tasks_path)
+    if tasks_path.is_absolute():
         return tasks_path
-    except Exception as e:
-        print(f"Error getting tasks path: {e}")
-        return os.getenv("REMINDER_TASKS_PATH", "config/tasks.json")
+
+    # When tasks_path is relative, it should be relative to the config directory
+    return base_dir / tasks_path
 
 
-def get_log_path(path: str = "config/settings.toml") -> str:
+def get_log_path() -> str:
     """Get task log JSON path from settings.toml."""
     try:
-        config = ScheduleConfig(get_settings_path(path))
-        log_path = config.log_path
-        # If path is relative, make it relative to config_dir
-        if not os.path.isabs(log_path):
-            log_path = os.path.join(config.config_dir, log_path)
-        # Expand ~ or $HOME if present
-        if "~" in log_path or "$HOME" in log_path:
-            return os.path.expanduser(log_path)
-        return log_path
+        config = ScheduleConfig(get_settings_path())
+        raw_path_str = os.path.expandvars(config.log_path)
+        target_path = Path(raw_path_str).expanduser()
+        final_path = Path(config.config_dir) / target_path
+        return final_path
     except Exception as e:
         print(f"Error getting log path: {e}")
-        return os.getenv("REMINDER_LOG_PATH", os.path.expanduser("~/.schedule_management/task/tasks.log"))
+        default_path = Path.home() / ".schedule_management" / "task" / "tasks.log"
+        env_path = os.getenv("REMINDER_LOG_PATH")
+        return Path(env_path) if env_path else default_path
 
 
-def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
+def get_config_paths() -> dict[str, Path]:
     """Get the paths to configuration files."""
+    config_dir = get_config_dir()
     base_dir = Path(config_dir)
     if not base_dir.is_dir():
         raise ValueError(f"Directory not found: {base_dir}")
@@ -108,23 +109,24 @@ def get_config_paths(config_dir: str = "config") -> dict[str, Path]:
 def load_tasks() -> list[dict[str, Any]]:
     """Load tasks from the JSON file."""
     tasks_path = get_tasks_path()
-    if not os.path.exists(tasks_path):
+    if not Path(tasks_path).exists():
+        print("No tasks file found, starting with an empty task list.")
         return []
 
     try:
         with open(tasks_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
+        print("Error loading tasks file, starting with an empty task list.")
         return []
 
 
 def save_tasks(tasks: list[dict[str, Any]]) -> None:
     """Save tasks to the JSON file."""
-    tasks_path = get_tasks_path()
-    config_dir = get_config_dir()
-    
-    # Ensure config directory exists
-    os.makedirs(config_dir, exist_ok=True)
+    tasks_path = Path(get_tasks_path())
+
+    # Ensure destination directory exists
+    tasks_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(tasks_path, "w", encoding="utf-8") as f:
         json.dump(tasks, f, indent=2, ensure_ascii=False)
@@ -133,7 +135,7 @@ def save_tasks(tasks: list[dict[str, Any]]) -> None:
 def load_task_log() -> list[dict[str, Any]]:
     """Load task log from the JSON file."""
     log_path = get_log_path()
-    if not log_path or not os.path.exists(log_path):
+    if not log_path or not Path(log_path).exists():
         return []
 
     try:
@@ -150,8 +152,8 @@ def save_task_log(log_entries: list[dict[str, Any]]) -> None:
         return
 
     # Ensure directory exists for the log file
-    log_dir = os.path.dirname(log_path)
-    os.makedirs(log_dir, exist_ok=True)
+    log_dir = Path(log_path).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     with open(log_path, "w", encoding="utf-8") as f:
         json.dump(log_entries, f, indent=2, ensure_ascii=False)
@@ -388,7 +390,7 @@ def update_command(args):
     print("🔄 Updating reminder configuration...")
 
     config_dir = get_config_dir()
-    config_paths = get_config_paths(config_dir)
+    config_paths = get_config_paths()
 
     # Validate files exist
     missing_files = [str(p) for p in config_paths.values() if not p.exists()]
@@ -418,14 +420,16 @@ def update_command(args):
 
     # Restart LaunchAgent (macOS-specific)
     print("🔄 Restarting reminder service...")
-    plist_path = os.path.expanduser("~/Library/LaunchAgents/com.health.habits.reminder.plist")
+    plist_path = (
+        Path.home() / "Library" / "LaunchAgents" / "com.health.habits.reminder.plist"
+    )
     try:
         subprocess.run(
-            ["launchctl", "unload", plist_path], capture_output=True, text=True
+            ["launchctl", "unload", str(plist_path)], capture_output=True, text=True
         )
         time.sleep(2)
         result = subprocess.run(
-            ["launchctl", "load", plist_path], capture_output=True, text=True
+            ["launchctl", "load", str(plist_path)], capture_output=True, text=True
         )
 
         if result.returncode == 0:
@@ -464,13 +468,13 @@ def view_command(args):
                 import platform
 
                 if platform.system() == "Windows":
-                    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+                    desktop_path = Path.home() / "Desktop"
                 else:
-                    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+                    desktop_path = Path.home() / "Desktop"
 
-                pdf_path = os.path.join(desktop_path, "schedule_visualization.pdf")
+                pdf_path = desktop_path / "schedule_visualization.pdf"
                 subprocess.run(
-                    ["open", pdf_path],
+                    ["open", str(pdf_path)],
                     check=False,
                 )
             except Exception as e:
@@ -559,8 +563,11 @@ def stop_command(args):
     """Handle the 'stop' command - unload the LaunchAgent plist to stop the service."""
     print("🛑 Stopping reminder service...")
 
-    plist_path = os.path.expanduser(
-        "~/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
+    plist_path = (
+        Path.home()
+        / "Library"
+        / "LaunchAgents"
+        / "com.sergiudm.schedule.management.reminder.plist"
     )
 
     try:
@@ -681,7 +688,7 @@ def main():
     """Main entry point for the CLI tool."""
     # Get config directory path for display
     config_dir = get_config_dir()
-    config_dir_path = os.path.abspath(config_dir)
+    config_dir_path = Path(config_dir).resolve()
 
     # Colored help text
     colored_description = f"{COLORS['BOLD']}{COLORS['CYAN']}Reminder CLI{COLORS['RESET']} - {COLORS['GREEN']}Manage your schedule management system{COLORS['RESET']}"

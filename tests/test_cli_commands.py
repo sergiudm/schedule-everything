@@ -9,11 +9,11 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import datetime, time, date
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import schedule_management.reminder as reminder
 
 # Define the test config directory to use throughout the tests
-TEST_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "config")
+TEST_CONFIG_DIR = Path(__file__).resolve().parent / "config"
 
 
 class TestUpdateCommand:
@@ -414,7 +414,7 @@ class TestConfigPaths:
     def test_get_config_paths(self):
         """Test the get_config_paths function."""
         # Test with the test config directory
-        paths = reminder.get_config_paths(TEST_CONFIG_DIR)
+        paths = reminder.get_config_paths()
 
         assert "settings" in paths
         assert "odd_weeks" in paths
@@ -426,6 +426,35 @@ class TestConfigPaths:
             # Verify the test config files actually exist
             assert path.exists(), f"Test config file not found: {path}"
 
+    def test_get_tasks_path_uses_env_override(self, tmp_path, monkeypatch):
+        """Ensure get_tasks_path honors REMINDER_CONFIG_DIR when set."""
+        custom_config_dir = tmp_path / "custom_config"
+        custom_config_dir.mkdir()
+        settings_file = custom_config_dir / "settings.toml"
+        settings_file.write_text(
+            "[paths]\ntasks_path = \"task/tasks.json\"\n", encoding="utf-8"
+        )
+
+        monkeypatch.setenv("REMINDER_CONFIG_DIR", str(custom_config_dir))
+        tasks_path = Path(reminder.get_tasks_path())
+
+        assert tasks_path == custom_config_dir / "task" / "tasks.json"
+
+    def test_get_tasks_path_absolute(self, tmp_path, monkeypatch):
+        """Ensure absolute tasks_path values are returned unchanged."""
+        custom_config_dir = tmp_path / "custom_config_abs"
+        custom_config_dir.mkdir()
+        absolute_tasks = tmp_path / "data" / "tasks.json"
+        settings_file = custom_config_dir / "settings.toml"
+        settings_file.write_text(
+            f'[paths]\ntasks_path = "{absolute_tasks}"\n', encoding="utf-8"
+        )
+
+        monkeypatch.setenv("REMINDER_CONFIG_DIR", str(custom_config_dir))
+        tasks_path = Path(reminder.get_tasks_path())
+
+        assert tasks_path == absolute_tasks
+
 
 class TestTaskManagement:
     """Test the task management functionality."""
@@ -434,8 +463,7 @@ class TestTaskManagement:
         """Set up test fixtures before each test method."""
         # Create a temporary tasks file for testing using helper function
         # Use the test config directory for the tasks file
-        test_settings_path = os.path.join(TEST_CONFIG_DIR, "settings.toml")
-        self.test_tasks_file = Path(reminder.get_tasks_path(test_settings_path))
+        self.test_tasks_file = Path(reminder.get_tasks_path())
         self.original_tasks_content = None
 
         # Backup original tasks file if it exists
