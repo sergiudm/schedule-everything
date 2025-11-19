@@ -19,6 +19,19 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.text import Text
+    from rich.style import Style
+    from rich import box
+    from rich.align import Align
+    from rich.layout import Layout
+except ImportError:
+    print("Please install the 'rich' library: pip install rich")
+    sys.exit(1)
+
 from schedule_management.reminder_macos import (
     ScheduleConfig,
     ScheduleVisualizer,
@@ -335,52 +348,61 @@ def delete_task(args):
 
 
 def show_tasks(args):
-    """Handle the 'ls' command - show all tasks in reminder."""
+    """Handle the 'ls' command - show all tasks in reminder using Rich."""
     # Load existing tasks
     tasks = load_tasks()
 
+    console = Console()
+
     if not tasks:
-        print("📋 No tasks found")
+        console.print("[bold yellow]📋 No tasks found[/bold yellow]")
         return 0
 
-    # Sort tasks by priority (descending order - higher priority first)
+    # Sort tasks by priority (descending order)
     sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
 
-    # Determine max description length for formatting
-    max_desc_len = (
-        max(len(task["description"]) for task in sorted_tasks) if sorted_tasks else 20
+    # Create the table
+    table = Table(
+        title="[bold]Current Task List[/bold]",
+        box=box.ROUNDED,
+        header_style="bold cyan",
+        expand=True,
     )
-    max_desc_len = min(max_desc_len, 50)  # Limit max width
+
+    table.add_column("ID", justify="right", style="dim", width=4)
+    table.add_column("Priority", justify="left", width=18)
+    table.add_column("Description", justify="left")
 
     for i, task in enumerate(sorted_tasks, 1):
         description = task["description"]
         priority = task["priority"]
 
-        # Create visual priority indicator
-        priority_bar = (
-            "█" * priority + "░" * (10 - min(priority, 10))
-            if priority <= 10
-            else "█" * 10
-        )
-        priority_display = f"{priority_bar} ({priority})"
-
-        # Color coding based on priority (using ANSI escape codes)
+        # Determine color based on priority
         if priority >= 8:
-            color = COLORS["RED"]  # Red for high priority
+            color = "red"
             icon = "🔴"
         elif priority >= 5:
-            color = COLORS["YELLOW"]  # Yellow for medium priority
+            color = "yellow"
             icon = "🟡"
         else:
-            color = COLORS["BLUE"]  # Blue for low priority
+            color = "blue"
             icon = "🔵"
 
-        reset_color = COLORS["RESET"]
+        # Create visual block bar
+        # Capping visual bar at 10 blocks max for layout consistency
+        filled = "█" * min(priority, 10)
+        empty = "░" * (10 - min(priority, 10))
 
-        print(f"{icon} {color}{i:2d}. {description:<{max_desc_len}} {reset_color}")
-        print(f"     Priority: {priority_display}")
-        print("     " + "-" * (max_desc_len + 20))
-        print()
+        # Combine bar and number
+        prio_visual = f"[{color}]{filled}[dim]{empty}[/dim] ({priority})[/{color}]"
+
+        # Add row
+        table.add_row(str(i), prio_visual, f"{icon}  {description}")
+
+    console.print(table)
+
+    # Optional: Summary footer
+    console.print(f"[dim]Total tasks: {len(tasks)}[/dim]", justify="right")
 
     return 0
 
@@ -587,100 +609,148 @@ def stop_command(args):
         return 1
 
 
-def status_command(args: argparse.Namespace):
-    """Handle the 'status' command - show current status and next events."""
+def status_command(args):
+    """Handle the 'status' command - show status and schedule using Rich."""
+    console = Console()
 
     try:
         schedule, parity, is_skipped = get_today_schedule_for_status()
 
-        # Display week information
-        parity_icon = "📅 Odd Week" if parity == "odd" else "📅 Even Week"
-        print(f"📊 {parity_icon}")
+        # --- 1. Header Section (Parity) ---
+        parity_text = f"📅 {parity.title()} Week"
+        parity_style = "bold magenta" if parity == "odd" else "bold cyan"
+
+        # Clear screen for a fresh dashboard look (optional, remove if unwanted)
+        # console.clear()
+
+        console.print(Align.center(f"[{parity_style}]{parity_text}[/{parity_style}]"))
 
         if is_skipped:
-            print("⏭️  Today is a skipped day - no reminders scheduled")
-            print("\n" + "=" * 50)
+            console.print(
+                Panel(
+                    Align.center("⏭️  Today is a skipped day - enjoy your time off!"),
+                    style="yellow",
+                    box=box.ROUNDED,
+                )
+            )
             return 0
 
-        current, next_ev, time_until = get_current_and_next_events(schedule)
+        # --- 2. Status Panel (Current & Next Event) ---
+        current_event, next_ev, time_until = get_current_and_next_events(schedule)
 
-        # Display current and next events in a structured way
-        print("\n" + "🎯" + "=" * 23 + " EVENTS " + "=" * 23 + "🎯")
+        status_lines = []
 
-        if current:
-            print(f"🔔 Current event: {current}")
+        # Current Event formatting
+        if current_event:
+            # Extract just the event name if possible, assuming format "Name at Time"
+            # But keep it simple for now based on your return values
+            status_lines.append(f"[bold green]🔔 NOW:[/bold green]  {current_event}")
         else:
-            print("🔕 No current event")
+            status_lines.append("[dim]🔕 No active event[/dim]")
 
+        status_lines.append("")  # spacer
+
+        # Next Event formatting
         if next_ev:
-            if time_until:
-                print(f"⏰ Next event: {next_ev} (in {time_until})")
-            else:
-                print(f"⏰ Next event: {next_ev}")
+            time_str = f" (in {time_until})" if time_until else ""
+            status_lines.append(
+                f"[bold blue]⏰ NEXT:[/bold blue] {next_ev}[yellow]{time_str}[/yellow]"
+            )
         else:
-            print("📭 No more events scheduled for today")
+            status_lines.append("[dim]📭 No upcoming events[/dim]")
 
-        if args.verbose:
-            print("\n" + "📋" + "=" * 21 + " SCHEDULE " + "=" * 21 + "📋")
-            print(f"Total events for today: {len(schedule)}")
-            print()
+        # Create the dashboard panel
+        status_content = "\n".join(status_lines)
+        console.print(
+            Panel(
+                status_content,
+                title="[bold]Status[/bold]",
+                expand=False,
+                border_style="green" if current_event else "dim",
+                box=box.ROUNDED,
+                padding=(1, 2),
+            )
+        )
 
-            if schedule:
-                # Group events by time of day
-                morning_events = []
-                afternoon_events = []
-                evening_events = []
+        # --- 3. Verbose Schedule Table ---
+        if args.verbose and schedule:
+            console.print()  # Spacer
 
-                for time_str in sorted(schedule.keys()):
-                    event = schedule[time_str]
-                    if isinstance(event, str):
-                        name = event
-                    elif isinstance(event, dict) and "block" in event:
-                        name = event.get("title", event["block"])
+            # Sort and categorize events
+            morning_events = []
+            afternoon_events = []
+            evening_events = []
+
+            sorted_times = sorted(schedule.keys())
+
+            for time_str in sorted_times:
+                event = schedule[time_str]
+                name = (
+                    event.get("title", event["block"])
+                    if isinstance(event, dict)
+                    else str(event)
+                )
+
+                try:
+                    hour = int(time_str.split(":")[0])
+                    item = (time_str, name)
+                    if 5 <= hour < 12:
+                        morning_events.append(item)
+                    elif 12 <= hour < 18:
+                        afternoon_events.append(item)
                     else:
-                        name = str(event)
+                        evening_events.append(item)
+                except ValueError:
+                    evening_events.append((time_str, name))
 
-                    # Parse time to categorize events
-                    try:
-                        hour = int(time_str.split(":")[0])
-                        event_data = (time_str, name)
+            # Build the Table
+            table = Table(
+                box=box.SIMPLE_HEAD, show_lines=False, header_style="bold", expand=True
+            )
 
-                        if 5 <= hour < 12:
-                            morning_events.append(event_data)
-                        elif 12 <= hour < 18:
-                            afternoon_events.append(event_data)
+            table.add_column(
+                "Time", justify="right", style="cyan", width=8, no_wrap=True
+            )
+            table.add_column("Activity", justify="left")
+
+            # Helper to add sections
+            def add_period_section(title, icon, events, color):
+                if events:
+                    # Add a section header row
+                    table.add_section()
+                    table.add_row(
+                        f"[{color}]{icon}[/{color}]",
+                        f"[bold {color}]{title}[/bold {color}]",
+                    )
+
+                    for time_str, name in events:
+                        # Highlight Pomodoros or Breaks
+                        if "break" in name.lower():
+                            name_styled = f"[italic dim]{name}[/italic dim]"
+                            icon_type = "☕"
+                        elif "pomodoro" in name.lower():
+                            name_styled = name
+                            icon_type = "🍅"
                         else:
-                            evening_events.append(event_data)
-                    except ValueError:
-                        # If time parsing fails, add to general list
-                        evening_events.append((time_str, name))
+                            name_styled = f"[bold]{name}[/bold]"
+                            icon_type = "•"
 
-                # Define time period names and icons
-                time_periods = [
-                    ("🌅 MORNING (5:00-11:59)", morning_events),
-                    ("☀️  AFTERNOON (12:00-17:59)", afternoon_events),
-                    ("🌆 EVENING (18:00-23:59)", evening_events),
-                ]
+                        table.add_row(time_str, f"{icon_type}  {name_styled}")
 
-                # Print events by time period
-                for period_name, events in time_periods:
-                    if events:
-                        print(f"\n{period_name}")
-                        print("-" * len(period_name))
-                        for time_str, name in events:
-                            # Determine event type icon
-                            event_icon = (
-                                "⏱️"
-                                if "pomodoro" in name.lower() or "break" in name.lower()
-                                else "📅"
-                            )
-                            print(f"   {event_icon} {time_str}: {name}")
-                        print()
+            add_period_section("Morning", "🌅", morning_events, "yellow")
+            add_period_section("Afternoon", "☀️ ", afternoon_events, "orange1")
+            add_period_section("Evening", "🌆", evening_events, "purple")
+
+            console.print(table)
+            console.print(
+                f"[dim italic]Total events: {len(schedule)}[/dim italic]",
+                justify="right",
+            )
 
         return 0
 
     except Exception as e:
-        print(f"❌ Error checking status: {e}")
+        console.print(f"[bold red]❌ Error checking status:[/bold red] {e}")
         return 1
 
 
