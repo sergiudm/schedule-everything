@@ -71,6 +71,72 @@ Or when updating:
 ✅ Deadline for 'homework2' updated from 2026-07-04 to 2026-07-10
 ```
 
+## ddl rm
+
+Remove one or more deadline events.
+
+### Syntax
+```bash
+reminder ddl rm "EVENT_NAME" [EVENT_NAME...] [OPTIONS]
+```
+
+### Parameters
+| Parameter    | Type   | Description                                             |
+| ------------ | ------ | ------------------------------------------------------- |
+| `EVENT_NAME` | string | Name of the event to delete (quoted if contains spaces) |
+
+### Options
+| Option    | Description                                   |
+| --------- | --------------------------------------------- |
+| `--force` | Skip confirmation prompt (future enhancement) |
+
+### Examples
+```bash
+# Remove single deadline
+reminder ddl rm "homework2"
+
+# Remove multiple deadlines at once
+reminder ddl rm "homework2" "project submission" "exam"
+
+# Remove deadline with spaces in name
+reminder ddl rm "final project presentation"
+```
+
+### Output
+```
+✅ Deadline 'homework2' deleted successfully!
+```
+
+When deleting multiple deadlines:
+```
+✅ 3 sets of deadlines deleted successfully:
+   - Deadline 'homework2'
+   - Deadline 'project submission'
+   - Deadline 'exam'
+```
+
+### Error Handling
+
+If a deadline doesn't exist:
+```bash
+$ reminder ddl rm "nonexistent"
+❌ Deadline 'nonexistent' not found
+```
+
+When some deletions fail:
+```bash
+$ reminder ddl rm "homework2" "nonexistent" "exam"
+❌ Deadline 'nonexistent' not found
+✅ 2 sets of deadlines deleted successfully:
+   - Deadline 'homework2'
+   - Deadline 'exam'
+```
+
+### Best Practices
+- Always verify the event name by running `reminder ddl` first
+- Use quotes around event names that contain spaces
+- Delete multiple deadlines in one command for efficiency
+
 ## ddl
 
 List all deadlines sorted by date with urgency indicators.

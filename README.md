@@ -244,6 +244,10 @@ reminder ddl add "exam" "3.15"          # March 15th
 # Update existing deadline
 reminder ddl add "homework2" "7.10"     # Changes deadline to July 10th
 
+# Delete specific deadlines
+reminder ddl rm "homework2"
+reminder ddl rm "project" "exam"        # Delete multiple at once
+
 # View all deadlines with status
 reminder ddl
 ```
@@ -271,9 +275,10 @@ reminder ddl
 - [x] Prompts for LLMs to create TOML configs
 - [x] Daily summary before bedtime
 - [x] Today's tasks overview
+- [x] Deadline management system
+- [ ] Self monitoring system
 - [ ] Language support
-- [ ] Self rewarding system
-- [ ] History analysis
+- [ ] History analysis and weekly reports
 - [ ] Website for schedule sharing
 - [ ] Better alarm UI
 - [ ] **Windows support**

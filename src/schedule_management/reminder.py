@@ -830,6 +830,68 @@ def show_deadlines(args):
     return 0
 
 
+def delete_deadline(args):
+    """Handle the 'ddl rm' command - delete one or more deadlines."""
+    event_identifiers = args.events
+
+    # Load existing deadlines
+    deadlines = load_deadlines()
+
+    if not deadlines:
+        print("⚠️  No deadlines found to delete")
+        return 1
+
+    total_deleted_count = 0
+    all_errors = []
+    successful_deletions = []
+
+    for event_identifier in event_identifiers:
+        event_name = event_identifier
+        original_count = len(deadlines)
+        deleted_deadlines = [
+            ddl for ddl in deadlines if ddl["event"] == event_name
+        ]
+        deadlines = [ddl for ddl in deadlines if ddl["event"] != event_name]
+
+        if len(deadlines) == original_count:
+            error_msg = f"❌ Deadline '{event_name}' not found"
+            all_errors.append(error_msg)
+            continue
+
+        deleted_count = original_count - len(deadlines)
+        total_deleted_count += deleted_count
+
+        if deleted_count == 1:
+            successful_deletions.append(f"Deadline '{event_name}'")
+        else:
+            successful_deletions.append(
+                f"{deleted_count} deadlines with name '{event_name}'"
+            )
+
+    # Print results
+    for error in all_errors:
+        print(error)
+
+    if successful_deletions:
+        # Save updated deadlines
+        try:
+            save_deadlines(deadlines)
+            if len(successful_deletions) == 1:
+                print(f"✅ {successful_deletions[0]} deleted successfully!")
+            else:
+                print(
+                    f"✅ {len(successful_deletions)} sets of deadlines deleted successfully:"
+                )
+                for deletion in successful_deletions:
+                    print(f"   - {deletion}")
+            return 0 if not all_errors else 1
+        except Exception as e:
+            print(f"❌ Error saving deadlines: {e}")
+            return 1
+    else:
+        return 1
+
+
 def add_task(args):
     """Handle the 'add' command - add a new task to reminder."""
     task_description = args.task
@@ -1456,6 +1518,17 @@ def main():
         help="Deadline date in M.D or MM.DD format (e.g., '7.4' for July 4th)",
     )
     ddl_add_parser.set_defaults(func=add_deadline)
+
+    # ddl rm subcommand
+    ddl_rm_parser = ddl_subparsers.add_parser(
+        "rm", help="Delete one or more deadline events"
+    )
+    ddl_rm_parser.add_argument(
+        "events",
+        nargs="+",
+        help="One or more event names to delete (e.g., 'homework2' 'project')",
+    )
+    ddl_rm_parser.set_defaults(func=delete_deadline)
 
     # When 'ddl' is called without subcommand, show deadlines
     ddl_parser.set_defaults(func=show_deadlines)

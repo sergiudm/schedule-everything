@@ -241,6 +241,10 @@ reminder ddl add "考试" "3.15"         # 3月15日
 # 更新现有截止日期
 reminder ddl add "作业2" "7.10"        # 将截止日期改为7月10日
 
+# 删除特定截止日期
+reminder ddl rm "作业2"
+reminder ddl rm "项目提交" "考试"      # 一次删除多个
+
 # 查看所有截止日期及状态
 reminder ddl
 ```

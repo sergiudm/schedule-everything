@@ -41,6 +41,7 @@ Commands for managing your task list:
 ### Deadline Management
 Commands for managing event deadlines:
 - [`reminder ddl add`](deadline-management.md#add) - Add or update deadlines
+- [`reminder ddl rm`](deadline-management.md#remove) - Remove deadlines
 - [`reminder ddl`](deadline-management.md#list) - List all deadlines with urgency status
 
 ### System Commands
