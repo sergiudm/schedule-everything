@@ -196,7 +196,6 @@ setup_project() {
     fi
 
     mkdir -p "$INSTALL_DIR"
-    mkdir -p "$INSTALL_DIR/config"
 
     if [[ -d "src" ]]; then
         cp -r src "$INSTALL_DIR/"
@@ -214,13 +213,7 @@ setup_project() {
         fi
     done
 
-    # Copy config files
-    for config_file in settings.toml odd_weeks.toml even_weeks.toml; do
-        if [[ -f "config/$config_file" ]]; then
-            cp "config/$config_file" "$INSTALL_DIR/config/"
-        fi
-    done
-
+    # Create logs directory
     mkdir -p "$INSTALL_DIR/logs"
     log_success "Project directory setup complete"
 }
@@ -287,7 +280,6 @@ ExecStart=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/src/schedule_management/rem
 Restart=always
 RestartSec=10
 Environment=DISPLAY=:0
-Environment=REMINDER_CONFIG_DIR=$INSTALL_DIR/config
 StandardOutput=$INSTALL_DIR/logs/schedule_management.out
 StandardError=$INSTALL_DIR/logs/schedule_management.err
 
@@ -334,8 +326,6 @@ create_launch_agent() {
     <string>$INSTALL_DIR</string>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>REMINDER_CONFIG_DIR</key>
-        <string>$INSTALL_DIR/config</string>
         <key>REMINDER_TASK_DIR</key>
         <string>$INSTALL_DIR/task/tasks.json</string>
     </dict>
