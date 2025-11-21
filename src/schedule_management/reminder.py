@@ -9,8 +9,6 @@ This tool provides commands to:
 
 import argparse
 import json
-from logging import config
-from math import log
 import os
 import subprocess
 import sys
@@ -20,24 +18,386 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.text import Text
-    from rich.style import Style
+    import matplotlib.patches as patches
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+
+try:
     from rich import box
     from rich.align import Align
-    from rich.layout import Layout
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
 except ImportError:
     print("Please install the 'rich' library: pip install rich")
     sys.exit(1)
 
 from schedule_management.reminder_macos import (
     ScheduleConfig,
-    ScheduleVisualizer,
     WeeklySchedule,
 )
+
 from schedule_management.utils import get_week_parity, parse_time
+
+
+class ScheduleVisualizer:
+    COLORS = {
+        "pomodoro": "#E57373",  # Red 300
+        "long_break": "#81C784",  # Green 300
+        "napping": "#64B5F6",  # Blue 300
+        "meeting": "#FFB74D",  # Orange 300
+        "exercise": "#FFF176",  # Yellow 300
+        "lunch": "#BA68C8",  # Purple 300
+        "summary_time": "#4DB6AC",  # Teal 300
+        "go_to_bed": "#90A4AE",  # Blue Grey 300
+        "other": "#E0E0E0",  # Grey 300
+    }
+
+    DAYS_ORDER = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    ]
+
+    def __init__(self, config: ScheduleConfig, odd_schedule: dict, even_schedule: dict):
+        self.config = config
+        self.odd_schedule = odd_schedule
+        self.even_schedule = even_schedule
+
+    def _extract_activity_name(self, activity: Any) -> str:
+        if isinstance(activity, str):
+            return activity
+        elif isinstance(activity, dict) and "block" in activity:
+            return activity.get("title", activity["block"])
+        else:
+            return str(activity)
+
+    def _create_chart(self, ax, schedule_data: dict, title: str):
+        if not MATPLOTLIB_AVAILABLE:
+            print(
+                "❌ matplotlib is not available. Please install it: pip install matplotlib"
+            )
+            return
+
+        used_activities = set()
+
+        # Set background color
+        ax.set_facecolor("#FAFAFA")
+
+        for day_idx, day in enumerate(self.DAYS_ORDER):
+            day_schedule = {}
+            if "common" in schedule_data:
+                day_schedule.update(schedule_data["common"])
+            if day in schedule_data:
+                day_schedule.update(schedule_data[day])
+
+            for time_str, activity in day_schedule.items():
+                activity_name = self._extract_activity_name(activity)
+                used_activities.add(activity_name)
+
+                time_parts = time_str.split(":")
+                hour = int(time_parts[0])
+                minute = int(time_parts[1])
+                time_decimal = hour + minute / 60.0
+
+                if activity_name in self.config.time_blocks:
+                    duration_minutes = self.config.time_blocks[activity_name]
+                    duration_hours = duration_minutes / 60.0
+                else:
+                    duration_hours = 0.1
+
+                color = self.COLORS.get(activity_name, self.COLORS["other"])
+
+                # Centered rectangle
+                rect_width = 0.9
+                rect_x = day_idx - (rect_width / 2)
+
+                rect = patches.Rectangle(
+                    (rect_x, time_decimal),
+                    rect_width,
+                    duration_hours,
+                    linewidth=0,
+                    facecolor=color,
+                    alpha=0.9,
+                )
+                ax.add_patch(rect)
+
+                # Add a subtle white border for separation
+                rect_border = patches.Rectangle(
+                    (rect_x, time_decimal),
+                    rect_width,
+                    duration_hours,
+                    linewidth=1,
+                    edgecolor="white",
+                    facecolor="none",
+                    alpha=0.5,
+                )
+                ax.add_patch(rect_border)
+
+        ax.set_xlim(-0.5, len(self.DAYS_ORDER) - 0.5)
+        ax.set_ylim(24, 6)
+        ax.set_xticks(range(len(self.DAYS_ORDER)))
+        ax.set_xticklabels(
+            [d.capitalize() for d in self.DAYS_ORDER],
+            fontsize=10,
+            weight="bold",
+            color="#424242",
+        )
+
+        hour_ticks = list(range(6, 25))
+        ax.set_yticks(hour_ticks)
+        ax.set_yticklabels(
+            [f"{h:02d}:00" for h in hour_ticks], fontsize=9, color="#616161"
+        )
+
+        # Custom grid
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3, color="gray")
+        ax.grid(False, axis="x")
+
+        # Remove spines
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+
+        ax.set_title(title, fontsize=18, weight="bold", pad=20, color="#333333")
+
+        # Legend
+        legend_elements = [
+            patches.Patch(
+                facecolor=self.COLORS.get(act, self.COLORS["other"]),
+                label=act,
+                edgecolor="none",
+            )
+            for act in sorted(used_activities)
+        ]
+        ax.legend(
+            handles=legend_elements,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.05),
+            ncol=min(len(used_activities), 5),
+            frameon=False,
+            fontsize=9,
+        )
+
+    def _calculate_weekly_stats(self, schedule_data: dict) -> dict[str, Any]:
+        pomodoro_count = 0
+        work_hours = 0.0
+
+        # Activities considered as "work"
+        work_activities = {"pomodoro", "meeting", "summary_time"}
+
+        for day in self.DAYS_ORDER:
+            day_schedule = {}
+            if "common" in schedule_data:
+                day_schedule.update(schedule_data["common"])
+            if day in schedule_data:
+                day_schedule.update(schedule_data[day])
+
+            for _, activity in day_schedule.items():
+                activity_name = self._extract_activity_name(activity)
+
+                if activity_name in self.config.time_blocks:
+                    duration_minutes = self.config.time_blocks[activity_name]
+                    duration_hours = duration_minutes / 60.0
+                else:
+                    duration_hours = 0.1
+
+                if "pomodoro" in activity_name.lower():
+                    pomodoro_count += 1
+
+                # Check if it's a work activity
+                if (
+                    activity_name in work_activities
+                    or "pomodoro" in activity_name.lower()
+                ):
+                    work_hours += duration_hours
+
+        return {"pomodoro_count": pomodoro_count, "work_hours": work_hours}
+
+    def _create_stats_page(self, ax, odd_stats: dict, even_stats: dict):
+        ax.axis("off")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+        # Title
+        ax.text(
+            0.5,
+            0.9,
+            "Weekly Statistics",
+            ha="center",
+            va="center",
+            fontsize=24,
+            weight="bold",
+            color="#333333",
+        )
+
+        # Odd Week Column
+        ax.text(
+            0.25,
+            0.75,
+            "Odd Week",
+            ha="center",
+            va="center",
+            fontsize=20,
+            weight="bold",
+            color="#E57373",
+        )
+
+        ax.text(
+            0.25,
+            0.6,
+            f"{odd_stats['pomodoro_count']}",
+            ha="center",
+            va="center",
+            fontsize=60,
+            weight="bold",
+            color="#333333",
+        )
+        ax.text(
+            0.25,
+            0.53,
+            "Total Pomodoros",
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="#757575",
+        )
+
+        ax.text(
+            0.25,
+            0.35,
+            f"{odd_stats['work_hours']:.1f}",
+            ha="center",
+            va="center",
+            fontsize=60,
+            weight="bold",
+            color="#333333",
+        )
+        ax.text(
+            0.25,
+            0.28,
+            "Working Hours",
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="#757575",
+        )
+
+        # Vertical Separator
+        ax.plot([0.5, 0.5], [0.2, 0.8], color="#E0E0E0", linewidth=2)
+
+        # Even Week Column
+        ax.text(
+            0.75,
+            0.75,
+            "Even Week",
+            ha="center",
+            va="center",
+            fontsize=20,
+            weight="bold",
+            color="#64B5F6",
+        )
+
+        ax.text(
+            0.75,
+            0.6,
+            f"{even_stats['pomodoro_count']}",
+            ha="center",
+            va="center",
+            fontsize=60,
+            weight="bold",
+            color="#333333",
+        )
+        ax.text(
+            0.75,
+            0.53,
+            "Total Pomodoros",
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="#757575",
+        )
+
+        ax.text(
+            0.75,
+            0.35,
+            f"{even_stats['work_hours']:.1f}",
+            ha="center",
+            va="center",
+            fontsize=60,
+            weight="bold",
+            color="#333333",
+        )
+        ax.text(
+            0.75,
+            0.28,
+            "Working Hours",
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="#757575",
+        )
+
+    def visualize(self):
+        if not MATPLOTLIB_AVAILABLE:
+            print(
+                "❌ matplotlib is not available. Please install it: pip install matplotlib"
+            )
+            return
+
+        import platform
+
+        if platform.system() == "Windows":
+            desktop_path = Path.home() / "Desktop"
+        else:
+            desktop_path = Path.home() / "Desktop"
+
+        pdf_filename = desktop_path / "schedule_visualization.pdf"
+        with PdfPages(pdf_filename) as pdf:
+            # Create first page: Odd Week Schedule
+            fig1, ax1 = plt.subplots(figsize=(16, 10))
+            self._create_chart(ax1, self.odd_schedule, "Odd Week Schedule")
+            plt.tight_layout()
+            pdf.savefig(fig1, dpi=300, bbox_inches="tight")
+            plt.close(fig1)
+
+            # Create second page: Even Week Schedule
+            fig2, ax2 = plt.subplots(figsize=(16, 10))
+            self._create_chart(ax2, self.even_schedule, "Even Week Schedule")
+            plt.tight_layout()
+            pdf.savefig(fig2, dpi=300, bbox_inches="tight")
+            plt.close(fig2)
+
+            # Create third page: Statistics
+            fig3 = plt.figure(figsize=(16, 10))
+            ax3 = fig3.add_subplot(111)
+
+            odd_stats = self._calculate_weekly_stats(self.odd_schedule)
+            even_stats = self._calculate_weekly_stats(self.even_schedule)
+
+            self._create_stats_page(ax3, odd_stats, even_stats)
+
+            plt.tight_layout()
+            pdf.savefig(fig3, dpi=300, bbox_inches="tight")
+            plt.close(fig3)
+
+        print(f"Schedule visualization saved as '{pdf_filename}'")
+        print("\nSchedule visualization complete!")
+        print("Generated file:")
+        print("- schedule_visualization.pdf (on Desktop)")
+        print("  - Page 1: Odd Week Schedule")
+        print("  - Page 2: Even Week Schedule")
+        print("  - Page 3: Statistics")
+
 
 # ANSI color codes
 COLORS = {
