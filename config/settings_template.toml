@@ -1,7 +1,7 @@
 [settings]
 sound_file = "/System/Library/Sounds/Ping.aiff"
-alarm_interval = 5  # seconds between alarm repeats
-max_alarm_duration = 300  # maximum alarm duration in seconds (5 minutes)
+alarm_interval = 5                              # seconds between alarm repeats
+max_alarm_duration = 300                        # maximum alarm duration in seconds (5 minutes)
 skip_days = ["sunday"]
 
 [time_blocks]
@@ -12,6 +12,7 @@ meeting = 50
 exercise = 30
 lunch = 60
 napping = 30
+potato = 50
 
 [time_points]
 go_to_bed = "上床睡觉 😴 该休息了！"

@@ -44,17 +44,46 @@ from schedule_management.reminder_macos import (
 from schedule_management.utils import get_week_parity, parse_time
 
 
+# --- VISUALIZER CLASS ---
+
+
 class ScheduleVisualizer:
+    """
+    Handles the generation of beautiful PDF schedules using Matplotlib.
+    """
+
+    # Modern, vibrant pastel palette
     COLORS = {
-        "pomodoro": "#E57373",  # Red 300
-        "long_break": "#81C784",  # Green 300
-        "napping": "#64B5F6",  # Blue 300
-        "meeting": "#FFB74D",  # Orange 300
-        "exercise": "#FFF176",  # Yellow 300
-        "lunch": "#BA68C8",  # Purple 300
-        "summary_time": "#4DB6AC",  # Teal 300
-        "go_to_bed": "#90A4AE",  # Blue Grey 300
-        "other": "#E0E0E0",  # Grey 300
+        "pomodoro": "#FF6B6B",  # Soft Red
+        "potato": "#EE5253",  # Deeper Red/Pink
+        "long_break": "#1DD1A1",  # Bright Teal
+        "short_break": "#48DBFB",  # Light Blue
+        "napping": "#54A0FF",  # Blue
+        "meeting": "#FF9F43",  # Orange
+        "exercise": "#Feca57",  # Yellow
+        "lunch": "#5F27CD",  # Deep Purple
+        "summary_time": "#C8D6E5",  # Light Grey
+        "go_to_bed": "#576574",  # Dark Grey
+        "other": "#8395A7",  # Blue Grey
+        "deep_work": "#0ABDE3",  # Cyan
+    }
+
+    # Text color for contrast (White for dark blocks, Dark Grey for light blocks)
+    TEXT_COLORS = {
+        "exercise": "#333333",  # Yellow needs dark text
+        "summary_time": "#333333",
+        "default": "#FFFFFF",
+    }
+
+    # Explicit durations in minutes for known activity types
+    # This fixes the "thin line" issue for potato/pomodoro
+    DEFAULT_DURATIONS = {
+        "potato": 50,
+        "pomodoro": 25,
+        "long_break": 15,
+        "short_break": 5,
+        "lunch": 60,
+        "napping": 20,
     }
 
     DAYS_ORDER = [
@@ -80,17 +109,51 @@ class ScheduleVisualizer:
         else:
             return str(activity)
 
+    def _get_activity_duration(self, activity_name: str) -> float:
+        """
+        Returns duration in HOURS.
+        Checks config first, then manual defaults, then generic fallback.
+        """
+        # 1. Check Config
+        if activity_name in self.config.time_blocks:
+            return self.config.time_blocks[activity_name] / 60.0
+
+        # 2. Check Manual Defaults (Case insensitive partial match)
+        lower_name = activity_name.lower()
+        for key, minutes in self.DEFAULT_DURATIONS.items():
+            if key in lower_name:
+                return minutes / 60.0
+
+        # 3. Generic Fallback (0.5 hours = 30 mins) ensures visibility
+        return 0.5
+
+    def _get_color(self, activity_name: str) -> str:
+        """Finds the best matching color."""
+        lower_name = activity_name.lower()
+        for key, color in self.COLORS.items():
+            if key in lower_name:
+                return color
+        return self.COLORS["other"]
+
+    def _get_text_color(self, activity_name: str) -> str:
+        """Finds best text color based on background."""
+        lower_name = activity_name.lower()
+        for key, color in self.TEXT_COLORS.items():
+            if key in lower_name:
+                return color
+        return self.TEXT_COLORS["default"]
+
     def _create_chart(self, ax, schedule_data: dict, title: str):
         if not MATPLOTLIB_AVAILABLE:
-            print(
-                "❌ matplotlib is not available. Please install it: pip install matplotlib"
-            )
             return
 
+        # Setup aesthetics
+        ax.set_facecolor("#FFFFFF")  # Pure white background for clean look
         used_activities = set()
 
-        # Set background color
-        ax.set_facecolor("#FAFAFA")
+        # Draw Day Columns background (Alternating subtle grey)
+        for i in range(0, len(self.DAYS_ORDER), 2):
+            ax.axvspan(i - 0.5, i + 0.5, color="#F7F9FA", zorder=0)
 
         for day_idx, day in enumerate(self.DAYS_ORDER):
             day_schedule = {}
@@ -103,97 +166,141 @@ class ScheduleVisualizer:
                 activity_name = self._extract_activity_name(activity)
                 used_activities.add(activity_name)
 
+                # Parse time
                 time_parts = time_str.split(":")
                 hour = int(time_parts[0])
                 minute = int(time_parts[1])
                 time_decimal = hour + minute / 60.0
 
-                if activity_name in self.config.time_blocks:
-                    duration_minutes = self.config.time_blocks[activity_name]
-                    duration_hours = duration_minutes / 60.0
-                else:
-                    duration_hours = 0.1
+                # Calculate duration
+                duration_hours = self._get_activity_duration(activity_name)
 
-                color = self.COLORS.get(activity_name, self.COLORS["other"])
+                # Get Colors
+                bg_color = self._get_color(activity_name)
+                txt_color = self._get_text_color(activity_name)
 
-                # Centered rectangle
-                rect_width = 0.9
+                # Draw Block
+                rect_width = 0.85  # Slightly thinner for elegance
                 rect_x = day_idx - (rect_width / 2)
 
+                # Main colored block
                 rect = patches.Rectangle(
                     (rect_x, time_decimal),
                     rect_width,
                     duration_hours,
                     linewidth=0,
-                    facecolor=color,
+                    facecolor=bg_color,
                     alpha=0.9,
+                    zorder=2,
                 )
                 ax.add_patch(rect)
 
-                # Add a subtle white border for separation
-                rect_border = patches.Rectangle(
+                # Optional: Left accent border for "depth"
+                rect_accent = patches.Rectangle(
                     (rect_x, time_decimal),
-                    rect_width,
+                    0.04,  # Thin strip on left
                     duration_hours,
-                    linewidth=1,
-                    edgecolor="white",
-                    facecolor="none",
-                    alpha=0.5,
+                    linewidth=0,
+                    facecolor="black",
+                    alpha=0.1,
+                    zorder=3,
                 )
-                ax.add_patch(rect_border)
+                ax.add_patch(rect_accent)
 
+                # ADD TEXT LABEL inside the block if it's big enough
+                if duration_hours >= 0.3:  # Only if block > 18 mins
+                    font_size = 8 if duration_hours > 0.5 else 6
+                    # Clean up name for display (remove underscores)
+                    display_name = activity_name.replace("_", " ").title()
+
+                    # If it's very short, just show first letter or short code
+                    if duration_hours < 0.4:
+                        display_name = display_name[:3]
+
+                    ax.text(
+                        day_idx,
+                        time_decimal + (duration_hours / 2),
+                        display_name,
+                        ha="center",
+                        va="center",
+                        color=txt_color,
+                        fontsize=font_size,
+                        fontweight="bold",
+                        zorder=4,
+                    )
+
+        # Configure Axes
         ax.set_xlim(-0.5, len(self.DAYS_ORDER) - 0.5)
-        ax.set_ylim(24, 6)
+        ax.set_ylim(24, 6)  # 6 AM at top, Midnight at bottom
+
+        # Top X Axis (Days)
         ax.set_xticks(range(len(self.DAYS_ORDER)))
         ax.set_xticklabels(
-            [d.capitalize() for d in self.DAYS_ORDER],
-            fontsize=10,
+            [d.upper()[:3] for d in self.DAYS_ORDER],  # MON, TUE...
+            fontsize=11,
             weight="bold",
-            color="#424242",
+            color="#57606f",
         )
+        ax.tick_params(axis="x", pad=10)  # Move labels up slightly
 
+        # Left Y Axis (Time)
         hour_ticks = list(range(6, 25))
         ax.set_yticks(hour_ticks)
         ax.set_yticklabels(
-            [f"{h:02d}:00" for h in hour_ticks], fontsize=9, color="#616161"
+            [f"{h:02d}:00" for h in hour_ticks],
+            fontsize=9,
+            color="#a4b0be",
+            family="monospace",
         )
 
-        # Custom grid
-        ax.grid(True, axis="y", linestyle="--", alpha=0.3, color="gray")
+        # Grid
+        ax.grid(True, axis="y", linestyle=":", alpha=0.4, color="#dfe4ea", zorder=1)
         ax.grid(False, axis="x")
 
-        # Remove spines
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
+        # Clean Spines
+        for spine in ax.spines.values():
+            spine.set_visible(False)
 
-        ax.set_title(title, fontsize=18, weight="bold", pad=20, color="#333333")
+        # Add a subtle left spine for time anchor
+        ax.axvline(-0.5, color="#dfe4ea", linewidth=1)
 
-        # Legend
+        # Title
+        ax.set_title(
+            title.upper(),
+            fontsize=20,
+            weight="heavy",
+            pad=25,
+            color="#2f3542",
+            loc="left",
+        )
+
+        # Legend (only if we have untagged items or want summary)
+        # Since we have inline labels, we can make the legend smaller or cleaner
         legend_elements = [
             patches.Patch(
-                facecolor=self.COLORS.get(act, self.COLORS["other"]),
-                label=act,
+                facecolor=self._get_color(act),
+                label=act.replace("_", " ").title(),
                 edgecolor="none",
             )
             for act in sorted(used_activities)
         ]
-        ax.legend(
-            handles=legend_elements,
-            loc="upper center",
-            bbox_to_anchor=(0.5, -0.05),
-            ncol=min(len(used_activities), 5),
-            frameon=False,
-            fontsize=9,
-        )
+
+        if legend_elements:
+            ax.legend(
+                handles=legend_elements,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.08),  # Below chart
+                ncol=min(len(used_activities), 6),
+                frameon=False,
+                fontsize=8,
+            )
 
     def _calculate_weekly_stats(self, schedule_data: dict) -> dict[str, Any]:
         pomodoro_count = 0
+        potato_count = 0
         work_hours = 0.0
 
-        # Activities considered as "work"
-        work_activities = {"pomodoro", "meeting", "summary_time"}
+        work_activities = {"pomodoro", "potato", "deep_work", "meeting"}
 
         for day in self.DAYS_ORDER:
             day_schedule = {}
@@ -205,147 +312,127 @@ class ScheduleVisualizer:
             for _, activity in day_schedule.items():
                 activity_name = self._extract_activity_name(activity)
 
-                if activity_name in self.config.time_blocks:
-                    duration_minutes = self.config.time_blocks[activity_name]
-                    duration_hours = duration_minutes / 60.0
-                else:
-                    duration_hours = 0.1
+                # Use the unified duration logic
+                duration_hours = self._get_activity_duration(activity_name)
 
                 if "pomodoro" in activity_name.lower():
                     pomodoro_count += 1
+                if "potato" in activity_name.lower():
+                    potato_count += 1
 
                 # Check if it's a work activity
                 if (
                     activity_name in work_activities
                     or "pomodoro" in activity_name.lower()
+                    or "potato" in activity_name.lower()
                 ):
                     work_hours += duration_hours
 
-        return {"pomodoro_count": pomodoro_count, "work_hours": work_hours}
+        return {
+            "pomodoro_count": pomodoro_count,
+            "work_hours": work_hours,
+            "potato_count": potato_count,
+        }
 
     def _create_stats_page(self, ax, odd_stats: dict, even_stats: dict):
         ax.axis("off")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
 
+        # Decorative background circle
+        circle = patches.Circle((0.5, 0.5), 0.4, color="#F7F9FA", zorder=0)
+        ax.add_patch(circle)
+
         # Title
         ax.text(
             0.5,
-            0.9,
-            "Weekly Statistics",
+            0.92,
+            "WEEKLY STATISTICS",
             ha="center",
             va="center",
-            fontsize=24,
+            fontsize=22,
             weight="bold",
-            color="#333333",
+            color="#2f3542",
         )
+        ax.plot([0.3, 0.7], [0.89, 0.89], color="#ff6b6b", linewidth=2)  # Underline
 
-        # Odd Week Column
-        ax.text(
-            0.25,
-            0.75,
-            "Odd Week",
-            ha="center",
-            va="center",
-            fontsize=20,
-            weight="bold",
-            color="#E57373",
-        )
+        def draw_stat_column(x_pos, title, stats, color_theme):
+            # Header
+            ax.text(
+                x_pos,
+                0.78,
+                title,
+                ha="center",
+                fontsize=16,
+                weight="bold",
+                color=color_theme,
+            )
 
-        ax.text(
-            0.25,
-            0.6,
-            f"{odd_stats['pomodoro_count']}",
-            ha="center",
-            va="center",
-            fontsize=60,
-            weight="bold",
-            color="#333333",
-        )
-        ax.text(
-            0.25,
-            0.53,
-            "Total Pomodoros",
-            ha="center",
-            va="center",
-            fontsize=14,
-            color="#757575",
-        )
+            # Stat 1: Work Hours
+            ax.text(
+                x_pos,
+                0.65,
+                f"{stats['work_hours']:.1f}h",
+                ha="center",
+                fontsize=45,
+                weight="heavy",
+                color="#2f3542",
+            )
+            ax.text(
+                x_pos,
+                0.58,
+                "Work Time",
+                ha="center",
+                fontsize=12,
+                color="#a4b0be",
+                weight="medium",
+            )
 
-        ax.text(
-            0.25,
-            0.35,
-            f"{odd_stats['work_hours']:.1f}",
-            ha="center",
-            va="center",
-            fontsize=60,
-            weight="bold",
-            color="#333333",
-        )
-        ax.text(
-            0.25,
-            0.28,
-            "Working Hours",
-            ha="center",
-            va="center",
-            fontsize=14,
-            color="#757575",
-        )
+            # Stat 2: Pomodoros
+            ax.text(
+                x_pos,
+                0.45,
+                f"{stats['pomodoro_count']}",
+                ha="center",
+                fontsize=45,
+                weight="heavy",
+                color="#2f3542",
+            )
+            ax.text(
+                x_pos,
+                0.38,
+                "Pomodoros",
+                ha="center",
+                fontsize=12,
+                color="#a4b0be",
+                weight="medium",
+            )
 
-        # Vertical Separator
-        ax.plot([0.5, 0.5], [0.2, 0.8], color="#E0E0E0", linewidth=2)
+            # Stat 3: Potatoes
+            ax.text(
+                x_pos,
+                0.25,
+                f"{stats['potato_count']}",
+                ha="center",
+                fontsize=45,
+                weight="heavy",
+                color="#2f3542",
+            )
+            ax.text(
+                x_pos,
+                0.18,
+                "Potatoes",
+                ha="center",
+                fontsize=12,
+                color="#a4b0be",
+                weight="medium",
+            )
 
-        # Even Week Column
-        ax.text(
-            0.75,
-            0.75,
-            "Even Week",
-            ha="center",
-            va="center",
-            fontsize=20,
-            weight="bold",
-            color="#64B5F6",
-        )
+        draw_stat_column(0.25, "ODD WEEK", odd_stats, "#ff6b6b")
+        draw_stat_column(0.75, "EVEN WEEK", even_stats, "#54a0ff")
 
-        ax.text(
-            0.75,
-            0.6,
-            f"{even_stats['pomodoro_count']}",
-            ha="center",
-            va="center",
-            fontsize=60,
-            weight="bold",
-            color="#333333",
-        )
-        ax.text(
-            0.75,
-            0.53,
-            "Total Pomodoros",
-            ha="center",
-            va="center",
-            fontsize=14,
-            color="#757575",
-        )
-
-        ax.text(
-            0.75,
-            0.35,
-            f"{even_stats['work_hours']:.1f}",
-            ha="center",
-            va="center",
-            fontsize=60,
-            weight="bold",
-            color="#333333",
-        )
-        ax.text(
-            0.75,
-            0.28,
-            "Working Hours",
-            ha="center",
-            va="center",
-            fontsize=14,
-            color="#757575",
-        )
+        # Vertical Divider
+        ax.plot([0.5, 0.5], [0.15, 0.8], color="#dfe4ea", linewidth=1, linestyle="--")
 
     def visualize(self):
         if not MATPLOTLIB_AVAILABLE:
@@ -362,30 +449,32 @@ class ScheduleVisualizer:
             desktop_path = Path.home() / "Desktop"
 
         pdf_filename = desktop_path / "schedule_visualization.pdf"
+
+        # Global font settings for cleaner look
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = ["Arial", "Helvetica", "DejaVu Sans"]
+
         with PdfPages(pdf_filename) as pdf:
-            # Create first page: Odd Week Schedule
-            fig1, ax1 = plt.subplots(figsize=(16, 10))
+            # Page 1: Odd Week
+            fig1, ax1 = plt.subplots(figsize=(14, 9))  # 14x9 is a good landscape aspect
             self._create_chart(ax1, self.odd_schedule, "Odd Week Schedule")
             plt.tight_layout()
             pdf.savefig(fig1, dpi=300, bbox_inches="tight")
             plt.close(fig1)
 
-            # Create second page: Even Week Schedule
-            fig2, ax2 = plt.subplots(figsize=(16, 10))
+            # Page 2: Even Week
+            fig2, ax2 = plt.subplots(figsize=(14, 9))
             self._create_chart(ax2, self.even_schedule, "Even Week Schedule")
             plt.tight_layout()
             pdf.savefig(fig2, dpi=300, bbox_inches="tight")
             plt.close(fig2)
 
-            # Create third page: Statistics
-            fig3 = plt.figure(figsize=(16, 10))
+            # Page 3: Stats
+            fig3 = plt.figure(figsize=(14, 9))
             ax3 = fig3.add_subplot(111)
-
             odd_stats = self._calculate_weekly_stats(self.odd_schedule)
             even_stats = self._calculate_weekly_stats(self.even_schedule)
-
             self._create_stats_page(ax3, odd_stats, even_stats)
-
             plt.tight_layout()
             pdf.savefig(fig3, dpi=300, bbox_inches="tight")
             plt.close(fig3)
