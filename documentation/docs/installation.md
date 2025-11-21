@@ -4,117 +4,144 @@ sidebar_position: 2
 
 # Installation
 
-This guide will help you install Schedule Management on your system. The tool is currently optimized for **macOS and Linux**, with Windows support planned for future releases.
+This guide details how to install and configure Schedule Management on your system.
+
+> **Compatibility Note**: This tool is currently optimized for **macOS** (via `launchd`) and **Linux**. Windows support is on the roadmap.
 
 ## Prerequisites
 
-- Python 3.12 or higher
-- pip (Python package installer)
-- Git (for cloning the repository)
+Before proceeding, ensure you have the following installed:
+
+*   **Python 3.12+**: [Download Python](https://www.python.org/downloads/)
+*   **Git**: [Download Git](https://git-scm.com/downloads)
+*   **Terminal**: Any standard terminal emulator (Terminal.app, iTerm2, etc.)
 
 ## Installation Methods
 
-### Method 1: Using the Installation Script (Recommended)
+We provide an automated installer for convenience, but manual installation is fully supported for users who prefer granular control.
 
-The easiest way to install Schedule Management is using the provided installation script:
+### Method 1: Automated Installer (Recommended)
 
-```bash
-# Clone the repository
-git clone https://github.com/sergiudm/schedule_management.git
-cd schedule_management
+The `install.sh` script handles dependency installation, configuration scaffolding, and service registration in one go.
 
-# Run the installation script
-./install.sh
-```
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/sergiudm/schedule_management.git
+    cd schedule_management
+    ```
 
-The installation script will:
-- Install the Python package and its dependencies
-- Set up the configuration directory
-- Create the launchd service for auto-start (macOS)
-- Configure the CLI tool
+2.  **Run the installer**:
+    ```bash
+    ./install.sh
+    ```
 
-> **Note**: You may need to run `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist` according to the script output. Then run `launchctl list | grep schedule` to check if the service is running.
+    The script will:
+    *   Install the Python package and dependencies.
+    *   Create the `~/schedule_management` directory structure.
+    *   Copy default configuration templates.
+    *   Register the background service (on macOS).
+
+3.  **Finalize Setup**:
+    Follow the on-screen instructions to load the service. Typically, this involves:
+    ```bash
+    launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
+    ```
 
 ### Method 2: Manual Installation
 
-If you prefer to install manually or need more control over the process:
+For advanced users or those integrating into existing environments.
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/sergiudm/schedule_management.git
-   cd schedule_management
-   ```
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/sergiudm/schedule_management.git
+    cd schedule_management
+    ```
 
-2. **Install the Python package**:
-   ```bash
-   pip install -e .
-   ```
+2.  **Install the Package**:
+    We recommend installing in editable mode (`-e`) to easily pull updates.
+    ```bash
+    pip install -e .
+    ```
+    *Tip: Consider using a virtual environment (`venv` or `conda`) to isolate dependencies.*
 
-3. **Set up the configuration directory**:
-   ```bash
-   mkdir -p ~/schedule_management/config
-   cp config/settings_template.toml ~/schedule_management/config/settings.toml
-   cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
-   cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
-   ```
+3.  **Create Configuration Directory**:
+    ```bash
+    mkdir -p ~/schedule_management/config
+    ```
 
-4. **Configure your shell profile**:
-   Add these lines to `~/.zshrc` or `~/.bash_profile`:
-   ```bash
-   export PATH="$HOME/schedule_management:$PATH"
-   export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-   alias reminder="$HOME/schedule_management/reminder"
-   ```
+4.  **Initialize Config Files**:
+    Copy the templates to your config directory:
+    ```bash
+    cp config/settings_template.toml ~/schedule_management/config/settings.toml
+    cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
+    cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
+    ```
 
-5. **Reload your shell**:
-   ```bash
-   source ~/.zshrc  # or source ~/.bash_profile
-   ```
+5.  **Configure Shell Environment**:
+    Add the following to your shell profile (`~/.zshrc`, `~/.bash_profile`, etc.) to access the `reminder` CLI:
 
-### Method 3: Install from PyPI
+    ```bash
+    export PATH="$HOME/schedule_management:$PATH"
+    export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+    alias reminder="$HOME/schedule_management/reminder"
+    ```
 
-You can also install directly from PyPI:
+6.  **Apply Changes**:
+    ```bash
+    source ~/.zshrc  # or your specific profile file
+    ```
+
+### Method 3: PyPI Installation
+
+*Note: This method installs the library code but requires manual configuration setup.*
 
 ```bash
 pip install schedule-management
 ```
+After installation, follow steps 3-6 from the "Manual Installation" section above.
 
-After installation, you'll need to manually set up the configuration files and directories as described in the manual installation steps above.
+## Verifying Installation
 
-## Verification
+Confirm that everything is working correctly.
 
-To verify that Schedule Management is installed correctly:
+1.  **Check CLI**:
+    ```bash
+    reminder --help
+    ```
+    *Expected output: A list of available commands.*
 
-1. **Check the CLI tool**:
-   ```bash
-   reminder --help
-   ```
+2.  **Check Service Status** (macOS):
+    ```bash
+    launchctl list | grep schedule
+    ```
+    *Expected output: A process ID and status code (usually 0).*
 
-2. **Check the service status** (if using auto-start):
-   ```bash
-   launchctl list | grep schedule
-   ```
-
-3. **Test the configuration**:
-   ```bash
-   reminder status
-   ```
+3.  **View Schedule**:
+    ```bash
+    reminder status
+    ```
+    *Expected output: A summary of upcoming events or "No upcoming events".*
 
 ## Uninstallation
 
-To uninstall Schedule Management:
+To completely remove the application:
 
-```bash
-# Stop the service (if running)
-launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
+1.  **Unload the Service**:
+    ```bash
+    launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
+    ```
 
-# Remove the installation directory
-rm -rf "$HOME/schedule_management"
+2.  **Remove Configuration & Data**:
+    ```bash
+    rm -rf "$HOME/schedule_management"
+    ```
 
-# Uninstall the Python package
-pip uninstall schedule-management
-```
+3.  **Remove Python Package**:
+    ```bash
+    pip uninstall schedule-management
+    ```
 
-## Next Steps
+## Troubleshooting
 
-Once installed, you can proceed to the [Quick Start Guide](quick-start.md) to configure your first schedule, or explore the [Configuration Reference](configuration/overview.md) for detailed setup options.
+*   **"Command not found: reminder"**: Ensure you have added the alias and exports to your shell profile and sourced it.
+*   **Service not starting**: Check the logs (standard error/output) or try running `reminder update` to refresh the service definition.

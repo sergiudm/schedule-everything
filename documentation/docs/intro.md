@@ -4,62 +4,61 @@ sidebar_position: 1
 
 # Introduction
 
-**Schedule Management** (晨钟暮鼓) is a powerful, TOML-based scheduling tool that provides persistent reminders and helps you maintain healthy habits, focused work sessions, and regular breaks.
+**Schedule Management** (晨钟暮鼓) is a robust, developer-centric scheduling tool designed to foster healthy habits, deep work sessions, and consistent routines through persistent local reminders.
 
-## What is Schedule Management?
+## Philosophy
 
-This project provides a simple yet powerful way to manage your daily schedule and receive timely, persistent reminders on your **local** machine. Built with Python, it leverages native system notifications and sounds to keep you on track with your routine.
+In an era of complex, cloud-based productivity suites, Schedule Management takes a different approach: **simplicity, privacy, and control**.
 
-> **Note**: This tool is currently optimized for **macOS and Linux**. Windows support is planned for future releases.
+We believe that your schedule should be:
+*   **Owned by you**: Stored locally, not on a remote server.
+*   **Versioned**: Treated like code, with history and diffs.
+*   **Distraction-free**: Running silently in the background, alerting you only when necessary.
+*   **Programmable**: Configured via simple text files, amenable to automation and scripting.
 
-## Key Features
+## Core Capabilities
 
-- **Customizable Schedules**: Define your routine using intuitive TOML configuration files
-- **Dual Alerts**: Each reminder triggers both an **audible sound** and a **modal dialog**
-- **Persistent Notifications**: Alarms repeat until manually dismissed—perfect for staying accountable
-- **Smart Weekly Rotation**: Automatically alternates between **odd-week** and **even-week** schedules using ISO week numbering
-- **Flexible Event Types**:
-  - **Time blocks** (e.g., Pomodoro sessions with start/end alerts)
-  - **Time points** (one-time reminders)
-  - **Common events** (apply to all days)
-- **CLI Tool**: Easy-to-use command-line interface for managing and inspecting your schedule
-- **Task Management**: Built-in task list with importance levels and smart duplicate handling
-- **Auto-start via `launchd`**: Runs silently in the background after system boot
+*   **Declarative Configuration**: Define your entire life's rhythm using intuitive TOML files.
+*   **Dual-Mode Alerts**: Combines audible cues with persistent modal dialogs to ensure you never miss a beat.
+*   **Smart Rotation**: Automatically switches between **odd** and **even** week schedules based on ISO week numbering, perfect for bi-weekly sprints or alternating routines.
+*   **Flexible Event Architecture**:
+    *   **Time Blocks**: Duration-based events (e.g., Pomodoro, meetings) with start and end triggers.
+    *   **Time Points**: Instant, one-off reminders (e.g., "Hydrate", "Bedtime").
+    *   **Common Routines**: Define daily habits once, apply them everywhere.
+*   **CLI Power**: A comprehensive command-line interface for managing tasks, visualizing schedules, and controlling the daemon.
+*   **System Integration**: Runs as a native background service (via `launchd` on macOS), ensuring reliability across reboots.
 
 ## Why TOML?
 
-While many schedule management tools exist, they typically rely on **graphical user interfaces (GUIs)** or **proprietary formats** that make automation, version control, and customization difficult.
+We chose TOML (Tom's Obvious, Minimal Language) over JSON, YAML, or proprietary GUI databases for specific reasons:
 
-By contrast, this tool embraces **declarative configuration via TOML** for several key reasons:
+### 1. Human-Centric Syntax
+TOML is designed to be read and written by humans. It avoids the bracket noise of JSON and the indentation ambiguity of YAML.
 
-### ✅ Human-Readable & Simple
-TOML's clean, minimal syntax is easy to read and write—even for non-programmers. No JSON brackets, no YAML indentation quirks. Just clear key-value pairs and sections.
+### 2. Infrastructure as Code
+Your schedule is configuration. By storing it in text files, you can:
+*   **Version Control**: Use Git to track how your routine evolves.
+*   **Sync**: Share configs across machines using standard tools (rsync, git, Dropbox).
+*   **Diff**: See exactly what changed between your old routine and your new one.
 
-### ✅ Version-Control Friendly
-Your schedule is code. Store it in Git, track changes over time, revert mistakes, or sync across machines with a simple `git pull`.
+### 3. Composable Logic
+Define a `pomodoro` block once in `settings.toml`, and reference it hundreds of times. Changing your focus duration from 25 to 50 minutes requires editing a single line, instantly propagating to your entire calendar.
 
-### ✅ Portable & Reproducible
-Want to share your ideal developer routine with a teammate? Just send your TOML files. They can replicate your entire schedule in seconds—no clicking through menus.
-
-### ✅ Composable & Reusable
-Define a `pomodoro = 25` once in `settings.toml`, then reuse it across days and weeks. Need to adjust all work blocks from 25 to 30 minutes? Change one line—not dozens of calendar entries.
-
-### ✅ No Vendor Lock-in
-Your data stays yours—no accounts, no subscriptions, no cloud dependency. Edit in any text editor, back up anywhere.
-
-### 🤖 AI-Powered Flexibility
-With the help of modern **Large Language Models (LLMs)**, you can instantly convert almost any representation of your daily schedule into a valid TOML config—whether it's a **Google Calendar export**, a **screenshot of your team's shared timetable**, a **PDF agenda**, or even a **handwritten note**.
+### 4. AI-Ready
+Text-based configuration is the native language of LLMs. You can paste a messy email, a screenshot, or a stream-of-consciousness thought into an AI model and ask it to "generate the TOML config for this."
 
 ## How It Works
 
-The core script continuously monitors the system time and compares it against your configured schedule. When a scheduled event matches the current time, it triggers a notification.
+At its heart, Schedule Management is a lightweight daemon that monitors system time against your defined rules.
 
-The system supports:
-- **Time blocks**: Activities with defined durations (e.g., 25-minute Pomodoro → start + end alerts)
-- **Time points**: Instant reminders (e.g., "Go to bed!" at 22:45)
-- **Weekly alternation**: Uses ISO calendar weeks to switch between `odd_weeks.toml` and `even_weeks.toml`
-- **Common section**: Events that repeat every day (e.g., nightly wind-down routine)
+1.  **Load**: Reads `settings.toml` and the appropriate weekly schedule (`odd_weeks.toml` or `even_weeks.toml`).
+2.  **Monitor**: Checks for event triggers every minute.
+3.  **Alert**: When a time matches, it executes the configured alert strategy (sound + dialog).
+4.  **Persist**: Alarms continue until explicitly acknowledged, preventing accidental dismissal.
 
-## Next Steps
+## Getting Started
 
-Ready to get started? Check out our [Installation Guide](installation.md) to set up Schedule Management on your system, or jump straight to the [Quick Start](quick-start.md) guide to configure your first schedule.
+Ready to take control of your time?
+
+*   **[Installation Guide](installation.md)**: Set up the environment and background service.
+*   **[Quick Start](quick-start.md)**: Create your first schedule in minutes.

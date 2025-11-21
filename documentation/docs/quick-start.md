@@ -5,150 +5,109 @@ sidebar_position: 3
 
 # Quick Start
 
-This guide will help you get Schedule Management up and running quickly with a basic configuration.
+This guide will walk you through creating your first schedule and running the reminder service.
 
-## Step 1: Initialize Configuration Files
+## 1. Initialize Configuration
 
-After installation, you need to set up your configuration files:
+If you haven't already, create your configuration files from the provided templates.
 
 ```bash
-# Copy the template files
-cp config/settings_template.toml config/settings.toml
-cp config/week_schedule_template.toml config/odd_weeks.toml
-cp config/week_schedule_template.toml config/even_weeks.toml
+# Create the config directory if it doesn't exist
+mkdir -p ~/schedule_management/config
+
+# Copy templates
+cp config/settings_template.toml ~/schedule_management/config/settings.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
 ```
 
-## Step 2: Configure Basic Settings
+## 2. Define Your Building Blocks (`settings.toml`)
 
-Edit `config/settings.toml` to set up your basic configuration:
+Open `~/schedule_management/config/settings.toml`. This file defines the *vocabulary* of your schedule—the reusable blocks and settings.
 
 ```toml
 [settings]
-sound_file = "/System/Library/Sounds/Ping.aiff"  # Path to your preferred sound file
-alarm_interval = 5        # seconds between repeated alerts
-max_alarm_duration = 300  # max alert duration (5 minutes)
+sound_file = "/System/Library/Sounds/Ping.aiff"
+alarm_interval = 5        # Repeat alert every 5 seconds
+max_alarm_duration = 300  # Stop after 5 minutes
 
+# Define reusable time blocks (duration in minutes)
 [time_blocks]
-pomodoro = 25      # 25-minute work sessions
-long_break = 40    # 40-minute breaks
-meeting = 50       # 50-minute meetings
-exercise = 30      # 30-minute exercise sessions
-lunch = 60         # 1-hour lunch break
-napping = 30       # 30-minute naps
+pomodoro = 25
+short_break = 5
+long_break = 15
+meeting = 60
+lunch = 60
 
+# Define reusable messages
 [time_points]
-go_to_bed = "Time to wind down and get ready for bed 😴"
-summary_time = "Great work today! Time to summarize your accomplishments 🎉"
+bedtime = "Wind down and disconnect 😴"
+standup = "Daily Standup Meeting 🗣️"
 ```
 
-## Step 3: Create Your Weekly Schedule
+## 3. Build Your Schedule (`odd_weeks.toml`)
 
-Edit `config/odd_weeks.toml` (and optionally `config/even_weeks.toml` for alternating schedules):
+Open `~/schedule_management/config/odd_weeks.toml`. This is where you map time to action.
+
+The file is organized by day of the week (`[monday]`, `[tuesday]`, etc.) and a `[common]` section for daily habits.
 
 ```toml
-[monday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-"10:30" = "pomodoro"
-"11:30" = "long_break"
-"13:00" = { block = "meeting", title = "Team Standup" }
-"14:00" = "pomodoro"
-
-[tuesday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-"10:30" = "pomodoro"
-
-[wednesday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-
-[thursday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-
-[friday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-"15:00" = { block = "meeting", title = "Weekly Review" }
-
-[common]  # Applies to all days
+# Events that happen every day
+[common]
 "12:00" = "lunch"
-"19:30" = "pomodoro"
-"21:00" = "summary_time"
-"22:45" = "go_to_bed"
+"23:00" = "bedtime"
+
+# Specific schedule for Monday
+[monday]
+"09:00" = "pomodoro"       # Starts at 09:00, ends at 09:25
+"09:25" = "short_break"    # Starts at 09:25, ends at 09:30
+"09:30" = "pomodoro"
+"10:00" = { block = "meeting", title = "Weekly Planning" }
+
+# ... add other days as needed
 ```
 
-## Step 4: Test Your Configuration
+> **Tip**: The system automatically switches between `odd_weeks.toml` and `even_weeks.toml` based on the ISO week number. For a simple weekly schedule, just make them identical or symlink them.
 
-Before starting the service, test your configuration:
+## 4. Verify and Launch
 
-```bash
-# Check the next upcoming events
-reminder status
+Before letting it run in the background, verify your setup.
 
-# View your full schedule with details
-reminder status -v
+1.  **Check for Syntax Errors**:
+    ```bash
+    reminder status
+    ```
+    *If your config is valid, this will show the next upcoming event.*
 
-# Generate a visual representation of your schedule
-reminder view
-```
+2.  **Visualize the Day**:
+    ```bash
+    reminder view
+    ```
+    *This prints a timeline of your schedule to the terminal.*
 
-## Step 5: Start the Service
+3.  **Start/Restart the Service**:
+    Apply your changes and restart the background daemon.
+    ```bash
+    reminder update
+    ```
 
-Once you're satisfied with your configuration, start the service:
+## 5. Managing Tasks (Optional)
 
-```bash
-# Update and restart the service
-reminder update
-
-# Check if the service is running
-launchctl list | grep schedule
-```
-
-## Step 6: Add Tasks (Optional)
-
-You can also manage tasks with importance levels:
+Schedule Management also includes a lightweight CLI task manager.
 
 ```bash
-# Add tasks with importance levels (higher number = more important)
-reminder add "Complete project proposal" 8
-reminder add "Review code changes" 5
-reminder add "Buy groceries" 3
+# Add tasks with an importance score (1-10)
+reminder add "Fix critical bug" 10
+reminder add "Email the team" 5
 
-# View all tasks sorted by importance
+# List tasks (sorted by importance)
 reminder ls
 
-# Delete a task
-reminder rm "Buy groceries"
+# Remove a task
+reminder rm "Email the team"
 ```
 
-## Understanding Event Types
+## Next Steps
 
-### Time Blocks
-Time blocks have durations and trigger both start and end notifications:
-```toml
-"09:00" = "pomodoro"  # Triggers at 09:00 and 09:25 (25 minutes later)
-```
-
-### Time Points
-Time points are one-time reminders:
-```toml
-"22:45" = "go_to_bed"  # Triggers once at 22:45
-```
-
-### Direct Messages
-You can also write custom messages directly:
-```toml
-"15:00" = "Time for your daily standup meeting!"
-```
-
-### Blocks with Custom Titles
-Add custom titles to time blocks:
-```toml
-"14:00" = { block = "meeting", title = "Client Presentation" }
-```
-
-## Important Notes
-
-- **Avoid overlapping time blocks**: A 25-minute Pomodoro starting at 09:00 ends at 09:25.
+*   **[Configuration Reference](configuration/overview.md)**: Deep dive into all available settings.
+*   **[Advanced Usage](advanced/weekly-rotation.md)**: Learn about complex rotation patterns.
