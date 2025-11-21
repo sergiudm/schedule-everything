@@ -43,6 +43,7 @@ from schedule_management.reminder_macos import (
 )
 
 from schedule_management.utils import get_week_parity, parse_time
+from schedule_management.report import ReportGenerator
 
 
 # --- VISUALIZER CLASS ---
@@ -683,7 +684,7 @@ def load_habits() -> dict[str, str]:
     if not habits_path.exists():
         print("No habits file found.")
         return {}
-    
+
     try:
         with open(habits_path, "rb") as f:
             data = tomllib.load(f)
@@ -692,7 +693,7 @@ def load_habits() -> dict[str, str]:
                 habits_data = data["habits"]
             else:
                 habits_data = data
-            
+
             # Convert to string keys for consistency
             habits = {}
             for key, value in habits_data.items():
@@ -926,9 +927,7 @@ def delete_deadline(args):
     for event_identifier in event_identifiers:
         event_name = event_identifier
         original_count = len(deadlines)
-        deleted_deadlines = [
-            ddl for ddl in deadlines if ddl["event"] == event_name
-        ]
+        deleted_deadlines = [ddl for ddl in deadlines if ddl["event"] == event_name]
         deadlines = [ddl for ddl in deadlines if ddl["event"] != event_name]
 
         if len(deadlines) == original_count:
@@ -973,55 +972,53 @@ def delete_deadline(args):
 def track_habits(args):
     """Handle the 'track' command - record which habits were completed today."""
     habit_ids = args.habit_ids
-    
+
     # Load habits configuration
     habits = load_habits()
-    
+
     if not habits:
         print("❌ Error: No habits configured. Please create config/habits.toml")
         return 1
-    
+
     # Validate habit IDs
     invalid_ids = []
     valid_habits = []
-    
+
     for habit_id in habit_ids:
         habit_id_str = str(habit_id)
         if habit_id_str in habits:
             valid_habits.append(habit_id_str)
         else:
             invalid_ids.append(habit_id)
-    
+
     if invalid_ids:
         print(f"⚠️  Warning: Invalid habit IDs: {', '.join(map(str, invalid_ids))}")
         print(f"Available habits: {', '.join(sorted(habits.keys()))}")
         if not valid_habits:
             return 1
-    
+
     # Get today's date
     today = date.today().isoformat()
-    
+
     # Load existing records
     records = load_habit_records()
-    
+
     # Check if there's already a record for today
     existing_record_index = None
     for i, record in enumerate(records):
         if record.get("date") == today:
             existing_record_index = i
             break
-    
+
     # Create record for today
-    completed_habits = {
-        habit_id: habits[habit_id] for habit_id in valid_habits
-    }
-    
+    completed_habits = {habit_id: habits[habit_id] for habit_id in valid_habits}
+
     new_record = {
         "date": today,
         "completed": completed_habits,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    
+
     # Update or add record
     if existing_record_index is not None:
         old_completed = records[existing_record_index].get("completed", {})
@@ -1031,11 +1028,11 @@ def track_habits(args):
     else:
         records.append(new_record)
         print(f"✅ Recorded habit tracking for {today}")
-    
+
     print(f"Completed habits today: {len(completed_habits)}")
     for habit_id in sorted(valid_habits):
         print(f"  [{habit_id}] {habits[habit_id]}")
-    
+
     # Save records
     try:
         save_habit_records(records)
@@ -1605,6 +1602,49 @@ def status_command(args):
         return 1
 
 
+def report_command(args):
+    """Handle the 'report' command - generate weekly or monthly reports."""
+    report_type = args.type
+
+    print(f"📊 Generating {report_type} report...")
+
+    try:
+        # Load configuration
+        settings_path = get_settings_path()
+        config = ScheduleConfig(settings_path)
+
+        # Get reports path from config or default
+        reports_path = config.paths.get("reports_path", "~/Desktop/reports")
+
+        # Initialize generator
+        generator = ReportGenerator(reports_path)
+
+        # Load data
+        task_log = load_task_log()
+        habit_records = load_habit_records()
+        habits_config = load_habits()
+
+        if report_type == "weekly":
+            generator.generate_weekly_report(task_log, habit_records, habits_config)
+        elif report_type == "monthly":
+            generator.generate_monthly_report(task_log, habit_records, habits_config)
+
+        # Open folder on macOS
+        if sys.platform == "darwin":
+            try:
+                subprocess.run(
+                    ["open", str(Path(os.path.expanduser(reports_path)))], check=False
+                )
+            except Exception:
+                pass
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error generating report: {e}")
+        return 1
+
+
 def main():
     """Main entry point for the CLI tool."""
     # Get config directory path for display
@@ -1715,6 +1755,15 @@ def main():
         "-v", "--verbose", action="store_true", help="Show detailed schedule"
     )
     status_parser.set_defaults(func=status_command)
+
+    # Report command
+    report_parser = subparsers.add_parser(
+        "report", help="Generate weekly or monthly PDF reports"
+    )
+    report_parser.add_argument(
+        "type", choices=["weekly", "monthly"], help="Type of report to generate"
+    )
+    report_parser.set_defaults(func=report_command)
 
     args = parser.parse_args()
 

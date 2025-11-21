@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from schedule_management.report import auto_generate_reports
 from schedule_management.utils import (
     add_minutes_to_time,
     alarm,
@@ -185,6 +186,19 @@ def show_daily_summary_popup():
     show_dialog(summary_message)
 
 
+def try_auto_generate_reports(settings_path: str):
+    """Generate scheduled reports once using settings.toml."""
+    try:
+        generated = auto_generate_reports(settings_path)
+        if generated:
+            for span, pdf_path in generated.items():
+                print(f"📊 Generated {span} report at {pdf_path}")
+    except FileNotFoundError:
+        print(f"⚠️  settings.toml not found for auto reports: {settings_path}")
+    except Exception as exc:
+        print(f"⚠️  Auto report generation skipped: {exc}")
+
+
 class ScheduleRunner:
     def __init__(self, config: ScheduleConfig, weekly_schedule: WeeklySchedule):
         self.config = config
@@ -282,21 +296,13 @@ class ScheduleRunner:
 
 
 def main():
-    try:
-        # Try to get config from settings.toml first
-        config = ScheduleConfig("config/settings.toml")
-        config_dir = config.config_dir
-        print(f"Using config directory from settings.toml: {config_dir}")
-    except Exception:
-        # Fallback to environment variable or default
-        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-        print(f"Using config directory: {config_dir}")
-
+    config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"
 
     config = ScheduleConfig(settings_path)
+    # try_auto_generate_reports(settings_path)
     weekly = WeeklySchedule(odd_path, even_path)
     runner = ScheduleRunner(config, weekly)
     runner.run()
