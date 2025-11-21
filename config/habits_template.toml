@@ -1,0 +1,11 @@
+# Habit Tracking Configuration Template
+# Define your daily habits here. Each habit has an ID and description.
+# Use `reminder track <id1> <id2> ...` to mark which habits you completed today.
+
+[habits]
+# Format: habit_id = "Description"
+1 = "Go to sleep on time"
+2 = "Exercise for 30 minutes"
+3 = "Drink 1.5L water"
+4 = "Read for 20 minutes"
+5 = "Meditate"

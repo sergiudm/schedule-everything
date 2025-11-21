@@ -17,3 +17,4 @@ config/even_weeks.toml
 config/odd_weeks.toml
 config/settings.toml
 config/tasks.json
+config/habits.toml

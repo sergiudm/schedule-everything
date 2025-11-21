@@ -207,7 +207,13 @@ source ~/.zshrc  # or source ~/.bash_profile
 | Command                          | Description                                                 |
 | -------------------------------- | ----------------------------------------------------------- |
 | `reminder ddl add "event" "M.D"` | Add a deadline event (e.g., "homework2" "7.4" for July 4th) |
+| `reminder ddl rm "event"`        | Delete one or more deadline events                          |
 | `reminder ddl`                   | Show all deadlines with days remaining and urgency status   |
+
+##### Habit Tracking
+| Command                          | Description                                                     |
+| -------------------------------- | --------------------------------------------------------------- |
+| `reminder track <id1> <id2> ...` | Mark habits as completed for today (e.g., `reminder track 1 2`) |
 
 **Task Management Examples:**
 ```bash
@@ -260,6 +266,32 @@ reminder ddl
 > - **Persistent Storage**: Deadlines stored in `config/ddl.json`
 > - **Overdue Detection**: Clearly marks deadlines that have passed
 
+**Habit Tracking Examples:**
+```bash
+# First, define your habits in config/habits.toml:
+# [habits]
+# "go to sleep on time" = 1
+# "exercise" = 2
+# "drink 1.5L water" = 3
+
+# Track completed habits (e.g., completed habits 1 and 2 today)
+reminder track 1 2
+
+# Track all habits
+reminder track 1 2 3
+
+# Track single habit
+reminder track 2
+```
+
+> [!TIP]  
+> **Habit Tracking Features:**
+> - **Simple Recording**: Just list the habit IDs you completed today
+> - **Daily Records**: Each day's completion is stored with a timestamp
+> - **Flexible Configuration**: Define any habits you want in `config/habits.toml`
+> - **Persistent Storage**: Records stored in location specified by `record_path` in settings
+> - **Update Support**: Running track again on the same day updates the record
+
 ---
 
 ## 🗺️ Roadmap
@@ -272,13 +304,13 @@ reminder ddl
 - [x] CLI tool
 - [x] Task management system with importance levels
 - [x] Deadline management system
+- [x] Habit tracking system
 - [x] Prompts for LLMs to create TOML configs
 - [x] Daily summary before bedtime
 - [x] Today's tasks overview
-- [x] Deadline management system
-- [ ] Self monitoring system
-- [ ] Language support
+- [x] Self rewarding system
 - [ ] History analysis and weekly reports
+- [ ] Language support
 - [ ] Website for schedule sharing
 - [ ] Better alarm UI
 - [ ] **Windows support**

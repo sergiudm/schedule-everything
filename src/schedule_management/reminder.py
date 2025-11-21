@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import time
+import tomllib
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -561,6 +562,29 @@ def get_ddl_path() -> Path:
     return Path(config_dir) / "ddl.json"
 
 
+def get_habits_path() -> Path:
+    """Get habits TOML path from config directory."""
+    config_dir = get_config_dir()
+    return Path(config_dir) / "habits.toml"
+
+
+def get_record_path() -> Path:
+    """Get habit tracking record JSON path from settings.toml."""
+    try:
+        config = ScheduleConfig(get_settings_path())
+        raw_path_str = os.path.expandvars(config.record_path)
+        target_path = Path(raw_path_str).expanduser()
+        if target_path.is_absolute():
+            return target_path
+        # If relative, make it relative to config directory
+        return Path(config.config_dir) / target_path
+    except Exception as e:
+        print(f"Error getting record path: {e}")
+        default_path = Path.home() / ".schedule_management" / "task" / "record.json"
+        env_path = os.getenv("REMINDER_RECORD_PATH")
+        return Path(env_path) if env_path else default_path
+
+
 def get_config_paths() -> dict[str, Path]:
     """Get the paths to configuration files."""
     config_dir = get_config_dir()
@@ -651,6 +675,60 @@ def save_deadlines(deadlines: list[dict[str, Any]]) -> None:
 
     with open(ddl_path, "w", encoding="utf-8") as f:
         json.dump(deadlines, f, indent=2, ensure_ascii=False)
+
+
+def load_habits() -> dict[str, str]:
+    """Load habits from the TOML file."""
+    habits_path = get_habits_path()
+    if not habits_path.exists():
+        print("No habits file found.")
+        return {}
+    
+    try:
+        with open(habits_path, "rb") as f:
+            data = tomllib.load(f)
+            # Check if data has a 'habits' section (nested structure)
+            if "habits" in data:
+                habits_data = data["habits"]
+            else:
+                habits_data = data
+            
+            # Convert to string keys for consistency
+            habits = {}
+            for key, value in habits_data.items():
+                # Support both formats: "habit name" = 1 or 1 = "habit name"
+                if isinstance(value, int):
+                    habits[str(value)] = key
+                else:
+                    habits[str(key)] = str(value)
+            return habits
+    except Exception as e:
+        print(f"Error loading habits file: {e}")
+        return {}
+
+
+def load_habit_records() -> list[dict[str, Any]]:
+    """Load habit tracking records from the JSON file."""
+    record_path = get_record_path()
+    if not record_path.exists():
+        return []
+
+    try:
+        with open(record_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+def save_habit_records(records: list[dict[str, Any]]) -> None:
+    """Save habit tracking records to the JSON file."""
+    record_path = get_record_path()
+
+    # Ensure destination directory exists
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(record_path, "w", encoding="utf-8") as f:
+        json.dump(records, f, indent=2, ensure_ascii=False)
 
 
 def log_task_action(
@@ -889,6 +967,81 @@ def delete_deadline(args):
             print(f"❌ Error saving deadlines: {e}")
             return 1
     else:
+        return 1
+
+
+def track_habits(args):
+    """Handle the 'track' command - record which habits were completed today."""
+    habit_ids = args.habit_ids
+    
+    # Load habits configuration
+    habits = load_habits()
+    
+    if not habits:
+        print("❌ Error: No habits configured. Please create config/habits.toml")
+        return 1
+    
+    # Validate habit IDs
+    invalid_ids = []
+    valid_habits = []
+    
+    for habit_id in habit_ids:
+        habit_id_str = str(habit_id)
+        if habit_id_str in habits:
+            valid_habits.append(habit_id_str)
+        else:
+            invalid_ids.append(habit_id)
+    
+    if invalid_ids:
+        print(f"⚠️  Warning: Invalid habit IDs: {', '.join(map(str, invalid_ids))}")
+        print(f"Available habits: {', '.join(sorted(habits.keys()))}")
+        if not valid_habits:
+            return 1
+    
+    # Get today's date
+    today = date.today().isoformat()
+    
+    # Load existing records
+    records = load_habit_records()
+    
+    # Check if there's already a record for today
+    existing_record_index = None
+    for i, record in enumerate(records):
+        if record.get("date") == today:
+            existing_record_index = i
+            break
+    
+    # Create record for today
+    completed_habits = {
+        habit_id: habits[habit_id] for habit_id in valid_habits
+    }
+    
+    new_record = {
+        "date": today,
+        "completed": completed_habits,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update or add record
+    if existing_record_index is not None:
+        old_completed = records[existing_record_index].get("completed", {})
+        records[existing_record_index] = new_record
+        print(f"✅ Updated habit record for {today}")
+        print(f"Previously completed: {len(old_completed)} habits")
+    else:
+        records.append(new_record)
+        print(f"✅ Recorded habit tracking for {today}")
+    
+    print(f"Completed habits today: {len(completed_habits)}")
+    for habit_id in sorted(valid_habits):
+        print(f"  [{habit_id}] {habits[habit_id]}")
+    
+    # Save records
+    try:
+        save_habit_records(records)
+        return 0
+    except Exception as e:
+        print(f"❌ Error saving habit records: {e}")
         return 1
 
 
@@ -1532,6 +1685,17 @@ def main():
 
     # When 'ddl' is called without subcommand, show deadlines
     ddl_parser.set_defaults(func=show_deadlines)
+
+    # Track command
+    track_parser = subparsers.add_parser(
+        "track", help="Track completed habits for today"
+    )
+    track_parser.add_argument(
+        "habit_ids",
+        nargs="+",
+        help="One or more habit IDs to mark as completed (e.g., '1 2 3')",
+    )
+    track_parser.set_defaults(func=track_habits)
 
     update_parser = subparsers.add_parser(
         "update", help="Update configuration and restart service"

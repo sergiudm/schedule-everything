@@ -63,6 +63,10 @@ class ScheduleConfig:
             return Path(log_path).expanduser()
         return log_path
 
+    @property
+    def record_path(self) -> str:
+        return self.paths.get("record_path", "task/record.json")
+
 
 class WeeklySchedule:
     def __init__(self, odd_path: str, even_path: str):
