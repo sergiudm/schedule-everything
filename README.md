@@ -104,12 +104,12 @@ Define your weekly rhythm using day-specific sections and a `[common]` fallback.
 
 ##### Supported Entry Types:
 
-| Type | Example | Description |
-|------|--------|-------------|
-| **Time Block Reference** | `"09:00" = "pomodoro"` | Triggers start + end alerts (25 min) |
-| **Time Point Reference** | `"22:45" = "go_to_bed"` | One-time reminder |
-| **Direct Message** | `"12:00" = "Lunch time! 🍽️"` | Immediate alert with custom text |
-| **Block with Title** | `"14:00" = { block = "meeting", title = "Team Standup" }` | Custom title for time block |
+| Type                     | Example                                                   | Description                          |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------ |
+| **Time Block Reference** | `"09:00" = "pomodoro"`                                    | Triggers start + end alerts (25 min) |
+| **Time Point Reference** | `"22:45" = "go_to_bed"`                                   | One-time reminder                    |
+| **Direct Message**       | `"12:00" = "Lunch time! 🍽️"`                               | Immediate alert with custom text     |
+| **Block with Title**     | `"14:00" = { block = "meeting", title = "Team Standup" }` | Custom title for time block          |
 
 ##### Example Schedule:
 
@@ -187,21 +187,27 @@ source ~/.zshrc  # or source ~/.bash_profile
 #### Commands
 
 ##### Schedule Management
-| Command | Description |
-|--------|-------------|
-| `reminder update` | Reload config and restart the background service |
-| `reminder view` | Generate schedule visualization |
-| `reminder status` | Show next upcoming events |
-| `reminder status -v` | Show full schedule with details |
-| `reminder stop` | Stop the alarm service |
+| Command              | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `reminder update`    | Reload config and restart the background service |
+| `reminder view`      | Generate schedule visualization                  |
+| `reminder status`    | Show next upcoming events                        |
+| `reminder status -v` | Show full schedule with details                  |
+| `reminder stop`      | Stop the alarm service                           |
 
 ##### Task Management
-| Command | Description |
-|--------|-------------|
+| Command                                      | Description                                                 |
+| -------------------------------------------- | ----------------------------------------------------------- |
 | `reminder add "task description" importance` | Add a new task or update existing one with importance level |
-| `reminder rm "task description"` | Delete a task by its description |
-| `reminder rm task_id list` | Delete a task by its ID number from 'reminder ls' |
-| `reminder ls` | Show all tasks sorted by importance (highest first) |
+| `reminder rm "task description"`             | Delete a task by its description                            |
+| `reminder rm task_id list`                   | Delete a task by its ID number from 'reminder ls'           |
+| `reminder ls`                                | Show all tasks sorted by importance (highest first)         |
+
+##### Deadline Management
+| Command                          | Description                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| `reminder ddl add "event" "M.D"` | Add a deadline event (e.g., "homework2" "7.4" for July 4th) |
+| `reminder ddl`                   | Show all deadlines with days remaining and urgency status   |
 
 **Task Management Examples:**
 ```bash
@@ -228,6 +234,28 @@ reminder rm 2 4 5  # Remove task by its ID number from 'reminder ls'
 > - **Persistent**: Tasks are stored in `config/tasks.json` and persist across CLI sessions
 > - **Timestamps**: Each task includes creation/update time for reference
 
+**Deadline Management Examples:**
+```bash
+# Add deadlines (M.D or MM.DD format)
+reminder ddl add "homework2" "7.4"      # July 4th
+reminder ddl add "project" "12.25"      # December 25th
+reminder ddl add "exam" "3.15"          # March 15th
+
+# Update existing deadline
+reminder ddl add "homework2" "7.10"     # Changes deadline to July 10th
+
+# View all deadlines with status
+reminder ddl
+```
+
+> [!TIP]  
+> **Deadline Management Features:**
+> - **Smart Date Handling**: Automatically determines year (current or next) based on whether date has passed
+> - **Visual Urgency Indicators**: Color-coded status (🔴 URGENT ≤3 days, 🟡 SOON 4-7 days, 🟢 OK >7 days)
+> - **Days Remaining**: Shows exact countdown to each deadline
+> - **Persistent Storage**: Deadlines stored in `config/ddl.json`
+> - **Overdue Detection**: Clearly marks deadlines that have passed
+
 ---
 
 ## 🗺️ Roadmap
@@ -239,6 +267,7 @@ reminder rm 2 4 5  # Remove task by its ID number from 'reminder ls'
 - [x] Skip-day logic 
 - [x] CLI tool
 - [x] Task management system with importance levels
+- [x] Deadline management system
 - [x] Prompts for LLMs to create TOML configs
 - [x] Daily summary before bedtime
 - [x] Today's tasks overview

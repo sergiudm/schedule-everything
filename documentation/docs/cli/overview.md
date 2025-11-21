@@ -38,6 +38,11 @@ Commands for managing your task list:
 - [`reminder rm`](task-management.md#remove) - Remove tasks
 - [`reminder ls`](task-management.md#list) - List all tasks
 
+### Deadline Management
+Commands for managing event deadlines:
+- [`reminder ddl add`](deadline-management.md#add) - Add or update deadlines
+- [`reminder ddl`](deadline-management.md#list) - List all deadlines with urgency status
+
 ### System Commands
 - [`reminder --help`](overview.md#help) - Show help information
 - [`reminder --version`](overview.md#version) - Show version information
@@ -46,11 +51,11 @@ Commands for managing your task list:
 
 Most commands support these global options:
 
-| Option | Description |
-|--------|-------------|
-| `-h, --help` | Show help message for the command |
-| `-v, --verbose` | Enable verbose output |
-| `-q, --quiet` | Suppress non-error output |
+| Option              | Description                            |
+| ------------------- | -------------------------------------- |
+| `-h, --help`        | Show help message for the command      |
+| `-v, --verbose`     | Enable verbose output                  |
+| `-q, --quiet`       | Suppress non-error output              |
 | `--config-dir PATH` | Specify custom configuration directory |
 
 ## Configuration Directory

@@ -555,6 +555,12 @@ def get_log_path() -> str:
         return Path(env_path) if env_path else default_path
 
 
+def get_ddl_path() -> Path:
+    """Get deadline JSON path from config directory."""
+    config_dir = get_config_dir()
+    return Path(config_dir) / "ddl.json"
+
+
 def get_config_paths() -> dict[str, Path]:
     """Get the paths to configuration files."""
     config_dir = get_config_dir()
@@ -621,6 +627,32 @@ def save_task_log(log_entries: list[dict[str, Any]]) -> None:
         json.dump(log_entries, f, indent=2, ensure_ascii=False)
 
 
+def load_deadlines() -> list[dict[str, Any]]:
+    """Load deadlines from the JSON file."""
+    ddl_path = get_ddl_path()
+    if not ddl_path.exists():
+        print("No deadlines file found, starting with an empty deadline list.")
+        return []
+
+    try:
+        with open(ddl_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        print("Error loading deadlines file, starting with an empty deadline list.")
+        return []
+
+
+def save_deadlines(deadlines: list[dict[str, Any]]) -> None:
+    """Save deadlines to the JSON file."""
+    ddl_path = get_ddl_path()
+
+    # Ensure destination directory exists
+    ddl_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(ddl_path, "w", encoding="utf-8") as f:
+        json.dump(deadlines, f, indent=2, ensure_ascii=False)
+
+
 def log_task_action(
     action: str, task: dict[str, Any], metadata: dict[str, Any] | None = None
 ) -> None:
@@ -641,6 +673,161 @@ def log_task_action(
     log_entries = load_task_log()
     log_entries.append(log_entry)
     save_task_log(log_entries)
+
+
+def add_deadline(args):
+    """Handle the 'ddl add' command - add a new deadline event."""
+    event_name = args.event
+    date_str = args.date
+
+    # Parse the date - support both "M.D" and "MM.DD" formats
+    try:
+        # Split by dot
+        parts = date_str.split(".")
+        if len(parts) != 2:
+            print("❌ Error: Date must be in format M.D or MM.DD (e.g., 7.4 or 07.04)")
+            return 1
+
+        month = int(parts[0])
+        day = int(parts[1])
+
+        # Validate month and day
+        if not (1 <= month <= 12):
+            print("❌ Error: Month must be between 1 and 12")
+            return 1
+        if not (1 <= day <= 31):
+            print("❌ Error: Day must be between 1 and 31")
+            return 1
+
+        # Determine the year (current year or next year if the date has passed)
+        current_date = datetime.now()
+        current_year = current_date.year
+        deadline_date = datetime(current_year, month, day)
+
+        # If the deadline has already passed this year, use next year
+        if deadline_date.date() < current_date.date():
+            deadline_date = datetime(current_year + 1, month, day)
+
+        # Format as ISO date string
+        deadline_str = deadline_date.strftime("%Y-%m-%d")
+
+    except ValueError as e:
+        print(f"❌ Error: Invalid date format - {e}")
+        return 1
+
+    # Load existing deadlines
+    deadlines = load_deadlines()
+
+    # Check if event already exists
+    existing_index = None
+    for i, ddl in enumerate(deadlines):
+        if ddl["event"] == event_name:
+            existing_index = i
+            break
+
+    # Create new deadline entry
+    new_deadline = {
+        "event": event_name,
+        "deadline": deadline_str,
+        "added": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Replace existing or add new
+    if existing_index is not None:
+        old_date = deadlines[existing_index]["deadline"]
+        deadlines[existing_index] = new_deadline
+        action_msg = (
+            f"✅ Deadline for '{event_name}' updated from {old_date} to {deadline_str}"
+        )
+    else:
+        deadlines.append(new_deadline)
+        action_msg = (
+            f"✅ Deadline '{event_name}' added successfully for {deadline_str}!"
+        )
+
+    # Save deadlines
+    try:
+        save_deadlines(deadlines)
+        print(action_msg)
+        return 0
+    except Exception as e:
+        print(f"❌ Error saving deadline: {e}")
+        return 1
+
+
+def show_deadlines(args):
+    """Handle the 'ddl' command - show all deadlines using Rich."""
+    # Load existing deadlines
+    deadlines = load_deadlines()
+
+    console = Console()
+
+    if not deadlines:
+        console.print("[bold yellow]📅 No deadlines found[/bold yellow]")
+        return 0
+
+    # Sort deadlines by date (earliest first)
+    sorted_deadlines = sorted(deadlines, key=lambda x: x["deadline"])
+
+    # Create the table
+    table = Table(
+        title="[bold]Upcoming Deadlines[/bold]",
+        box=box.ROUNDED,
+        header_style="bold cyan",
+        expand=True,
+    )
+
+    table.add_column("Event", justify="left", style="bold")
+    table.add_column("Deadline", justify="left", width=15)
+    table.add_column("Days Left", justify="right", width=12)
+    table.add_column("Status", justify="center", width=10)
+
+    current_date = datetime.now().date()
+
+    for ddl in sorted_deadlines:
+        event_name = ddl["event"]
+        deadline_str = ddl["deadline"]
+
+        # Parse deadline date
+        deadline_date = datetime.strptime(deadline_str, "%Y-%m-%d").date()
+
+        # Calculate days left
+        days_left = (deadline_date - current_date).days
+
+        # Determine color and status based on days left
+        if days_left < 0:
+            color = "red"
+            status = "⚠️ OVERDUE"
+            days_text = f"[{color}]{days_left} days[/{color}]"
+        elif days_left == 0:
+            color = "red"
+            status = "🔴 TODAY"
+            days_text = f"[{color}]TODAY[/{color}]"
+        elif days_left <= 3:
+            color = "red"
+            status = "🔴 URGENT"
+            days_text = f"[{color}]{days_left} days[/{color}]"
+        elif days_left <= 7:
+            color = "yellow"
+            status = "🟡 SOON"
+            days_text = f"[{color}]{days_left} days[/{color}]"
+        else:
+            color = "green"
+            status = "🟢 OK"
+            days_text = f"[{color}]{days_left} days[/{color}]"
+
+        # Format deadline date for display
+        deadline_display = deadline_date.strftime("%b %d, %Y")
+
+        # Add row
+        table.add_row(event_name, deadline_display, days_text, status)
+
+    console.print(table)
+
+    # Optional: Summary footer
+    console.print(f"[dim]Total deadlines: {len(deadlines)}[/dim]", justify="right")
+
+    return 0
 
 
 def add_task(args):
@@ -846,7 +1033,7 @@ def show_tasks(args):
         prio_visual = f"[{color}]{filled}[dim]{empty}[/dim] ({priority})[/{color}]"
 
         # Add row
-        table.add_row(str(i), prio_visual, f"{icon}  {description}")
+        table.add_row(str(i), prio_visual, f"{description}")
 
     console.print(table)
 
@@ -1254,6 +1441,24 @@ def main():
         "ls", help="Show all tasks sorted by importance"
     )
     show_parser.set_defaults(func=show_tasks)
+
+    # Deadline command
+    ddl_parser = subparsers.add_parser(
+        "ddl", help="Manage deadlines (use 'ddl add' or just 'ddl' to list)"
+    )
+    ddl_subparsers = ddl_parser.add_subparsers(dest="ddl_command")
+
+    # ddl add subcommand
+    ddl_add_parser = ddl_subparsers.add_parser("add", help="Add a new deadline event")
+    ddl_add_parser.add_argument("event", help="Name of the event (e.g., 'homework2')")
+    ddl_add_parser.add_argument(
+        "date",
+        help="Deadline date in M.D or MM.DD format (e.g., '7.4' for July 4th)",
+    )
+    ddl_add_parser.set_defaults(func=add_deadline)
+
+    # When 'ddl' is called without subcommand, show deadlines
+    ddl_parser.set_defaults(func=show_deadlines)
 
     update_parser = subparsers.add_parser(
         "update", help="Update configuration and restart service"
