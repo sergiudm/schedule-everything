@@ -309,7 +309,7 @@ reminder track 2
 - [x] Daily summary before bedtime
 - [x] Today's tasks overview
 - [x] Self rewarding system
-- [ ] History analysis and weekly reports
+- [x] History analysis and weekly reports
 - [ ] Language support
 - [ ] Website for schedule sharing
 - [ ] Better alarm UI
