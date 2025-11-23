@@ -509,8 +509,10 @@ ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
 EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
 
 
-def get_config_dir() -> str:
+def get_config_dir(path: str = None) -> str:
     """Get config directory from settings.toml."""
+    if path == "config":
+        return path
     return os.getenv("REMINDER_CONFIG_DIR", "config")
 
 

@@ -49,6 +49,14 @@ class ScheduleConfig:
         return self.tasks.get("daily_summary", "22:00")
 
     @property
+    def weekly_review_time(self) -> str:
+        return self.tasks.get("weekly_review", "")
+
+    @property
+    def monthly_review_time(self) -> str:
+        return self.tasks.get("monthly_review", "")
+
+    @property
     def config_dir(self) -> str:
         return self.paths.get("config_dir", "config")
 
@@ -251,7 +259,8 @@ class ScheduleRunner:
 
     def run(self):
         while True:
-            now_str = datetime.now().strftime("%H:%M")
+            now = datetime.now()
+            now_str = now.strftime("%H:%M")
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
 
             # Handle daily summary time
@@ -262,6 +271,42 @@ class ScheduleRunner:
             ):
                 show_daily_summary_popup()
                 self.notified_today.add(now_str)
+
+            # Handle weekly review time
+            weekly_review_setting = self.config.weekly_review_time
+            if weekly_review_setting:
+                try:
+                    # Parse the weekly review setting (format: "sunday 20:00")
+                    parts = weekly_review_setting.split()
+                    if len(parts) == 2:
+                        day_of_week, review_time = parts
+                        if now.strftime("%A").lower() == day_of_week.lower() and now_str == review_time:
+                            if f"weekly_review_{now.strftime('%Y-%m-%d')}" not in self.notified_today:
+                                # Get the settings path from the config directory
+                                config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+                                settings_path = f"{config_dir}/settings.toml"
+                                try_auto_generate_reports(settings_path)
+                                self.notified_today.add(f"weekly_review_{now.strftime('%Y-%m-%d')}")
+                except Exception:
+                    pass  # Ignore parsing errors
+
+            # Handle monthly review time
+            monthly_review_setting = self.config.monthly_review_time
+            if monthly_review_setting:
+                try:
+                    # Parse the monthly review setting (format: "1 20:00")
+                    parts = monthly_review_setting.split()
+                    if len(parts) == 2:
+                        day_of_month, review_time = parts
+                        if now.day == int(day_of_month) and now_str == review_time:
+                            if f"monthly_review_{now.strftime('%Y-%m')}" not in self.notified_today:
+                                # Get the settings path from the config directory
+                                config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+                                settings_path = f"{config_dir}/settings.toml"
+                                try_auto_generate_reports(settings_path)
+                                self.notified_today.add(f"monthly_review_{now.strftime('%Y-%m')}")
+                except Exception:
+                    pass  # Ignore parsing errors
 
             if not today_schedule:
                 time.sleep(20)
@@ -302,7 +347,6 @@ def main():
     even_path = f"{config_dir}/even_weeks.toml"
 
     config = ScheduleConfig(settings_path)
-    # try_auto_generate_reports(settings_path)
     weekly = WeeklySchedule(odd_path, even_path)
     runner = ScheduleRunner(config, weekly)
     runner.run()
