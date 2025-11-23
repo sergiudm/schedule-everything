@@ -875,11 +875,16 @@ def show_deadlines(args):
         # Calculate days left
         days_left = (deadline_date - current_date).days
 
+        # Initialize row style
+        row_style = None
+
         # Determine color and status based on days left
         if days_left < 0:
-            color = "red"
+            # Overdue logic: Dimmed row, hidden days count
+            color = "dim"
             status = "⚠️ OVERDUE"
-            days_text = f"[{color}]{days_left} days[/{color}]"
+            days_text = ""
+            row_style = "dim"
         elif days_left == 0:
             color = "red"
             status = "🔴 TODAY"
@@ -900,8 +905,8 @@ def show_deadlines(args):
         # Format deadline date for display
         deadline_display = deadline_date.strftime("%b %d, %Y")
 
-        # Add row
-        table.add_row(event_name, deadline_display, days_text, status)
+        # Add row with optional style override
+        table.add_row(event_name, deadline_display, days_text, status, style=row_style)
 
     console.print(table)
 
