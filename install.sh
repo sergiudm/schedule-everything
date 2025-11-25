@@ -16,6 +16,7 @@ SCRIPT_NAME="Schedule Management Installer"
 PYTHON_VERSION="3.12"
 # VENV_NAME="schedule_management_env"
 INSTALL_DIR="$HOME/SCHEDULE_MANAGEMENT"
+INSTALL_CONFIG_DIR="$HOME/.schedule_management/config"
 LAUNCH_AGENT_NAME="com.sergiudm.schedule.management.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
 SYSTEMD_SERVICE_NAME="schedule-management.service"
@@ -165,7 +166,7 @@ install_python() {
         pyenv local "$PYTHON_VERSION"
     elif [[ "$OS_TYPE" == "linux" ]]; then
         # Linux: use system Python or pyenv
-        if command -v python3.$PYTHON_VERSION &> /dev/null; then
+        if command -v "python${PYTHON_VERSION}" &> /dev/null; then
             log_success "Python $PYTHON_VERSION found in system"
         else
             log_info "Installing Python $PYTHON_VERSION using pyenv..."
@@ -206,12 +207,27 @@ setup_project() {
     fi
 
     # Copy metadata files
-    for file in pyproject.toml README.md uv.lock; do
+    for file in pyproject.toml README.md uv.lock requirements.txt requirements-test.txt; do
         if [[ -f "$file" ]]; then
             cp "$file" "$INSTALL_DIR/"
             log_success "$file copied"
         fi
     done
+
+    mkdir -p "$(dirname "$INSTALL_CONFIG_DIR")"
+    if [[ -d "$INSTALL_CONFIG_DIR" ]]; then
+        backup_path="${INSTALL_CONFIG_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+        log_warning "Config directory exists. Backing up to $backup_path"
+        mv "$INSTALL_CONFIG_DIR" "$backup_path"
+    fi
+
+    if [[ -d "config" ]]; then
+        cp -r config "$INSTALL_CONFIG_DIR"
+        log_success "config/ directory copied"
+    else
+        mkdir -p "$INSTALL_CONFIG_DIR"
+        log_warning "config/ directory not found. Created empty config directory."
+    fi
 
     # Create logs directory
     mkdir -p "$INSTALL_DIR/logs"
@@ -241,11 +257,11 @@ install_dependencies() {
     uv pip install --upgrade pip
 
     # Install from requirements if available
-    if [[ -f "../requirements.txt" ]]; then
-        uv pip install -r ../requirements.txt
+    if [[ -f "requirements.txt" ]]; then
+        uv pip install -r requirements.txt
     fi
-    if [[ -f "../requirements-test.txt" ]]; then
-        uv pip install -r ../requirements-test.txt
+    if [[ -f "requirements-test.txt" ]]; then
+        uv pip install -r requirements-test.txt
     fi
 
     # Install editable package (supports src layout)
@@ -280,6 +296,7 @@ ExecStart=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/src/schedule_management/rem
 Restart=always
 RestartSec=10
 Environment=DISPLAY=:0
+Environment=REMINDER_CONFIG_DIR=$INSTALL_CONFIG_DIR
 StandardOutput=$INSTALL_DIR/logs/schedule_management.out
 StandardError=$INSTALL_DIR/logs/schedule_management.err
 
@@ -326,8 +343,8 @@ create_launch_agent() {
     <string>$INSTALL_DIR</string>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>REMINDER_TASK_DIR</key>
-        <string>$INSTALL_DIR/task/tasks.json</string>
+        <key>REMINDER_CONFIG_DIR</key>
+        <string>$INSTALL_CONFIG_DIR</string>
     </dict>
 </dict>
 </plist>
@@ -352,6 +369,7 @@ create_scripts() {
     # Start script (common)
     cat > "$INSTALL_DIR/start_reminders.sh" << EOF
 #!/bin/bash
+export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
 source "$INSTALL_DIR/.venv/bin/activate"
 cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py
@@ -359,13 +377,13 @@ EOF
 
     # Stop script (platform-specific)
     if [[ "$OS_TYPE" == "macos" ]]; then
-        cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
+        cat > "$INSTALL_DIR/stop_reminders.sh" << EOF
 #!/bin/bash
-launchctl unload "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist" 2>/dev/null || true
+launchctl unload "\$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist" 2>/dev/null || true
 pkill -f "python.*reminder_macos.py" 2>/dev/null || true
 EOF
     elif [[ "$OS_TYPE" == "linux" ]]; then
-        cat > "$INSTALL_DIR/stop_reminders.sh" << 'EOF'
+        cat > "$INSTALL_DIR/stop_reminders.sh" << EOF
 #!/bin/bash
 systemctl --user stop schedule-management.service 2>/dev/null || true
 systemctl --user disable schedule-management.service 2>/dev/null || true
@@ -375,14 +393,14 @@ EOF
 
     # Restart script (platform-specific)
     if [[ "$OS_TYPE" == "macos" ]]; then
-        cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
+        cat > "$INSTALL_DIR/restart_reminders.sh" << EOF
 #!/bin/bash
 "$INSTALL_DIR/stop_reminders.sh"
 sleep 2
-launchctl load "$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
+launchctl load "\$HOME/Library/LaunchAgents/com.sergiudm.schedule.management.reminder.plist"
 EOF
     elif [[ "$OS_TYPE" == "linux" ]]; then
-        cat > "$INSTALL_DIR/restart_reminders.sh" << 'EOF'
+        cat > "$INSTALL_DIR/restart_reminders.sh" << EOF
 #!/bin/bash
 "$INSTALL_DIR/stop_reminders.sh"
 sleep 2
@@ -393,6 +411,7 @@ EOF
     # Visualize script (common)
     cat > "$INSTALL_DIR/visualize_schedule.sh" << EOF
 #!/bin/bash
+export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
 source "$INSTALL_DIR/.venv/bin/activate"
 cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py --visualize
@@ -401,6 +420,7 @@ EOF
     # CLI wrapper (common)
     cat > "$INSTALL_DIR/reminder" << EOF
 #!/bin/bash
+export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
 source "$INSTALL_DIR/.venv/bin/activate"
 exec reminder "\$@"
 EOF
@@ -414,6 +434,7 @@ test_installation() {
     log_info "Testing installation..."
 
     source "$INSTALL_DIR/.venv/bin/activate"
+    export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
 
     if python -c "import schedule_management; print('OK')" &>/dev/null; then
         log_success "schedule_management import test passed"

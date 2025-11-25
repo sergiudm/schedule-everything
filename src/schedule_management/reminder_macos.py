@@ -280,13 +280,21 @@ class ScheduleRunner:
                     parts = weekly_review_setting.split()
                     if len(parts) == 2:
                         day_of_week, review_time = parts
-                        if now.strftime("%A").lower() == day_of_week.lower() and now_str == review_time:
-                            if f"weekly_review_{now.strftime('%Y-%m-%d')}" not in self.notified_today:
+                        if (
+                            now.strftime("%A").lower() == day_of_week.lower()
+                            and now_str == review_time
+                        ):
+                            if (
+                                f"weekly_review_{now.strftime('%Y-%m-%d')}"
+                                not in self.notified_today
+                            ):
                                 # Get the settings path from the config directory
                                 config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
                                 settings_path = f"{config_dir}/settings.toml"
                                 try_auto_generate_reports(settings_path)
-                                self.notified_today.add(f"weekly_review_{now.strftime('%Y-%m-%d')}")
+                                self.notified_today.add(
+                                    f"weekly_review_{now.strftime('%Y-%m-%d')}"
+                                )
                 except Exception:
                     pass  # Ignore parsing errors
 
@@ -299,12 +307,17 @@ class ScheduleRunner:
                     if len(parts) == 2:
                         day_of_month, review_time = parts
                         if now.day == int(day_of_month) and now_str == review_time:
-                            if f"monthly_review_{now.strftime('%Y-%m')}" not in self.notified_today:
+                            if (
+                                f"monthly_review_{now.strftime('%Y-%m')}"
+                                not in self.notified_today
+                            ):
                                 # Get the settings path from the config directory
                                 config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
                                 settings_path = f"{config_dir}/settings.toml"
                                 try_auto_generate_reports(settings_path)
-                                self.notified_today.add(f"monthly_review_{now.strftime('%Y-%m')}")
+                                self.notified_today.add(
+                                    f"monthly_review_{now.strftime('%Y-%m')}"
+                                )
                 except Exception:
                     pass  # Ignore parsing errors
 
@@ -341,7 +354,11 @@ class ScheduleRunner:
 
 
 def main():
-    config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
+    config_dir = os.getenv("REMINDER_CONFIG_DIR")
+    if not config_dir:
+        raise RuntimeError(
+            "REMINDER_CONFIG_DIR is not set."
+        )
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"
