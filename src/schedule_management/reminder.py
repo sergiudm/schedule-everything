@@ -994,14 +994,14 @@ def status_command(args):
 
                     for time_str, name in events:
                         # Highlight Pomodoros or Breaks
-                        if "break" in name.lower():
+                        if "break" in name.lower() or "napping" in name.lower():
                             name_styled = f"[italic dim]{name}[/italic dim]"
                             icon_type = "☕"
                         elif "pomodoro" in name.lower():
                             name_styled = name
-                            icon_type = "🍅"
+                            icon_type = f"[bold yellow]{name}[/bold yellow]"
                         elif "potato" in name.lower():
-                            name_styled = name
+                            name_styled = f"[bold yellow]{name}[/bold yellow]"
                             icon_type = "🥔"
                         elif "go_to_bed" in name.lower():
                             name_styled = f"[bold blue]{name}[/bold blue]"
