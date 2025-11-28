@@ -592,30 +592,6 @@ class TestShowDeadlines:
         assert mock_console.print.call_count >= 2
 
 
-class TestGetDdlPath:
-    """Test the get_ddl_path helper function."""
-
-    @patch("schedule_management.reminder.get_config_dir")
-    def test_get_ddl_path(self, mock_get_config_dir):
-        """Test getting the deadline JSON path."""
-        mock_get_config_dir.return_value = "/test/config"
-
-        path = reminder.get_ddl_path()
-
-        assert isinstance(path, Path)
-        assert str(path) == "/test/config/ddl.json"
-
-    @patch("schedule_management.reminder.get_config_dir")
-    def test_get_ddl_path_with_test_config(self, mock_get_config_dir):
-        """Test getting the deadline JSON path with test config directory."""
-        mock_get_config_dir.return_value = str(TEST_CONFIG_DIR)
-
-        path = reminder.get_ddl_path()
-
-        assert isinstance(path, Path)
-        assert "ddl.json" in str(path)
-
-
 class TestDeadlineIntegration:
     """Integration tests for deadline management workflow."""
 

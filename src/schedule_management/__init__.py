@@ -22,3 +22,17 @@ HABIT_PATH = f"{CONFIG_DIR}/habits.toml"
 TASKS_PATH = f"{CONFIG_DIR}/tasks/tasks.json"
 TASK_LOG_PATH = f"{CONFIG_DIR}/tasks/tasks.log"
 RECORD_PATH = f"{CONFIG_DIR}/tasks/record.json"
+
+
+__all__ = [
+    "COLORS",
+    "CONFIG_DIR",
+    "SETTINGS_PATH",
+    "ODD_PATH",
+    "EVEN_PATH",
+    "DDL_PATH",
+    "HABIT_PATH",
+    "TASKS_PATH",
+    "TASK_LOG_PATH",
+    "RECORD_PATH",
+]
