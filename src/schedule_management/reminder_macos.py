@@ -103,6 +103,21 @@ class WeeklySchedule:
 
 def load_task_log() -> list[dict[str, Any]]:
     """Load task log from the JSON file."""
+
+    def _resolve_path(raw_path: Any, base_dir: Any | None = None) -> Path | None:
+        if not raw_path:
+            return None
+        path = Path(raw_path)
+        base_dir_path = None
+        if base_dir:
+            base_dir_path = Path(base_dir)
+            base_dir_path = Path(os.path.expandvars(str(base_dir_path))).expanduser()
+        if base_dir_path and not path.is_absolute():
+            path = base_dir_path / path
+        path = Path(os.path.expandvars(str(path))).expanduser()
+        return path
+
+    log_path: Path | None = None
     try:
         # Try to get log path from settings.toml first
         config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
@@ -110,18 +125,9 @@ def load_task_log() -> list[dict[str, Any]]:
 
         if Path(settings_path).exists():
             config = ScheduleConfig(settings_path)
-            log_path = config.log_path
-            # If path is relative, make it relative to config_dir
-            log_path = Path(config.config_dir) / log_path
-            # Expand ~ or $HOME if present
-            if "~" in log_path or "$HOME" in log_path:
-                log_path = Path(os.path.expandvars(log_path)).expanduser()
-        else:
-            # Fallback to environment variable
-            log_path = os.getenv("REMINDER_LOG_PATH")
+            log_path = _resolve_path(config.log_path, config.config_dir)
     except Exception:
-        # Fallback to environment variable
-        log_path = os.getenv("REMINDER_LOG_PATH")
+        pass
 
     # If still no path, use default
     if not log_path:

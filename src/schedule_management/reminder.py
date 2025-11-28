@@ -553,10 +553,8 @@ def get_log_path() -> str:
         final_path = Path(config.config_dir) / target_path
         return final_path
     except Exception as e:
-        print(f"Error getting log path: {e}")
-        default_path = Path.home() / ".schedule_management" / "task" / "tasks.log"
-        env_path = os.getenv("REMINDER_LOG_PATH")
-        return Path(env_path) if env_path else default_path
+        print(f"Error getting log path: {e}, using default path.")
+        return Path.home() / ".schedule_management" / "task" / "tasks.log"
 
 
 def get_ddl_path() -> Path:
