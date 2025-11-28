@@ -1,15 +1,25 @@
-# Schedule Management
+# Schedule Everything
 
 [![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
 [![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule_management/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule_management)
 
 [中文版本](README_zh.md)
 
-This project provides a simple, persistent way to manage your daily schedule on **macOS** (Linux/Windows planned). Built with Python, it uses native system notifications and sounds to keep you on track with habits, focused work, and breaks.
+A simple, persistent way to manage your daily schedule.
 
----
+<table>
+  <tr>
+    <td>
+      <img src="assets/rmd_add.gif" alt="Add Schedule" width="100%">
+    </td>
+    <td>
+      <img src="assets/rmd_view.gif" alt="View Schedule" width="100%">
+    </td>
+  </tr>
+</table>
 
 ## ✨ Features
 

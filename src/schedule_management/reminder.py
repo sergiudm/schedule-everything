@@ -998,8 +998,8 @@ def status_command(args):
                             name_styled = f"[italic dim]{name}[/italic dim]"
                             icon_type = "☕"
                         elif "pomodoro" in name.lower():
-                            name_styled = name
-                            icon_type = f"[bold yellow]{name}[/bold yellow]"
+                            name_styled = f"[bold red]{name}[/bold red]"
+                            icon_type = "🍅"
                         elif "potato" in name.lower():
                             name_styled = f"[bold yellow]{name}[/bold yellow]"
                             icon_type = "🥔"

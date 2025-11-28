@@ -7,6 +7,19 @@ sidebar_position: 3
 
 This guide will walk you through creating your first schedule and running the reminder service.
 
+## What You'll Build
+
+<div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+  <div style={{flex: '1', minWidth: '300px', maxWidth: '48%'}}>
+    <img src="/img/rmd_add.gif" alt="Add Schedule" style={{width: '100%'}} />
+    <p style={{textAlign: 'center', marginTop: '0.5rem'}}><em>Adding tasks via CLI</em></p>
+  </div>
+  <div style={{flex: '1', minWidth: '300px', maxWidth: '48%'}}>
+    <img src="/img/rmd_view.gif" alt="View Schedule" style={{width: '100%'}} />
+    <p style={{textAlign: 'center', marginTop: '0.5rem'}}><em>Viewing your schedule</em></p>
+  </div>
+</div>
+
 ## 1. Initialize Configuration
 
 If you haven't already, create your configuration files from the provided templates.

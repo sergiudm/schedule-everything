@@ -6,6 +6,13 @@ sidebar_position: 1
 
 **Schedule Management** (晨钟暮鼓) is a robust, developer-centric scheduling tool designed to foster healthy habits, deep work sessions, and consistent routines through persistent local reminders.
 
+## Demo
+
+<div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+  <img src="/img/rmd_add.gif" alt="Add Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+  <img src="/img/rmd_view.gif" alt="View Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+</div>
+
 ## Philosophy
 
 In an era of complex, cloud-based productivity suites, Schedule Management takes a different approach: **simplicity, privacy, and control**.

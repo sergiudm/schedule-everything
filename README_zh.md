@@ -1,30 +1,106 @@
-# 晨钟暮鼓
+# Schedule Everything (晨钟暮鼓)
 
 [![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
 [![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule_management/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule_management)
 
 [English Version](README.md)
 
-本项目提供了一种简单而强大的方式，帮助你在 **本地** 上管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，让你时刻保持节奏, J人福利！
+一种简单而强大的方式，帮助你在 **本地** 管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息。
 
-> [!NOTE]
-> 当前版本专为 **macOS和Linux** 优化。未来计划支持 Windows。
+<table>
+  <tr>
+    <td>
+      <img src="assets/rmd_add.gif" alt="Add Schedule" width="100%">
+    </td>
+    <td>
+      <img src="assets/rmd_view.gif" alt="View Schedule" width="100%">
+    </td>
+  </tr>
+</table>
 
 ---
 
 ## ✨ 功能亮点
 
-- **高度可定制的日程**：使用直观的 TOML 配置文件定义你的日常安排。
-- **双重提醒机制**：每次提醒都会同时触发**声音提示**和**模态弹窗**。
-- **持续提醒**：警报会不断重复，直到你手动关闭——非常适合督促自己养成习惯。
-- **智能周循环**：基于 ISO 周编号，自动在**奇数周**和**偶数周**日程之间切换。
-- **灵活的事件类型**：
-  - **时间段事件**（如 Pomodoro 番茄钟，包含开始和结束提醒）
-  - **时间点提醒**（一次性通知）
-  - **通用事件**（适用于所有日期）
-- **命令行工具（CLI）**：提供简洁易用的命令行接口，方便查看和管理日程。
-- **开机自启（通过 `launchd`）**：系统启动后自动在后台静默运行。
+- **TOML 配置**：使用清晰、易读且适合版本控制的 TOML 文件定义日程。
+- **双重提醒**：持久化通知（模态弹窗）+ 声音提示，确保你不会错过任何提醒。
+- **智能循环**：自动在**奇数周**和**偶数周**日程之间切换。
+- **灵活事件**：支持时间段（如番茄钟）、特定时间点提醒和每日重复例程。
+- **CLI 工具套件**：集成了任务管理、习惯追踪和截止日期监控的命令行工具。
+- **AI 驱动**：支持使用 LLM 从任意文本描述轻松生成配置。
+
+---
+
+## 🚀 快速开始
+
+### 1. 初始化配置
+复制模板文件到 `config/` 目录：
+
+```bash
+cp config/settings_template.toml config/settings.toml
+cp config/week_schedule_template.toml config/odd_weeks.toml
+cp config/week_schedule_template.toml config/even_weeks.toml
+```
+
+### 2. 编辑配置
+在 `config/` 目录中定义你的日常安排。
+- **`settings.toml`**：全局设置和可复用的时间块（例如 `pomodoro = 25`）。
+- **`odd_weeks.toml` / `even_weeks.toml`**：你的每日日程表。
+
+**日程条目示例：**
+```toml
+[monday]
+"09:00" = "pomodoro"                              # 可复用时间块（开始 + 结束提醒）
+"14:00" = { block = "meeting", title = "同步会" }  # 带自定义标题的时间块
+"22:00" = "该睡觉了 😴"                            # 简单的时间点提醒
+```
+
+> [!TIP]
+> 查看 [这里](docs/prompt) 可以在几秒内生成你的日程配置。只需描述你的日常安排，LLM 即可为你创建结构化、可直接使用的配置文件。
+
+### 3. 安装
+运行安装脚本以设置后台服务：
+
+```bash
+./install.sh
+```
+*请按照输出提示加载 launchd 代理（如果需要）。*
+
+---
+
+## 🛠️ CLI 参考
+
+将以下内容添加到你的 Shell 配置文件（例如 `~/.zshrc`）以使用 `reminder` 命令：
+
+```bash
+export PATH="$HOME/schedule_management:$PATH"
+export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
+alias reminder="$HOME/schedule_management/reminder"
+```
+
+### 命令概览
+
+| 类别         | 命令                              | 说明                             |
+| ------------ | --------------------------------- | -------------------------------- |
+| **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
+|              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
+|              | `reminder stop`                   | 停止提醒服务                     |
+| **任务**     | `reminder add "任务" <1-10>`      | 添加/更新任务及其重要性          |
+|              | `reminder ls`                     | 按重要性列出任务                 |
+|              | `reminder rm "任务"` / `rm <id>`  | 按名称或 ID 删除任务             |
+| **截止日期** | `reminder ddl`                    | 显示截止日期及紧急状态           |
+|              | `reminder ddl add "名称" "MM.DD"` | 添加或更新截止日期               |
+| **习惯**     | `reminder track <ids...>`         | 记录今天完成的习惯 ID            |
+
+### 使用示例
+
+```bash
+# 添加高优先级任务
+reminder add "完成报告" 9
+```
 
 ---
 
@@ -66,198 +142,7 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 
 ---
 
-## 快速开始
-### 配置说明
 
-所有配置文件位于项目根目录下的 `config/` 文件夹中。请使用提供的模板快速开始。
-
-> [!TIP]
-> 查看[这里](https://github.com/sergiudm/schedule_management/blob/main/docs/prompt)可以在几秒内生成你的日程配置。只需描述你的日常安排，LLM 即可为你创建结构化、可直接使用的配置文件。
-
-#### 1. 全局设置（`settings.toml`）
-
-在此配置全局行为、可复用的时间块和提醒消息：
-
-```toml
-[settings]
-sound_file = "/System/Library/Sounds/Ping.aiff"
-alarm_interval = 5        # 重复提醒间隔（秒）
-max_alarm_duration = 300  # 最长提醒时长（5 分钟）
-
-[time_blocks]
-pomodoro = 25
-long_break = 40
-meeting = 50
-exercise = 30
-lunch = 60
-napping = 30
-
-[time_points]
-go_to_bed = "上床睡觉 😴 该休息了！"
-summary_time = "今天的工作结束 🎉, 总结一下"
-```
-
-#### 2. 周计划（`odd_weeks.toml` 与 `even_weeks.toml`）
-
-通过按天划分的区段和 `[common]` 通用区段定义你的每周节奏。
-
-##### 支持的事件类型：
-
-| 类型               | 示例                                                  | 说明                         |
-| ------------------ | ----------------------------------------------------- | ---------------------------- |
-| **时间段引用**     | `"09:00" = "pomodoro"`                                | 触发开始+结束提醒（25 分钟） |
-| **时间点引用**     | `"22:45" = "go_to_bed"`                               | 一次性提醒                   |
-| **直接消息**       | `"12:00" = "Lunch time! 🍽️"`                           | 立即弹出自定义文本提醒       |
-| **带标题的时间块** | `"14:00" = { block = "meeting", title = "团队站会" }` | 为时间段添加自定义标题       |
-
-##### 示例日程：
-
-```toml
-[monday]
-"08:30" = "pomodoro"
-"09:30" = "long_break"
-"13:00" = { block = "meeting", title = "Sprint 规划会" }
-
-[common]  # 适用于所有日期
-"19:30" = "pomodoro"
-"21:00" = "summary_time"
-"22:45" = "go_to_bed"
-```
-
-> [!WARNING]  
-> **请避免时间段重叠！** 例如，09:00 开始的 25 分钟番茄钟会在 09:25 结束。请勿在此期间安排其他时间段事件，否则可能导致提醒冲突。
-
----
-
-#### 🚀 设置
-
-1. **初始化配置文件**：
-   ```bash
-   cp config/settings_template.toml config/settings.toml
-   cp config/week_schedule_template.toml config/odd_weeks.toml
-   cp config/week_schedule_template.toml config/even_weeks.toml
-   ```
-
-2. **编辑 `config/` 目录下的 TOML 文件**，按你的习惯调整日程。
-
-> [!IMPORTANT]  
-> 系统实际读取以下文件：  
-> - `config/settings.toml`  
-> - `config/odd_weeks.toml`  
-> - `config/even_weeks.toml`  
-> 模板文件仅作参考，不会被程序读取。
-
----
-
-### 📦 部署方式
-
-```bash
-./install.sh
-```
-> [!NOTE]
-> 根据脚本输出的指引，你可能需要运行 `launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist`。然后运行 `launchctl list|grep schedule` 检查服务是否正在运行。
-
-卸载方法：
-```bash
-launchctl unload ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
-rm -rf "$HOME/schedule_management"
-```
-
----
-
-### 🛠️ 命令行工具（CLI）
-
-运行安装脚本（`install.sh`）后，你将获得 `reminder` 命令。
-
-#### 设置（添加到 Shell 配置）
-将以下内容加入 `~/.zshrc` 或 `~/.bash_profile`：
-
-```bash
-export PATH="$HOME/schedule_management:$PATH"
-export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-alias reminder="$HOME/schedule_management/reminder"
-```
-
-然后重载 Shell 配置：
-```bash
-source ~/.zshrc  # 或 source ~/.bash_profile
-```
-
-#### 常用命令
-
-##### 日程管理
-| 命令                 | 说明                       |
-| -------------------- | -------------------------- |
-| `reminder update`    | 重新加载配置并重启后台服务 |
-| `reminder view`      | 生成日程可视化图表         |
-| `reminder status`    | 显示即将到来的下一项事件   |
-| `reminder status -v` | 显示完整日程详情           |
-| `reminder stop`      | 停止后台提醒服务           |
-
-##### 任务管理
-| 命令                             | 说明                                       |
-| -------------------------------- | ------------------------------------------ |
-| `reminder add "任务描述" 重要性` | 添加新任务或更新现有任务的重要性级别       |
-| `reminder rm "任务描述"`         | 根据描述删除任务                           |
-| `reminder ls`                    | 按重要性排序显示所有任务（重要性高的优先） |
-
-##### 截止日期管理
-| 命令                            | 说明                                            |
-| ------------------------------- | ----------------------------------------------- |
-| `reminder ddl add "事件" "M.D"` | 添加截止日期事件（如 "作业2" "7.4" 表示7月4日） |
-| `reminder ddl`                  | 显示所有截止日期及剩余天数和紧急状态            |
-
-**任务管理示例：**
-```bash
-# 添加具有重要性级别的任务（数字越大越重要）
-reminder add "生物作业" 8
-reminder add "买菜" 3
-reminder add "给妈妈打电话" 5
-
-# 更新现有任务（替换旧的重要性级别）
-reminder add "生物作业" 10
-
-# 查看按重要性排序的所有任务
-reminder ls
-
-# 删除特定任务
-reminder rm "买菜"
-```
-
-> [!TIP]
-> **任务管理功能：**
-> - **无重复**：添加已存在的任务名称会更新其重要性级别
-> - **智能排序**：任务始终按重要性显示（重要性高的优先）
-> - **持久化**：任务存储在 `config/tasks.json` 中，跨 CLI 会话持久保存
-> - **时间戳**：每个任务都包含创建/更新时间供参考
-
-**截止日期管理示例：**
-```bash
-# 添加截止日期（M.D 或 MM.DD 格式）
-reminder ddl add "作业2" "7.4"         # 7月4日
-reminder ddl add "项目提交" "12.25"    # 12月25日
-reminder ddl add "考试" "3.15"         # 3月15日
-
-# 更新现有截止日期
-reminder ddl add "作业2" "7.10"        # 将截止日期改为7月10日
-
-# 删除特定截止日期
-reminder ddl rm "作业2"
-reminder ddl rm "项目提交" "考试"      # 一次删除多个
-
-# 查看所有截止日期及状态
-reminder ddl
-```
-
-> [!TIP]
-> **截止日期管理功能：**
-> - **智能日期处理**：根据日期是否已过，自动确定年份（当前年或下一年）
-> - **可视化紧急指示器**：带颜色的状态（🔴 紧急 ≤3天，🟡 即将到来 4-7天，🟢 正常 >7天）
-> - **剩余天数**：显示到每个截止日期的精确倒计时
-> - **持久化存储**：截止日期存储在 `config/ddl.json` 中
-> - **逾期检测**：清楚地标记已过期的截止日期
-
----
 
 ## 🗺️ 未来计划
 
@@ -278,7 +163,3 @@ reminder ddl
 ## 📄 许可证
 
 本项目采用 **MIT 许可证** 发布。详情请参见 [LICENSE](LICENSE) 文件。
-
----
-
-> 💡 **小贴士**：搭配数字健康习惯使用效果更佳——记得多喝水、定时拉伸、真正休息！未来的你会感谢现在的自己。

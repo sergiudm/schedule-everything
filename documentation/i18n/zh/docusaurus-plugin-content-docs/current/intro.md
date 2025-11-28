@@ -6,6 +6,13 @@ sidebar_position: 1
 
 **Schedule Management** (晨钟暮鼓) 是一个功能强大的基于 TOML 的日程管理工具，提供持久化提醒功能，帮助您保持健康习惯、专注工作和规律休息。
 
+## 演示
+
+<div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+  <img src="/img/rmd_add.gif" alt="添加日程" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+  <img src="/img/rmd_view.gif" alt="查看日程" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+</div>
+
 ## 什么是 Schedule Management？
 
 本项目提供了一种简单而强大的方式，帮助您在 **本地** 上管理每日日程，并通过**持久化提醒**确保您按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，让您时刻保持节奏，J人福利！
