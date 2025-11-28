@@ -15,6 +15,14 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
+from schedule_management import (
+    CONFIG_DIR,
+    SETTINGS_PATH,
+    HABIT_PATH,
+    RECORD_PATH,
+    TASK_LOG_PATH,
+)
+
 WEEKDAY_ALIASES = {
     "mon": 0,
     "monday": 0,
@@ -612,18 +620,6 @@ class ReportGenerator:
             plt.close()
 
 
-def _resolve_settings_path(settings_path: Optional[str]) -> Path:
-    if settings_path:
-        return Path(os.path.expandvars(settings_path)).expanduser()
-
-    env_config_dir = os.getenv("REMINDER_CONFIG_DIR")
-    if env_config_dir:
-        base_dir = Path(os.path.expandvars(env_config_dir)).expanduser()
-        return base_dir / "settings.toml"
-
-    return Path("config") / "settings.toml"
-
-
 def _expand_path(raw_value: str, base_dir: Path) -> Path:
     expanded = Path(os.path.expandvars(str(raw_value))).expanduser()
     if expanded.is_absolute():
@@ -634,17 +630,6 @@ def _expand_path(raw_value: str, base_dir: Path) -> Path:
 def _load_settings(settings_file: Path) -> Dict:
     with open(settings_file, "rb") as fp:
         return tomllib.load(fp)
-
-
-def _determine_config_dir(settings_data: Dict, settings_file: Path) -> Path:
-    env_dir = os.getenv("REMINDER_CONFIG_DIR")
-    if env_dir:
-        return Path(os.path.expandvars(env_dir)).expanduser()
-
-    config_dir_value = settings_data.get("paths", {}).get("config_dir") or str(
-        settings_file.parent
-    )
-    return _expand_path(config_dir_value, settings_file.parent)
 
 
 def _load_json_file(path: Path) -> List[Dict]:
@@ -682,30 +667,21 @@ def _load_habits_config(habits_path: Path) -> Dict[str, str]:
 
 
 def auto_generate_reports(
-    settings_path: Optional[str] = None, now: Optional[datetime] = None
+    settings_path: Optional[str] = SETTINGS_PATH, now: Optional[datetime] = None
 ) -> Dict[str, Path]:
     """Auto-generate weekly/monthly reports using paths and schedule from settings.toml."""
 
-    settings_file = _resolve_settings_path(settings_path)
-    if not settings_file.exists():
-        raise FileNotFoundError(f"settings.toml not found at {settings_file}")
-
-    settings_data = _load_settings(settings_file)
-    config_dir = _determine_config_dir(settings_data, settings_file)
+    settings_data = _load_settings(settings_path)
+    config_dir = CONFIG_DIR
     paths_section = settings_data.get("paths", {})
 
-    log_path = _expand_path(paths_section.get("log_path", "task/tasks.log"), config_dir)
-    record_path = _expand_path(
-        paths_section.get("record_path", "task/record.json"), config_dir
-    )
     reports_path = _expand_path(
         paths_section.get("reports_path", "~/Desktop/reports"), config_dir
     )
-    habits_path = config_dir / "habits.toml"
 
-    task_log = _load_json_file(log_path)
-    habit_records = _load_json_file(record_path)
-    habits_config = _load_habits_config(habits_path)
+    task_log = _load_json_file(TASK_LOG_PATH)
+    habit_records = _load_json_file(RECORD_PATH)
+    habits_config = _load_habits_config(HABIT_PATH)
 
     generator = ReportGenerator(str(reports_path))
     return generator.generate_due_reports(

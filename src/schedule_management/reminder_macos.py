@@ -16,6 +16,18 @@ from schedule_management.utils import (
     show_dialog,
 )
 
+from schedule_management import (
+    CONFIG_DIR,
+    SETTINGS_PATH,
+    ODD_PATH,
+    EVEN_PATH,
+    DDL_PATH,
+    HABIT_PATH,
+    TASKS_PATH,
+    TASK_LOG_PATH,
+    RECORD_PATH,
+)
+
 
 class ScheduleConfig:
     def __init__(self, settings_path: str):
@@ -104,41 +116,8 @@ class WeeklySchedule:
 def load_task_log() -> list[dict[str, Any]]:
     """Load task log from the JSON file."""
 
-    def _resolve_path(raw_path: Any, base_dir: Any | None = None) -> Path | None:
-        if not raw_path:
-            return None
-        path = Path(raw_path)
-        base_dir_path = None
-        if base_dir:
-            base_dir_path = Path(base_dir)
-            base_dir_path = Path(os.path.expandvars(str(base_dir_path))).expanduser()
-        if base_dir_path and not path.is_absolute():
-            path = base_dir_path / path
-        path = Path(os.path.expandvars(str(path))).expanduser()
-        return path
-
-    log_path: Path | None = None
     try:
-        # Try to get log path from settings.toml first
-        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-        settings_path = f"{config_dir}/settings.toml"
-
-        if Path(settings_path).exists():
-            config = ScheduleConfig(settings_path)
-            log_path = _resolve_path(config.log_path, config.config_dir)
-    except Exception:
-        pass
-
-    # If still no path, use default
-    if not log_path:
-        log_path = Path.home() / ".schedule_management" / "task" / "tasks.log"
-
-    if not log_path.exists():
-        print(f"Warning: Log file not found at {log_path}")
-        return []
-
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
+        with open(TASK_LOG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return []
@@ -190,10 +169,7 @@ def show_daily_summary_popup():
 
     # Play a sound and show the dialog
     try:
-        # Try to get config from settings.toml first
-        config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-        settings_path = f"{config_dir}/settings.toml"
-        config = ScheduleConfig(settings_path)
+        config = ScheduleConfig(SETTINGS_PATH)
         play_sound(config.sound_file)
     except Exception:
         pass  # Ignore sound errors
@@ -295,12 +271,9 @@ class ScheduleRunner:
                                 f"weekly_review_{now.strftime('%Y-%m-%d')}"
                                 not in self.notified_today
                             ):
-                                # Get the settings path from the config directory
-                                config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-                                settings_path = f"{config_dir}/settings.toml"
                                 threading.Thread(
                                     target=try_auto_generate_reports,
-                                    args=(settings_path,),
+                                    args=(SETTINGS_PATH,),
                                     daemon=True,
                                 ).start()
                                 self.notified_today.add(
@@ -322,12 +295,9 @@ class ScheduleRunner:
                                 f"monthly_review_{now.strftime('%Y-%m')}"
                                 not in self.notified_today
                             ):
-                                # Get the settings path from the config directory
-                                config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
-                                settings_path = f"{config_dir}/settings.toml"
                                 threading.Thread(
                                     target=try_auto_generate_reports,
-                                    args=(settings_path,),
+                                    args=(SETTINGS_PATH,),
                                     daemon=True,
                                 ).start()
                                 self.notified_today.add(
@@ -363,15 +333,8 @@ class ScheduleRunner:
 
 
 def main():
-    config_dir = os.getenv("REMINDER_CONFIG_DIR")
-    if not config_dir:
-        raise RuntimeError("REMINDER_CONFIG_DIR is not set.")
-    settings_path = f"{config_dir}/settings.toml"
-    odd_path = f"{config_dir}/odd_weeks.toml"
-    even_path = f"{config_dir}/even_weeks.toml"
-
-    config = ScheduleConfig(settings_path)
-    weekly = WeeklySchedule(odd_path, even_path)
+    config = ScheduleConfig(SETTINGS_PATH)
+    weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
     runner = ScheduleRunner(config, weekly)
     runner.run()
 
