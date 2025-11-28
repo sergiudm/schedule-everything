@@ -1000,7 +1000,7 @@ def status_command(args):
                         elif "pomodoro" in name.lower():
                             name_styled = name
                             icon_type = "🍅"
-                        elif "patato" in name.lower():
+                        elif "potato" in name.lower():
                             name_styled = name
                             icon_type = "🥔"
                         elif "go_to_bed" in name.lower():
