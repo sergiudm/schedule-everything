@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -214,6 +215,19 @@ class ScheduleRunner:
         self.notified_today = set()
         self.pending_end_alarms = {}  # {end_time_str: message}
 
+    def _trigger_alarm(self, title: str, message: str):
+        threading.Thread(
+            target=alarm,
+            args=(
+                title,
+                message,
+                self.config.sound_file,
+                self.config.alarm_interval,
+                self.config.max_alarm_duration,
+            ),
+            daemon=True,
+        ).start()
+
     def _handle_event(self, time_str: str, event: Any):
         if isinstance(event, str):
             if event in self.config.time_blocks:
@@ -226,13 +240,7 @@ class ScheduleRunner:
                 else:
                     # Treat the string itself as the message
                     message = event
-                alarm(
-                    "提醒",
-                    message,
-                    self.config.sound_file,
-                    self.config.alarm_interval,
-                    self.config.max_alarm_duration,
-                )
+                self._trigger_alarm("提醒", message)
                 self.notified_today.add(time_str)
         elif isinstance(event, dict) and "block" in event:
             block_type = event["block"]
@@ -246,13 +254,7 @@ class ScheduleRunner:
         duration = self.config.time_blocks[block_type]
         end_time_str = add_minutes_to_time(start_time, duration)
         start_message = f"{title} ⏱️ ({duration}min)"
-        alarm(
-            "开始",
-            start_message,
-            self.config.sound_file,
-            self.config.alarm_interval,
-            self.config.max_alarm_duration,
-        )
+        self._trigger_alarm("开始", start_message)
         self.notified_today.add(start_time)
         end_message = f"{title} 结束！休息一下 🎉"
         self.pending_end_alarms[end_time_str] = end_message
@@ -262,14 +264,13 @@ class ScheduleRunner:
             now = datetime.now()
             now_str = now.strftime("%H:%M")
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
-
             # Handle daily summary time
             if (
                 now_str == self.config.daily_summary_time
                 and now_str not in self.notified_today
                 and not self.config.should_skip_today()
             ):
-                show_daily_summary_popup()
+                threading.Thread(target=show_daily_summary_popup, daemon=True).start()
                 self.notified_today.add(now_str)
 
             # Handle weekly review time
@@ -291,7 +292,11 @@ class ScheduleRunner:
                                 # Get the settings path from the config directory
                                 config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
                                 settings_path = f"{config_dir}/settings.toml"
-                                try_auto_generate_reports(settings_path)
+                                threading.Thread(
+                                    target=try_auto_generate_reports,
+                                    args=(settings_path,),
+                                    daemon=True,
+                                ).start()
                                 self.notified_today.add(
                                     f"weekly_review_{now.strftime('%Y-%m-%d')}"
                                 )
@@ -314,7 +319,11 @@ class ScheduleRunner:
                                 # Get the settings path from the config directory
                                 config_dir = os.getenv("REMINDER_CONFIG_DIR", "config")
                                 settings_path = f"{config_dir}/settings.toml"
-                                try_auto_generate_reports(settings_path)
+                                threading.Thread(
+                                    target=try_auto_generate_reports,
+                                    args=(settings_path,),
+                                    daemon=True,
+                                ).start()
                                 self.notified_today.add(
                                     f"monthly_review_{now.strftime('%Y-%m')}"
                                 )
@@ -335,13 +344,7 @@ class ScheduleRunner:
                 and now_str not in self.notified_today
             ):
                 message = self.pending_end_alarms[now_str]
-                alarm(
-                    "结束提醒",
-                    message,
-                    self.config.sound_file,
-                    self.config.alarm_interval,
-                    self.config.max_alarm_duration,
-                )
+                self._trigger_alarm("结束提醒", message)
                 self.notified_today.add(now_str)
                 del self.pending_end_alarms[now_str]
 
@@ -356,9 +359,7 @@ class ScheduleRunner:
 def main():
     config_dir = os.getenv("REMINDER_CONFIG_DIR")
     if not config_dir:
-        raise RuntimeError(
-            "REMINDER_CONFIG_DIR is not set."
-        )
+        raise RuntimeError("REMINDER_CONFIG_DIR is not set.")
     settings_path = f"{config_dir}/settings.toml"
     odd_path = f"{config_dir}/odd_weeks.toml"
     even_path = f"{config_dir}/even_weeks.toml"
