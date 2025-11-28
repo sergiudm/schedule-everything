@@ -26,9 +26,5 @@ monthly_review = "1 20:00"
 [paths]
 # Directory containing configuration files
 config_dir = "config"
-# Path to tasks JSON file (relative to config_dir or absolute)
-tasks_path = "tasks.json"
-# Path to task log JSON file (relative to config_dir or absolute)
-log_path = "~/.schedule_management/task/tasks.log"
 
 reports_path = "~/Desktop/reports"

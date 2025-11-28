@@ -3,86 +3,77 @@
 # Message: The reminder text to display
 
 [monday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:26" = "long break"
+"08:30" = "potato"
+"09:30" = "potato"
+"10:30" = "potato"
+"11:30" = "potato"
 "13:20" = "napping"
-"14:00" = "pomodoro"
-"14:30" = "pomodoro"
-"15:00" = "pomodoro"
-"15:30" = "pomodoro"
+
 
 
 [tuesday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:26" = "long break"
+"08:30" = "potato"
+"09:30" = "potato"
+"10:30" = "potato"
+"11:30" = "potato"
 "13:20" = "napping"
-"16:30" = "pomodoro"
-"17:00" = "pomodoro"
-"17:30" = "pomodoro"
+"14:00" = "potato"
+"15:00" = "potato"
+"16:00" = "potato"
+"17:00" = "potato"
 
 
 [wednesday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:26" = "long break"
+"08:30" = "potato"
+"09:30" = "pomodoro"
 
 "13:20" = "napping"
-"14:00" = "pomodoro"
-"14:30" = "pomodoro"
-"15:00" = "pomodoro"
-"15:30" = "pomodoro"
-"16:00" = "pomodoro"
+"14:00" = "potato"
+"15:00" = "potato"
+
 
 [thursday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:30" = "pomodoro"
-"10:00" = "pomodoro"
-"10:30" = "pomodoro"
 
 "13:20" = "napping"
-"14:00" = "pomodoro"
-"14:30" = "pomodoro"
-"15:00" = "pomodoro"
-"16:30" = "pomodoro"
-"17:00" = "pomodoro"
-"17:30" = "pomodoro"
+"14:00" = "potato"
+"15:00" = "potato"
+"16:00" = "potato"
+"17:00" = "potato"
 
 [friday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
+"08:30" = "potato"
+"09:30" = "pomodoro"
+
 "13:20" = "napping"
 
 
 [saturday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:26" = "long break"
+"08:30" = "potato"
+"09:30" = "potato"
+"10:30" = "potato"
+"11:30" = "potato"
 "13:20" = "napping"
-"14:00" = "pomodoro"
-"14:30" = "pomodoro"
-"15:00" = "pomodoro"
-"15:30" = "pomodoro"
-"16:00" = "pomodoro"
-
+"14:00" = "potato"
+"15:00" = "potato"
+"16:00" = "potato"
+"17:00" = "potato"
 
 [sunday]
-"08:30" = "pomodoro"
-"09:00" = "pomodoro"
-"09:26" = "long break"
+"08:30" = "potato"
+"09:30" = "potato"
+"10:30" = "potato"
+"11:30" = "potato"
 "13:20" = "napping"
-"14:00" = "pomodoro"
-"14:30" = "pomodoro"
-"15:00" = "pomodoro"
-"15:30" = "pomodoro"
-"16:00" = "pomodoro"
+"14:00" = "potato"
+"15:00" = "potato"
+"16:00" = "potato"
+"17:00" = "potato"
 
 
 [common]
-"19:30" = "pomodoro"
-"20:00" = "pomodoro"
+"19:30" = "potato"
 "20:30" = "pomodoro"
-"21:00" = "summary_time"
-"22:45" = "go_to_bed"
+"21:30" = "pomodoro"
+"22:30" = "go_to_bed"
+"23:45" = "summary_time"
+"23:55" = "go_to_bed"

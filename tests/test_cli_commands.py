@@ -4,7 +4,6 @@ Tests the update, view, and status commands using the new OOP architecture.
 """
 
 import sys
-import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from datetime import datetime, time, date
@@ -13,17 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import schedule_management.reminder as reminder
 
 # Import test configuration paths
-from conftest import (
-    TEST_CONFIG_DIR,
-    TEST_SETTINGS_PATH,
-    TEST_ODD_PATH,
-    TEST_EVEN_PATH,
-    TEST_DDL_PATH,
-    TEST_HABIT_PATH,
-    TEST_TASKS_PATH,
-    TEST_TASK_LOG_PATH,
-    TEST_RECORD_PATH,
-)
+from conftest import TEST_CONFIG_DIR
 
 
 class TestUpdateCommand:
@@ -392,16 +381,8 @@ class TestMainFunction:
         mock_parse_args.return_value = mock_args
         mock_add_task.return_value = 0
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 0
         mock_add_task.assert_called_once_with(mock_args)
@@ -416,16 +397,8 @@ class TestMainFunction:
         mock_parse_args.return_value = mock_args
         mock_delete_task.return_value = 0
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 0
         mock_delete_task.assert_called_once_with(mock_args)
@@ -440,16 +413,8 @@ class TestMainFunction:
         mock_parse_args.return_value = mock_args
         mock_show_tasks.return_value = 0
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 0
         mock_show_tasks.assert_called_once_with(mock_args)
@@ -464,16 +429,8 @@ class TestMainFunction:
         mock_parse_args.return_value = mock_args
         mock_view_command.return_value = 0
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 0
         mock_view_command.assert_called_once_with(mock_args)
@@ -545,16 +502,8 @@ class TestTaskManagement:
         args.task = "Complete project"
         args.priority = 7
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.add_task(args)
+        # Use configured test paths
+        result = reminder.add_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -579,16 +528,8 @@ class TestTaskManagement:
         args.task = "Complete project"
         args.priority = 9  # New priority
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.add_task(args)
+        # Use configured test paths
+        result = reminder.add_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -609,16 +550,8 @@ class TestTaskManagement:
         args.priority = -1
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.add_task(args)
+            # Use configured test paths
+            result = reminder.add_task(args)
 
         assert result == 1
         mock_save_tasks.assert_not_called()
@@ -635,16 +568,8 @@ class TestTaskManagement:
         args.priority = 0
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.add_task(args)
+            # Use configured test paths
+            result = reminder.add_task(args)
 
         assert result == 1
         mock_save_tasks.assert_not_called()
@@ -664,16 +589,8 @@ class TestTaskManagement:
         args.priority = 5
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.add_task(args)
+            # Use configured test paths
+            result = reminder.add_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -694,16 +611,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["Review code"]
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -727,16 +636,8 @@ class TestTaskManagement:
         args.tasks = ["Non-existent task"]
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_save_tasks.assert_not_called()
@@ -751,16 +652,8 @@ class TestTaskManagement:
         args.tasks = ["Any task"]
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once_with("⚠️  No tasks found to delete")
@@ -783,16 +676,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["Review code"]
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -813,16 +698,8 @@ class TestTaskManagement:
         args.tasks = ["Complete project"]
 
         with patch("builtins.print") as mock_print:
-            # Mock the get_settings_path to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -845,16 +722,8 @@ class TestTaskManagement:
             "2"
         ]  # ID 2 should be "Medium priority task" after sorting by priority
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -882,16 +751,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["1"]  # ID 1 should be "High priority task" after sorting
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -915,16 +776,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["3"]  # ID 3 should be "Low priority task" after sorting
 
-        # Mock the get_settings_path to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -946,16 +799,8 @@ class TestTaskManagement:
         args.tasks = ["5"]  # Invalid ID
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -975,16 +820,8 @@ class TestTaskManagement:
         args.tasks = ["0"]  # Invalid ID
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -1003,16 +840,8 @@ class TestTaskManagement:
         args.tasks = ["-1"]  # Invalid ID
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -1027,16 +856,8 @@ class TestTaskManagement:
         args.tasks = ["1"]
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once_with("⚠️  No tasks found to delete")
@@ -1059,16 +880,8 @@ class TestTaskManagement:
         ]  # This should be treated as an ID first (invalid in this case)
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         # Should treat "123" as an ID (invalid since there are only 2 tasks)
@@ -1092,16 +905,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["1"]  # Valid ID as string
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -1127,16 +932,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["Review code", "Write documentation"]
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -1165,16 +962,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["1", "3"]  # Delete highest and lowest priority tasks
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -1205,16 +994,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["1", "Documentation", "4"]  # Mix of ID and description
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -1241,16 +1022,8 @@ class TestTaskManagement:
         args.tasks = ["Review code", "Non-existent task", "Complete project"]
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1  # Should return 1 due to some failures
         mock_save_tasks.assert_called_once()
@@ -1276,16 +1049,8 @@ class TestTaskManagement:
         args.tasks = ["Non-existent task 1", "Non-existent task 2"]
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_save_tasks.assert_not_called()
@@ -1312,16 +1077,8 @@ class TestTaskManagement:
         args.tasks = ["1", "5", "-1", "2"]  # Mix of valid and invalid IDs
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1  # Should return 1 due to invalid IDs
         mock_save_tasks.assert_called_once()
@@ -1354,16 +1111,8 @@ class TestTaskManagement:
         args = MagicMock()
         args.tasks = ["Review code", "Testing"]
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.delete_task(args)
+        # Use configured test paths
+        result = reminder.delete_task(args)
 
         assert result == 0
         mock_save_tasks.assert_called_once()
@@ -1389,16 +1138,8 @@ class TestTaskManagement:
         args.tasks = ["Task 1", "Task 3"]
 
         with patch("builtins.print") as mock_print:
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.delete_task(args)
+            # Use configured test paths
+            result = reminder.delete_task(args)
 
         assert result == 1
         mock_print.assert_called_once()
@@ -1415,16 +1156,8 @@ class TestTaskManagement:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.show_tasks(args)
+            # Use configured test paths
+            result = reminder.show_tasks(args)
 
         assert result == 0
         # Verify console.print was called with the expected message
@@ -1448,16 +1181,8 @@ class TestTaskManagement:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
-            # Mock to use test config
-            with patch(
-                "schedule_management.reminder.get_settings_path",
-                return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-            ):
-                with patch(
-                    "schedule_management.reminder.get_config_dir",
-                    return_value=TEST_CONFIG_DIR,
-                ):
-                    result = reminder.show_tasks(args)
+            # Use configured test paths
+            result = reminder.show_tasks(args)
 
         assert result == 0
         # Verify console.print was called (should be called twice - once for table, once for total)
@@ -1495,16 +1220,8 @@ class TestMainFunctions:
         mock_parse_args.return_value = mock_args
         mock_status_command.return_value = 0
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 0
         mock_status_command.assert_called_once_with(mock_args)
@@ -1517,16 +1234,8 @@ class TestMainFunctions:
         mock_args.command = None
         mock_parse_args.return_value = mock_args
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 1
         mock_print_help.assert_called_once()
@@ -1541,15 +1250,7 @@ class TestMainFunctions:
         mock_parse_args.return_value = mock_args
         mock_update_command.side_effect = KeyboardInterrupt()
 
-        # Mock to use test config
-        with patch(
-            "schedule_management.reminder.get_settings_path",
-            return_value=os.path.join(TEST_CONFIG_DIR, "settings.toml"),
-        ):
-            with patch(
-                "schedule_management.reminder.get_config_dir",
-                return_value=TEST_CONFIG_DIR,
-            ):
-                result = reminder.main()
+        # Use configured test paths
+        result = reminder.main()
 
         assert result == 1
