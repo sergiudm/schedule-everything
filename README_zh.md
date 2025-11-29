@@ -1,10 +1,10 @@
 # Schedule Everything (晨钟暮鼓)
 
-[![CI](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_management/actions/workflows/tests.yml)
+[![CI](https://github.com/sergiudm/schedule_everything/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_everything/actions/workflows/tests.yml)
 [![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule_management/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule_management)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule_everything/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule_everything)
 
 [English Version](README.md)
 
@@ -132,7 +132,7 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 
 ## 🧠 工作原理
 
-核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule_management/blob/main/src/schedule_management/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
+核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule_everything/blob/main/src/schedule_management/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
 
 支持以下功能：
 - **时间段事件**：具有明确持续时间的活动（如 25 分钟番茄钟 → 触发开始和结束提醒）

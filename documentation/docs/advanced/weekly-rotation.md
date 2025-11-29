@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Weekly Rotation System
 
-Schedule Management features an intelligent weekly rotation system that automatically alternates between different schedules based on ISO week numbering.
+Schedule Everything features an intelligent weekly rotation system that automatically alternates between different schedules based on ISO week numbering.
 
 ## How Weekly Rotation Works
 

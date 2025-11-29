@@ -4,18 +4,18 @@ sidebar_position: 1
 
 # Introduction
 
-**Schedule Management** (晨钟暮鼓) is a robust, developer-centric scheduling tool designed to foster healthy habits, deep work sessions, and consistent routines through persistent local reminders.
+**Schedule Everything** (晨钟暮鼓) is a robust, developer-centric scheduling tool designed to foster healthy habits, deep work sessions, and consistent routines through persistent local reminders.
 
 ## Demo
 
 <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
-  <img src="/img/rmd_add.gif" alt="Add Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
-  <img src="/img/rmd_view.gif" alt="View Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+  <img src="img/rmd_add.gif" alt="Add Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
+  <img src="img/rmd_view.gif" alt="View Schedule" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
 </div>
 
 ## Philosophy
 
-In an era of complex, cloud-based productivity suites, Schedule Management takes a different approach: **simplicity, privacy, and control**.
+In an era of complex, cloud-based productivity suites, Schedule Everything takes a different approach: **simplicity, privacy, and control**.
 
 We believe that your schedule should be:
 *   **Owned by you**: Stored locally, not on a remote server.
@@ -56,7 +56,7 @@ Text-based configuration is the native language of LLMs. You can paste a messy e
 
 ## How It Works
 
-At its heart, Schedule Management is a lightweight daemon that monitors system time against your defined rules.
+At its heart, Schedule Everything is a lightweight daemon that monitors system time against your defined rules.
 
 1.  **Load**: Reads `settings.toml` and the appropriate weekly schedule (`odd_weeks.toml` or `even_weeks.toml`).
 2.  **Monitor**: Checks for event triggers every minute.

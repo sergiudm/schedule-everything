@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Schedule Management',
+  title: 'Schedule Everything',
   tagline: '晨钟暮鼓 - A TOML-based scheduling tool with persistent reminders',
   favicon: 'img/favicon.ico',
 
@@ -86,9 +86,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Schedule Management',
+      title: 'Schedule Everything',
       logo: {
-        alt: 'Schedule Management Logo',
+        alt: 'Schedule Everything Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -156,7 +156,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Schedule Management. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Schedule Everything. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

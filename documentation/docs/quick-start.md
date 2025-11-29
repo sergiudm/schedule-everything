@@ -106,7 +106,7 @@ Before letting it run in the background, verify your setup.
 
 ## 5. Managing Tasks (Optional)
 
-Schedule Management also includes a lightweight CLI task manager.
+Schedule Everything also includes a lightweight CLI task manager.
 
 ```bash
 # Add tasks with an importance score (1-10)

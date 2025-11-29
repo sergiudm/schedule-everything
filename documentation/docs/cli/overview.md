@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # CLI Overview
 
-Schedule Management provides a comprehensive command-line interface (CLI) for managing your schedules, tasks, and system configuration. The CLI tool is automatically installed when you run the installation script.
+Schedule Everything provides a comprehensive command-line interface (CLI) for managing your schedules, tasks, and system configuration. The CLI tool is automatically installed when you run the installation script.
 
 ## Accessing the CLI
 

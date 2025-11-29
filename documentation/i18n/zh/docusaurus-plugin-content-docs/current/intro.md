@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # 介绍
 
-**Schedule Management** (晨钟暮鼓) 是一个功能强大的基于 TOML 的日程管理工具，提供持久化提醒功能，帮助您保持健康习惯、专注工作和规律休息。
+**Schedule Everything** (晨钟暮鼓) 是一个功能强大的基于 TOML 的日程管理工具，提供持久化提醒功能，帮助您保持健康习惯、专注工作和规律休息。
 
 ## 演示
 
@@ -13,7 +13,7 @@ sidebar_position: 1
   <img src="/img/rmd_view.gif" alt="查看日程" style={{flex: '1', minWidth: '300px', maxWidth: '48%'}} />
 </div>
 
-## 什么是 Schedule Management？
+## 什么是 Schedule Everything？
 
 本项目提供了一种简单而强大的方式，帮助您在 **本地** 上管理每日日程，并通过**持久化提醒**确保您按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，让您时刻保持节奏，J人福利！
 
@@ -69,4 +69,4 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 
 ## 下一步
 
-准备好开始了吗？查看我们的[安装指南](installation.md)在您的系统上设置 Schedule Management，或直接跳转到[快速开始](quick-start.md)指南配置您的第一个日程。
+准备好开始了吗？查看我们的[安装指南](installation.md)在您的系统上设置 Schedule Everything，或直接跳转到[快速开始](quick-start.md)指南配置您的第一个日程。
