@@ -26,8 +26,8 @@ The `install.sh` script handles dependency installation, configuration scaffoldi
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/sergiudm/schedule_everything.git
-    cd schedule_everything
+    git clone https://github.com/sergiudm/schedule-everything.git
+    cd schedule-everything
     ```
 
 2.  **Run the installer**:

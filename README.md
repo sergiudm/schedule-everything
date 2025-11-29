@@ -1,10 +1,10 @@
 # Schedule Everything
 
-[![CI](https://github.com/sergiudm/schedule_everything/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule_everything/actions/workflows/tests.yml)
+[![CI](https://github.com/sergiudm/schedule-everything/actions/workflows/tests.yml/badge.svg)](https://github.com/sergiudm/schedule-everything/actions/workflows/tests.yml)
 [![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule_everything/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule_everything)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://sergiudm.github.io/schedule-everything/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule-everything)
 [中文版本](README_zh.md)
 
 A simple, persistent way to manage your daily schedule.
@@ -92,7 +92,7 @@ alias reminder="$HOME/schedule_management/reminder"
 |               | `reminder ddl add "name" "MM.DD"` | Add or update a deadline                     |
 | **Habits**    | `reminder track <ids...>`         | Log completed habit IDs for today            |
 
-> For detailed usage, refer to the [CLI Overview](https://sergiudm.github.io/schedule_everything/docs/cli/overview).
+> For detailed usage, refer to the [CLI Overview](https://sergiudm.github.io/schedule-everything/docs/cli/overview).
 
 ### Usage Examples
 
