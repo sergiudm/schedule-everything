@@ -129,18 +129,6 @@ TOML 语法简洁清晰，无需处理 JSON 的括号或 YAML 的缩进问题，
 
 ---
 
-## 🧠 工作原理
-
-核心脚本 [`reminder_macos.py`](https://github.com/sergiudm/schedule-everything/blob/main/src/schedule_management/reminder_macos.py) 会持续监控系统时间，并与你配置的日程进行比对。当当前时间匹配某个事件时，即触发提醒。
-
-支持以下功能：
-- **时间段事件**：具有明确持续时间的活动（如 25 分钟番茄钟 → 触发开始和结束提醒）
-- **时间点提醒**：即时通知（如 22:45 提醒"该睡觉了！"）
-- **周循环切换**：使用 ISO 周编号自动在 `odd_weeks.toml` 和 `even_weeks.toml` 之间切换
-- **通用事件区段**：适用于每天的重复事件（如每晚的放松例行程序）
-
----
-
 
 
 ## 🗺️ 未来计划

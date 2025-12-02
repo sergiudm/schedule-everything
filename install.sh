@@ -214,19 +214,21 @@ setup_project() {
         fi
     done
 
+    # Config directory handling
     mkdir -p "$(dirname "$INSTALL_CONFIG_DIR")"
-    if [[ -d "$INSTALL_CONFIG_DIR" ]]; then
-        backup_path="${INSTALL_CONFIG_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
-        log_warning "Config directory exists. Backing up to $backup_path"
-        mv "$INSTALL_CONFIG_DIR" "$backup_path"
-    fi
 
-    if [[ -d "config" ]]; then
-        cp -r config "$INSTALL_CONFIG_DIR"
-        log_success "config/ directory copied"
+    if [[ -d "$INSTALL_CONFIG_DIR" ]]; then
+        # If config directory already exists,
+        # do NOT touch it and do NOT copy or back up anything.
+        log_warning "Config directory $INSTALL_CONFIG_DIR already exists; skipping config copy."
     else
-        mkdir -p "$INSTALL_CONFIG_DIR"
-        log_warning "config/ directory not found. Created empty config directory."
+        if [[ -d "config" ]]; then
+            cp -r config "$INSTALL_CONFIG_DIR"
+            log_success "config/ directory copied to $INSTALL_CONFIG_DIR"
+        else
+            mkdir -p "$INSTALL_CONFIG_DIR"
+            log_warning "config/ directory not found in project. Created empty config directory at $INSTALL_CONFIG_DIR."
+        fi
     fi
 
     # Create logs directory
