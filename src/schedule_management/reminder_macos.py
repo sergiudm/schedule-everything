@@ -69,6 +69,10 @@ class ScheduleConfig:
         return self.tasks.get("monthly_review", "")
 
     @property
+    def daily_urgent_times(self) -> list[str]:
+        return self.tasks.get("daily_urgency", self.tasks.get("daily_urgent", []))
+
+    @property
     def config_dir(self) -> str:
         return self.paths.get("config_dir", "config")
 
@@ -196,13 +200,17 @@ class ScheduleRunner:
         self.notified_today = set()
         self.pending_end_alarms = {}  # {end_time_str: message}
 
-    def _trigger_alarm(self, title: str, message: str):
+    def _trigger_alarm(self, title: str, message: str, sound: str = None):
+        sound_file = sound if sound else self.config.sound_file
+        if sound and "/" not in sound and not sound.endswith(".aiff"):
+            sound_file = f"/System/Library/Sounds/{sound}.aiff"
+
         threading.Thread(
             target=alarm,
             args=(
                 title,
                 message,
-                self.config.sound_file,
+                sound_file,
                 self.config.alarm_interval,
                 self.config.max_alarm_duration,
             ),
@@ -240,6 +248,22 @@ class ScheduleRunner:
         end_message = f"{title} 结束！休息一下 🎉"
         self.pending_end_alarms[end_time_str] = end_message
 
+    def _get_unfinished_urgent_tasks(self) -> list[dict[str, Any]]:
+        try:
+            with open(TASKS_PATH, "r", encoding="utf-8") as f:
+                tasks = json.load(f)
+            # Filter for tasks that are unfinished (in tasks.json) AND urgency > 7
+            return [t for t in tasks if t.get("priority", 0) > 7]
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    def _check_urgent_tasks(self):
+        urgent_tasks = self._get_unfinished_urgent_tasks()
+        if urgent_tasks:
+            count = len(urgent_tasks)
+            message = f"🔥 {count} Urgent Tasks Pending!"
+            self._trigger_alarm("Today's Urgent Tasks", message, sound="Glass")
+
     def run(self):
         while True:
             now = datetime.now()
@@ -253,6 +277,13 @@ class ScheduleRunner:
             ):
                 threading.Thread(target=show_daily_summary_popup, daemon=True).start()
                 self.notified_today.add(now_str)
+
+            # Handle daily urgent tasks check
+            if not self.config.should_skip_today():
+                for urgent_time in self.config.daily_urgent_times:
+                    if now_str == urgent_time and now_str not in self.notified_today:
+                        self._check_urgent_tasks()
+                        self.notified_today.add(now_str)
 
             # Handle weekly review time
             weekly_review_setting = self.config.weekly_review_time
