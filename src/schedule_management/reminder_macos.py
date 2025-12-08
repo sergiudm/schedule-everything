@@ -260,8 +260,13 @@ class ScheduleRunner:
     def _check_urgent_tasks(self):
         urgent_tasks = self._get_unfinished_urgent_tasks()
         if urgent_tasks:
-            count = len(urgent_tasks)
-            message = f"🔥 {count} Urgent Tasks Pending!"
+            task_descriptions = [
+                f"{t.get('description', '未知任务')} (优先级: {t.get('priority', 0)})"
+                for t in urgent_tasks
+            ]
+            message = (
+                "🚨 今日紧急任务提醒 🚨\n\n" + "\n".join(task_descriptions)
+            )
             self._trigger_alarm("Today's Urgent Tasks", message, sound="Glass")
 
     def run(self):
