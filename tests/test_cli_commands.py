@@ -137,6 +137,7 @@ class TestStatusCommand:
             },
             "odd",
             False,
+            MagicMock(time_blocks={"pomodoro": 25}, time_points={"summary": "done"}),
         )
 
         args = MagicMock(verbose=False)
@@ -163,7 +164,7 @@ class TestStatusCommand:
     @patch("schedule_management.reminder.get_today_schedule_for_status")
     def test_status_skip_day(self, mock_get_schedule):
         """Test status command on a skipped day."""
-        mock_get_schedule.return_value = ({}, "odd", True)
+        mock_get_schedule.return_value = ({}, "odd", True, MagicMock())
 
         args = MagicMock(verbose=False)
 
@@ -192,7 +193,12 @@ class TestStatusCommand:
     @patch("schedule_management.reminder.get_today_schedule_for_status")
     def test_status_no_schedule(self, mock_get_schedule):
         """Test status command when no schedule exists."""
-        mock_get_schedule.return_value = ({}, "odd", False)
+        mock_get_schedule.return_value = (
+            {},
+            "odd",
+            False,
+            MagicMock(time_blocks={}, time_points={}),
+        )
 
         args = MagicMock(verbose=False)
 
@@ -283,9 +289,44 @@ class TestHelperFunctions:
             test_schedule
         )
 
-        # Should have current event (08:00) and next event (10:00)
-        assert current == "morning_task at 08:00"
+        # No current event (non-block events are only active for the trigger minute)
+        assert current is None
         assert next_event == "focus_session at 10:00"
+        assert time_to_next == "30m"
+
+    @patch("schedule_management.reminder.parse_time")
+    @patch("schedule_management.reminder.datetime")
+    def test_get_current_and_next_events_idle_between_blocks(
+        self, mock_datetime, mock_parse_time
+    ):
+        """Test get_current_and_next_events returns idle between time blocks."""
+        # Mock current time as 09:30
+        mock_now = MagicMock()
+        mock_now.time.return_value = time(9, 30)
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.combine = datetime.combine
+
+        def mock_parse(time_str):
+            if time_str == "08:00":
+                return time(8, 0)
+            if time_str == "10:00":
+                return time(10, 0)
+            return time(0, 0)
+
+        mock_parse_time.side_effect = mock_parse
+
+        test_schedule = {
+            "08:00": "block_a",
+            "10:00": "block_b",
+        }
+        config = MagicMock(time_blocks={"block_a": 60, "block_b": 30}, time_points={})
+
+        current, next_event, time_to_next = reminder.get_current_and_next_events(
+            test_schedule, config
+        )
+
+        assert current is None
+        assert next_event == "block_b at 10:00"
         assert time_to_next == "30m"
 
     @patch("schedule_management.reminder.ScheduleConfig")
@@ -303,11 +344,12 @@ class TestHelperFunctions:
 
         with patch("schedule_management.reminder.get_week_parity") as mock_parity:
             mock_parity.return_value = "odd"
-            schedule, parity, is_skipped = reminder.get_today_schedule_for_status()
+            schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
 
             assert schedule == {"09:00": "pomodoro"}
             assert parity == "odd"
             assert is_skipped is False
+            assert config is mock_config_instance
 
     @patch("schedule_management.reminder.ScheduleConfig")
     def test_get_today_schedule_for_status_skipped(self, mock_config):
@@ -319,11 +361,12 @@ class TestHelperFunctions:
 
         with patch("schedule_management.reminder.get_week_parity") as mock_parity:
             mock_parity.return_value = "even"
-            schedule, parity, is_skipped = reminder.get_today_schedule_for_status()
+            schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
 
             assert schedule == {}
             assert parity == "even"
             assert is_skipped is True
+            assert config is mock_config_instance
 
 
 class TestMainFunction:

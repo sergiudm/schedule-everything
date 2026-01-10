@@ -107,6 +107,136 @@ def show_dialog(message):
         return "OK"
 
 
+def _escape_applescript_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+
+def choose_multiple(options: list[str], title: str, prompt: str) -> list[str] | None:
+    """Prompt the user with a GUI multi-select list.
+
+    Returns:
+        - list[str]: selected option strings (may be empty if user selects none)
+        - None: user cancelled OR no supported GUI backend is available
+    """
+    platform_name = get_platform()
+
+    if platform_name == "macos":
+        escaped_items = ",".join(
+            f'"{_escape_applescript_string(item)}"' for item in options
+        )
+        script = f"""
+set optionsList to {{{escaped_items}}}
+set promptText to "{_escape_applescript_string(prompt)}"
+set titleText to "{_escape_applescript_string(title)}"
+set choice to choose from list optionsList with title titleText with prompt promptText with multiple selections allowed
+if choice is false then
+  return "__CANCEL__"
+end if
+set AppleScript's text item delimiters to "\\n"
+return choice as text
+""".strip()
+        try:
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except FileNotFoundError:
+            print("Warning: osascript not found; cannot show habit prompt window.")
+            return None
+        except subprocess.TimeoutExpired:
+            print("Warning: habit prompt window timed out.")
+            return None
+
+        if result.returncode != 0:
+            return None
+        stdout = (result.stdout or "").strip()
+        if stdout == "__CANCEL__":
+            return None
+        if not stdout:
+            return []
+        return [line for line in stdout.splitlines() if line.strip()]
+
+    if platform_name == "linux":
+        # Prefer zenity checklist if available
+        zenity_cmd = ["zenity", "--list", "--checklist", "--title", title, "--text", prompt]
+        zenity_cmd += ["--column", "Done", "--column", "Habit"]
+        for option in options:
+            zenity_cmd += ["FALSE", option]
+        try:
+            result = subprocess.run(
+                zenity_cmd + ["--separator", "\n"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                return None
+            stdout = (result.stdout or "").strip()
+            if not stdout:
+                return []
+            return [line for line in stdout.splitlines() if line.strip()]
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return None
+
+    return None
+
+
+def ask_yes_no_macos(question: str, title: str) -> bool | None:
+    """
+    Show a Yes/No dialog on macOS using AppleScript.
+    Returns: True (Yes), False (No), or None (Stop/Cancel).
+    """
+    script = f"""
+set questionText to "{_escape_applescript_string(question)}"
+set titleText to "{_escape_applescript_string(title)}"
+display dialog questionText with title titleText buttons {{"Stop", "No", "Yes"}} default button "Yes" cancel button "Stop" with icon note
+"""
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+    # Check return code. "Stop" (cancel button) causes non-zero exit code in osascript
+    if result.returncode != 0:
+        return None
+
+    stdout = result.stdout.strip()
+    if "button returned:Yes" in stdout:
+        return True
+    elif "button returned:No" in stdout:
+        return False
+
+    return None
+
+
+def ask_yes_no(question: str, title: str = "Confirmation") -> bool | None:
+    """
+    Ask a Yes/No question with a platform-specific dialog.
+    Returns: True, False, or None (cancelled/stopped).
+    """
+    platform_name = get_platform()
+    if platform_name == "macos":
+        return ask_yes_no_macos(question, title)
+
+    # Simple CLI fallback
+    print(f"\n{title}: {question}")
+    while True:
+        choice = input(" (y/n/s[top]): ").lower().strip()
+        if choice.startswith("y"):
+            return True
+        if choice.startswith("n"):
+            return False
+        if choice.startswith("s"):
+            return None
+
+
 def alarm(title, message, sound_file, alarm_interval, max_alarm_duration):
     """Trigger repeating alarm until dismissed or timeout"""
     start_time = time.time()

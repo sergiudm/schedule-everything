@@ -1,6 +1,6 @@
 # Habit Tracking Configuration Template
 # Define your daily habits here. Each habit has an ID and description.
-# Use `reminder track <id1> <id2> ...` to mark which habits you completed today.
+# Use `reminder track` to answer in a prompt window, or `reminder track <id1> <id2> ...` for CLI usage.
 
 [habits]
 # Format: habit_id = "Description"

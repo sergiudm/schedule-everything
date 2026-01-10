@@ -13,6 +13,8 @@ from schedule_management.utils import (
     load_toml_file,
     play_sound,
     show_dialog,
+    choose_multiple,
+    ask_yes_no,
 )
 
 from schedule_management import (
@@ -71,6 +73,14 @@ class ScheduleConfig:
     @property
     def daily_urgent_times(self) -> list[str]:
         return self.tasks.get("daily_urgency", self.tasks.get("daily_urgent", []))
+
+    @property
+    def ddl_urgent_times(self) -> list[str]:
+        return self.tasks.get("ddl_urgency", self.tasks.get("ddl_urgent", []))
+
+    @property
+    def habit_prompt_time(self) -> str:
+        return self.tasks.get("habit_prompt", self.tasks.get("habit_tracking", ""))
 
     @property
     def config_dir(self) -> str:
@@ -180,6 +190,116 @@ def show_daily_summary_popup():
     show_dialog(summary_message)
 
 
+def _habit_sort_key(habit_id: str) -> tuple[int, str]:
+    if habit_id.isdigit():
+        return (0, f"{int(habit_id):09d}")
+    return (1, habit_id)
+
+
+def _habit_question(description: str) -> str:
+    text = str(description).strip()
+    if not text:
+        return "Did you complete this habit today?"
+    if text.endswith("?"):
+        return text
+    if text.lower().startswith("did you "):
+        return f"{text}?"
+    if text[0].isalpha():
+        text = text[0].lower() + text[1:]
+    return f"Did you {text} today?"
+
+
+def _load_habits() -> dict[str, str]:
+    try:
+        import tomllib
+
+        with open(HABIT_PATH, "rb") as fp:
+            data = tomllib.load(fp)
+    except Exception:
+        return {}
+
+    habits_section = data.get("habits", data)
+    habits: dict[str, str] = {}
+    for key, value in habits_section.items():
+        if isinstance(value, int):
+            habits[str(value)] = str(key)
+        else:
+            habits[str(key)] = str(value)
+    return habits
+
+
+def _load_habit_records() -> list[dict[str, Any]]:
+    record_path = Path(RECORD_PATH)
+    if not record_path.exists():
+        return []
+    try:
+        with open(record_path, "r", encoding="utf-8") as fp:
+            data = json.load(fp)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save_habit_records(records: list[dict[str, Any]]) -> None:
+    record_path = Path(RECORD_PATH)
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(record_path, "w", encoding="utf-8") as fp:
+        json.dump(records, fp, indent=2, ensure_ascii=False)
+
+
+def show_habit_tracking_popup(now: datetime | None = None) -> bool:
+    """Prompt for today's habits one by one and save the record. Returns True if saved."""
+    habits = _load_habits()
+    if not habits:
+        return False
+
+    now_dt = now or datetime.now()
+    today = now_dt.strftime("%Y-%m-%d")
+
+    sorted_habits = sorted(habits.items(), key=lambda item: _habit_sort_key(item[0]))
+
+    completed_ids = []
+    total_habits = len(sorted_habits)
+    cancelled = False
+
+    for i, (habit_id, description) in enumerate(sorted_habits, 1):
+        question = _habit_question(description)
+        title = f"Habit Tracker ({i}/{total_habits})"
+
+        result = ask_yes_no(question, title)
+
+        if result is None:
+            cancelled = True
+            break
+
+        if result:
+            completed_ids.append(habit_id)
+
+    # If user cancelled without tracking anything, don't save/overwrite
+    if cancelled and not completed_ids:
+        return False
+
+    completed = {habit_id: habits[habit_id] for habit_id in completed_ids}
+
+    records = _load_habit_records()
+    existing_index = next(
+        (i for i, r in enumerate(records) if r.get("date") == today), None
+    )
+    new_record = {
+        "date": today,
+        "completed": completed,
+        "timestamp": now_dt.isoformat(),
+    }
+
+    if existing_index is None:
+        records.append(new_record)
+    else:
+        records[existing_index] = new_record
+
+    _save_habit_records(records)
+    return True
+
+
 def try_auto_generate_reports(settings_path: str):
     """Generate scheduled reports once using settings.toml."""
     try:
@@ -257,6 +377,48 @@ class ScheduleRunner:
         except (json.JSONDecodeError, FileNotFoundError):
             return []
 
+    def _get_urgent_deadlines(self) -> list[dict[str, Any]]:
+        try:
+            with open(DDL_PATH, "r", encoding="utf-8") as f:
+                deadlines = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+        today = datetime.now().date()
+        urgent: list[dict[str, Any]] = []
+
+        for ddl in deadlines:
+            if not isinstance(ddl, dict):
+                continue
+            event = ddl.get("event")
+            deadline_str = ddl.get("deadline")
+            if not event or not deadline_str:
+                continue
+
+            try:
+                deadline_date = datetime.strptime(deadline_str, "%Y-%m-%d").date()
+            except Exception:
+                continue
+
+            days_left = (deadline_date - today).days
+            if days_left <= 3:
+                urgent.append(
+                    {
+                        "event": str(event),
+                        "deadline": deadline_str,
+                        "days_left": days_left,
+                    }
+                )
+
+        urgent.sort(
+            key=lambda d: (
+                d.get("days_left", 0),
+                d.get("deadline", ""),
+                d.get("event", ""),
+            )
+        )
+        return urgent
+
     def _check_urgent_tasks(self):
         urgent_tasks = self._get_unfinished_urgent_tasks()
         if urgent_tasks:
@@ -269,26 +431,71 @@ class ScheduleRunner:
             )
             self._trigger_alarm("Today's Urgent Tasks", message, sound="Glass")
 
+    def _check_urgent_deadlines(self):
+        urgent_deadlines = self._get_urgent_deadlines()
+        if not urgent_deadlines:
+            return
+
+        lines: list[str] = []
+        for ddl in urgent_deadlines:
+            event = ddl.get("event", "未知事件")
+            deadline_str = ddl.get("deadline", "")
+            days_left = ddl.get("days_left", 0)
+            if days_left < 0:
+                lines.append(f"⚠️ {event} - {deadline_str} (已逾期 {-days_left} 天)")
+            elif days_left == 0:
+                lines.append(f"🔴 {event} - {deadline_str} (今天截止)")
+            else:
+                lines.append(f"🚨 {event} - {deadline_str} (剩余 {days_left} 天)")
+
+        message = "📅 紧急DDL提醒\n\n" + "\n".join(lines)
+        self._trigger_alarm("Urgent Deadlines", message, sound="Glass")
+
     def run(self):
         while True:
             now = datetime.now()
             now_str = now.strftime("%H:%M")
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
             # Handle daily summary time
+            daily_summary_key = f"daily_summary_{now_str}"
             if (
                 now_str == self.config.daily_summary_time
-                and now_str not in self.notified_today
+                and daily_summary_key not in self.notified_today
                 and not self.config.should_skip_today()
             ):
                 threading.Thread(target=show_daily_summary_popup, daemon=True).start()
-                self.notified_today.add(now_str)
+                self.notified_today.add(daily_summary_key)
+
+            habit_prompt_time = self.config.habit_prompt_time
+            habit_prompt_key = f"habit_prompt_{now.strftime('%Y-%m-%d')}"
+            if (
+                habit_prompt_time
+                and now_str == habit_prompt_time
+                and habit_prompt_key not in self.notified_today
+                and not self.config.should_skip_today()
+            ):
+                threading.Thread(target=show_habit_tracking_popup, daemon=True).start()
+                self.notified_today.add(habit_prompt_key)
 
             # Handle daily urgent tasks check
             if not self.config.should_skip_today():
                 for urgent_time in self.config.daily_urgent_times:
-                    if now_str == urgent_time and now_str not in self.notified_today:
+                    urgent_tasks_key = f"urgent_tasks_{urgent_time}"
+                    if (
+                        now_str == urgent_time
+                        and urgent_tasks_key not in self.notified_today
+                    ):
                         self._check_urgent_tasks()
-                        self.notified_today.add(now_str)
+                        self.notified_today.add(urgent_tasks_key)
+
+                for urgent_time in self.config.ddl_urgent_times:
+                    urgent_ddls_key = f"urgent_ddls_{urgent_time}"
+                    if (
+                        now_str == urgent_time
+                        and urgent_ddls_key not in self.notified_today
+                    ):
+                        self._check_urgent_deadlines()
+                        self.notified_today.add(urgent_ddls_key)
 
             # Handle weekly review time
             weekly_review_setting = self.config.weekly_review_time

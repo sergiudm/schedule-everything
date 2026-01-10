@@ -363,3 +363,65 @@ class TestFullFlow:
         assert "MESSAGE: Lunch time 🍜" in event_log
         assert "END: Focus Task A 结束！休息一下 🎉" in event_log
         assert "RESET" in event_log
+
+
+class TestUrgentDeadlines:
+    def test_get_urgent_deadlines_filters_and_sorts(self, tmp_path, monkeypatch):
+        import json
+        from datetime import datetime, timedelta
+
+        import schedule_management.reminder_macos as reminder_macos
+
+        ddl_path = tmp_path / "ddl.json"
+        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+
+        today = datetime.now().date()
+        deadlines = [
+            {"event": "yesterday", "deadline": (today - timedelta(days=1)).isoformat()},
+            {"event": "today", "deadline": today.isoformat()},
+            {"event": "in2", "deadline": (today + timedelta(days=2)).isoformat()},
+            {"event": "in5", "deadline": (today + timedelta(days=5)).isoformat()},
+        ]
+        ddl_path.write_text(json.dumps(deadlines), encoding="utf-8")
+
+        runner = ScheduleRunner.__new__(ScheduleRunner)
+        urgent = runner._get_urgent_deadlines()
+
+        assert [d["event"] for d in urgent] == ["yesterday", "today", "in2"]
+        assert [d["days_left"] for d in urgent] == [-1, 0, 2]
+
+    def test_check_urgent_deadlines_triggers_alarm(self, tmp_path, monkeypatch):
+        import json
+        from datetime import datetime
+
+        import schedule_management.reminder_macos as reminder_macos
+
+        ddl_path = tmp_path / "ddl.json"
+        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+
+        ddl_path.write_text(
+            json.dumps([{"event": "due", "deadline": datetime.now().date().isoformat()}]),
+            encoding="utf-8",
+        )
+
+        runner = ScheduleRunner.__new__(ScheduleRunner)
+        runner.config = MagicMock()
+        runner._trigger_alarm = MagicMock()
+
+        runner._check_urgent_deadlines()
+
+        runner._trigger_alarm.assert_called_once()
+
+    def test_check_urgent_deadlines_noop_when_empty(self, tmp_path, monkeypatch):
+        import schedule_management.reminder_macos as reminder_macos
+
+        ddl_path = tmp_path / "ddl.json"
+        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+        ddl_path.write_text("[]", encoding="utf-8")
+
+        runner = ScheduleRunner.__new__(ScheduleRunner)
+        runner._trigger_alarm = MagicMock()
+
+        runner._check_urgent_deadlines()
+
+        runner._trigger_alarm.assert_not_called()

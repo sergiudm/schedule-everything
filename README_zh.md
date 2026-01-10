@@ -92,14 +92,19 @@ alias reminder="$HOME/schedule_management/reminder"
 |              | `reminder rm "任务"` / `rm <id>`  | 按名称或 ID 删除任务             |
 | **截止日期** | `reminder ddl`                    | 显示截止日期及紧急状态           |
 |              | `reminder ddl add "名称" "MM.DD"` | 添加或更新截止日期               |
-| **习惯**     | `reminder track <ids...>`         | 记录今天完成的习惯 ID            |
+| **习惯**     | `reminder track [ids...]`         | 记录今天完成的习惯（不传 ID 会弹出窗口）            |
 
 ### 使用示例
 
 ```bash
 # 添加高优先级任务
 reminder add "完成报告" 9
+
+# 记录习惯（不需要输入 ID，会弹出窗口）
+reminder track
 ```
+
+也可以在 `config/settings.toml` 里设置自动弹窗时间：`[tasks].habit_prompt = "HH:MM"`。
 
 ---
 

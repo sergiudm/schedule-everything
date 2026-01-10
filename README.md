@@ -17,6 +17,12 @@ A simple, persistent way to manage your daily schedule.
     <td>
       <img src="assets/rmd_view.gif" alt="View Schedule" width="100%">
     </td>
+    <td>
+      <img src="assets/rmd_alert.gif" alt="Alert Example" width="100%">
+    </td>
+    <td>
+      <img src="assets/emergency.png" alt="Alert Example" width="100%">
+    </td>
   </tr>
 </table>
 
@@ -90,7 +96,7 @@ alias reminder="$HOME/schedule_management/reminder"
 |               | `reminder rm "task"` / `rm <id>`  | Remove task by name or ID                    |
 | **Deadlines** | `reminder ddl`                    | Show deadlines with urgency status           |
 |               | `reminder ddl add "name" "MM.DD"` | Add or update a deadline                     |
-| **Habits**    | `reminder track <ids...>`         | Log completed habit IDs for today            |
+| **Habits**    | `reminder track [ids...]`         | Log completed habits for today (opens a prompt if no IDs) |
 
 > For detailed usage, refer to the [CLI Overview](https://sergiudm.github.io/schedule-everything/docs/cli/overview).
 
@@ -105,7 +111,12 @@ reminder ddl add "Project Launch" "12.25"
 
 # Track habits 1 and 2 as done for today
 reminder track 1 2
+
+# Or use the prompt window (no IDs)
+reminder track
 ```
+
+Habit prompts can also be scheduled automatically via `config/settings.toml` (`[tasks].habit_prompt = "HH:MM"`).
 
 ---
 

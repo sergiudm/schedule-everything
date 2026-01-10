@@ -10,11 +10,12 @@ This tool provides commands to:
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 import tomllib
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,7 @@ from schedule_management.reminder_macos import (
 )
 
 from schedule_management.utils import get_week_parity, parse_time, ScheduleVisualizer
+from schedule_management.utils import choose_multiple, ask_yes_no
 from schedule_management.report import ReportGenerator
 from schedule_management import (
     COLORS,
@@ -47,6 +49,68 @@ from schedule_management import (
     TASK_LOG_PATH,
     RECORD_PATH,
 )
+
+
+_HABIT_CHOICE_RE = re.compile(r"^\[(?P<habit_id>[^\]]+)\]\s+")
+
+
+def _habit_sort_key(habit_id: str) -> tuple[int, str]:
+    if habit_id.isdigit():
+        return (0, f"{int(habit_id):09d}")
+    return (1, habit_id)
+
+
+def _habit_question(description: str) -> str:
+    text = description.strip()
+    if not text:
+        return "Did you complete this habit today?"
+    if text.endswith("?"):
+        return text
+    if text.lower().startswith("did you "):
+        return f"{text}?"
+    if text[0].isalpha():
+        text = text[0].lower() + text[1:]
+    return f"Did you {text} today?"
+
+
+def _prompt_completed_habits(habits: dict[str, str]) -> list[str] | None:
+    sorted_habits = sorted(habits.items(), key=lambda item: _habit_sort_key(item[0]))
+
+    completed_ids: list[str] = []
+    total_habits = len(sorted_habits)
+    cancelled = False
+
+    for i, (habit_id, description) in enumerate(sorted_habits, 1):
+        question = _habit_question(description)
+        title = f"Habit Tracker ({i}/{total_habits})"
+
+        result = ask_yes_no(question, title)
+
+        if result is None:
+            cancelled = True
+            break
+
+        if result:
+            completed_ids.append(habit_id)
+
+    if cancelled and not completed_ids:
+        return None
+
+    return completed_ids
+
+
+def _prompt_completed_habits_cli(habits: dict[str, str]) -> list[str] | None:
+    if not sys.stdin.isatty():
+        return None
+
+    print("Habits for today:")
+    for habit_id, description in sorted(habits.items(), key=lambda item: _habit_sort_key(item[0])):
+        print(f"  [{habit_id}] {_habit_question(description)}")
+    raw = input("Enter completed habit IDs (space-separated), or press Enter for none: ").strip()
+    if not raw:
+        return []
+    return raw.split()
+
 
 def load_tasks() -> list[dict[str, Any]]:
     """Load tasks from the JSON file."""
@@ -407,7 +471,7 @@ def delete_deadline(args):
 
 def track_habits(args):
     """Handle the 'track' command - record which habits were completed today."""
-    habit_ids = args.habit_ids
+    habit_ids = getattr(args, "habit_ids", None) or []
 
     # Load habits configuration
     habits = load_habits()
@@ -415,6 +479,14 @@ def track_habits(args):
     if not habits:
         print("❌ Error: No habits configured. Please create config/habits.toml")
         return 1
+
+    if not habit_ids:
+        habit_ids = _prompt_completed_habits(habits)
+        if habit_ids is None:
+            habit_ids = _prompt_completed_habits_cli(habits)
+        if habit_ids is None:
+            print("❌ Could not open a habit prompt window. Provide habit IDs, e.g. `reminder track 1 2`.")
+            return 1
 
     # Validate habit IDs
     invalid_ids = []
@@ -466,7 +538,7 @@ def track_habits(args):
         print(f"✅ Recorded habit tracking for {today}")
 
     print(f"Completed habits today: {len(completed_habits)}")
-    for habit_id in sorted(valid_habits):
+    for habit_id in sorted(valid_habits, key=_habit_sort_key):
         print(f"  [{habit_id}] {habits[habit_id]}")
 
     # Save records
@@ -784,7 +856,7 @@ def view_command(args):
         return 1
 
 
-def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool]:
+def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool, ScheduleConfig]:
     """Helper to get today's schedule with metadata for status command."""
     config = ScheduleConfig(SETTINGS_PATH)
     weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
@@ -792,25 +864,59 @@ def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool]:
     parity = get_week_parity()
     schedule = {} if is_skipped else weekly.get_today_schedule(config)
 
-    return schedule, parity, is_skipped
+    return schedule, parity, is_skipped, config
 
 
 def get_current_and_next_events(
     schedule: dict[str, Any],
+    config: ScheduleConfig | None = None,
 ) -> tuple[str | None, str | None, str | None]:
-    """Get current and next scheduled events from today's schedule."""
+    """Get current and next scheduled events from today's schedule.
+
+    "Current" only includes events that are actively happening now:
+    - time blocks are active for their configured duration (settings.toml [time_blocks])
+    - time points / direct messages are active for 1 minute (the trigger minute)
+    """
     if not schedule:
         return None, None, None
 
     now = datetime.now()
     current_time = now.time()
+    today = date.today()
+    now_dt = datetime.combine(today, current_time)
+
+    def get_event_display_name(event: Any) -> str:
+        if isinstance(event, str):
+            return event
+        if isinstance(event, dict) and "block" in event:
+            return event.get("title", event["block"])
+        return str(event)
+
+    def get_event_duration_minutes(event: Any) -> int:
+        if config is None:
+            return 1
+
+        if isinstance(event, str):
+            if event in config.time_blocks:
+                return int(config.time_blocks[event])
+            return 1
+
+        if isinstance(event, dict) and "block" in event:
+            block_type = event["block"]
+            if block_type in config.time_blocks:
+                return int(config.time_blocks[block_type])
+            return 1
+
+        return 1
 
     # Parse and sort scheduled times
-    scheduled_times = []
+    scheduled_times: list[tuple[str, datetime]] = []
     for time_str in schedule.keys():
         try:
-            t = parse_time(time_str)
-            scheduled_times.append((time_str, t))
+            scheduled_time = parse_time(time_str)
+            scheduled_times.append(
+                (time_str, datetime.combine(today, scheduled_time))
+            )
         except ValueError:
             continue
 
@@ -820,24 +926,20 @@ def get_current_and_next_events(
     next_event = None
     time_to_next = None
 
-    for time_str, scheduled_time in scheduled_times:
+    for time_str, start_dt in scheduled_times:
         event = schedule[time_str]
-        if isinstance(event, str):
-            event_name = event
-        elif isinstance(event, dict) and "block" in event:
-            event_name = event.get("title", event["block"])
-        else:
-            event_name = str(event)
 
-        if scheduled_time <= current_time:
+        event_name = get_event_display_name(event)
+        duration_minutes = get_event_duration_minutes(event)
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+        if start_dt <= now_dt < end_dt:
             current_event = f"{event_name} at {time_str}"
-        else:
+
+        if start_dt > now_dt and next_event is None:
             next_event = f"{event_name} at {time_str}"
             # Calculate time difference
-            today = date.today()
-            event_dt = datetime.combine(today, scheduled_time)
-            now_dt = datetime.combine(today, current_time)
-            diff = event_dt - now_dt
+            diff = start_dt - now_dt
             total_minutes = int(diff.total_seconds() // 60)
             hours = total_minutes // 60
             minutes = total_minutes % 60
@@ -845,7 +947,6 @@ def get_current_and_next_events(
                 time_to_next = f"{hours}h {minutes}m"
             else:
                 time_to_next = f"{minutes}m"
-            break
 
     return current_event, next_event, time_to_next
 
@@ -883,7 +984,7 @@ def status_command(args):
     console = Console()
 
     try:
-        schedule, parity, is_skipped = get_today_schedule_for_status()
+        schedule, parity, is_skipped, config = get_today_schedule_for_status()
 
         # --- 1. Header Section (Parity) ---
         parity_text = f"📅 {parity.title()} Week"
@@ -905,7 +1006,9 @@ def status_command(args):
             return 0
 
         # --- 2. Status Panel (Current & Next Event) ---
-        current_event, next_ev, time_until = get_current_and_next_events(schedule)
+        current_event, next_ev, time_until = get_current_and_next_events(
+            schedule, config
+        )
 
         status_lines = []
 
@@ -915,7 +1018,7 @@ def status_command(args):
             # But keep it simple for now based on your return values
             status_lines.append(f"[bold green]🔔 NOW:[/bold green]  {current_event}")
         else:
-            status_lines.append("[dim]🔕 No active event[/dim]")
+            status_lines.append("[bold yellow]🟡 IDLE[/bold yellow]")
 
         status_lines.append("")  # spacer
 
@@ -1160,8 +1263,8 @@ def main():
     )
     track_parser.add_argument(
         "habit_ids",
-        nargs="+",
-        help="One or more habit IDs to mark as completed (e.g., '1 2 3')",
+        nargs="*",
+        help="Optional habit IDs to mark as completed (e.g., '1 2 3'). If omitted, a prompt window is shown.",
     )
     track_parser.set_defaults(func=track_habits)
 
