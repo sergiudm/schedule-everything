@@ -192,8 +192,26 @@ setup_project() {
     log_info "Setting up project directory..."
 
     if [[ -d "$INSTALL_DIR" ]]; then
-        log_warning "Installation directory exists. Backing up..."
-        mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+        log_warning "Installation directory exists at $INSTALL_DIR"
+        while true; do
+            read -r -p "Replace existing installation with new files? [y/N]: " replace_existing
+            case "$replace_existing" in
+                [yY]|[yY][eE][sS])
+                    log_info "Replacing existing installation directory..."
+                    rm -rf "$INSTALL_DIR"
+                    break
+                    ;;
+                [nN]|[nN][oO]|"")
+                    backup_path="${INSTALL_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+                    log_info "Backing up existing installation to $backup_path"
+                    mv "$INSTALL_DIR" "$backup_path"
+                    break
+                    ;;
+                *)
+                    log_warning "Invalid input. Please answer with y or n."
+                    ;;
+            esac
+        done
     fi
 
     mkdir -p "$INSTALL_DIR"
