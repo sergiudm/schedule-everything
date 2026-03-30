@@ -1,4 +1,3 @@
-
 ---
 sidebar_position: 2
 ---
@@ -9,92 +8,17 @@ Commands for managing your schedule, viewing upcoming events, and controlling th
 
 ## update
 
-Reload configuration files and restart the background service.
+Reload the schedule configuration files (pulling from a remote Git repository if `.git` is present) and restart the background service.
 
 ### Syntax
 ```bash
-reminder update [OPTIONS]
+reminder update
 ```
-
-### Options
-| Option | Description |
-|--------|-------------|
-| `--force` | Force restart even if configuration hasn't changed |
-| `--no-restart` | Reload config without restarting the service |
 
 ### Examples
 ```bash
 # Basic update
 reminder update
-
-# Force update and restart
-reminder update --force
-
-# Reload config without restarting
-reminder update --no-restart
-
-# Update with custom config directory
-reminder update --config-dir /custom/path/config
-```
-
-### Output
-```
-✓ Configuration loaded successfully
-✓ Service restarted
-✓ Next event: 09:00 - Pomodoro session
-```
-
-## view
-
-Generate a visual representation of your schedule.
-
-### Syntax
-```bash
-reminder view [OPTIONS]
-```
-
-### Options
-| Option | Description |
-|--------|-------------|
-| `--week` | Show the full week schedule |
-| `--day DATE` | Show schedule for specific date (YYYY-MM-DD) |
-| `--format FORMAT` | Output format: text, json, csv |
-| `--output FILE` | Save output to file |
-
-### Examples
-```bash
-# View today's schedule
-reminder view
-
-# View full week
-reminder view --week
-
-# View specific day
-reminder view --day 2024-01-15
-
-# Export as JSON
-reminder view --format json --output schedule.json
-
-# View with custom config
-reminder view --config-dir /custom/path/config
-```
-
-### Sample Output
-```
-Schedule for Monday, January 15, 2024
-=====================================
-
-08:30 │ ████████████████████████████████████████████████████████████████ │ Pomodoro (25 min)
-09:00 │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ Long Break (40 min)
-09:45 │ ████████████████████████████████████████████████████████████████ │ Pomodoro (25 min)
-10:15 │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ Long Break (40 min)
-11:00 │ ████████████████████████████████████████████████████████████████ │ Pomodoro (25 min)
-11:30 │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ Long Break (40 min)
-12:15 │ ████████████████████████████████████████████████████████████████ │ Lunch (60 min)
-13:15 │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ Team Standup (15 min)
-13:30 │ ████████████████████████████████████████████████████████████████ │ Pomodoro (25 min)
-14:00 │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ Long Break (40 min)
-14:45 │ ████████████████████████████████████████████████████████████████ │ Pomodoro (25 min)
 ```
 
 ## status
@@ -109,45 +33,93 @@ reminder status [OPTIONS]
 ### Options
 | Option | Description |
 |--------|-------------|
-| `-v, --verbose` | Show detailed schedule information |
-| `--next N` | Show next N events (default: 5) |
-| `--format FORMAT` | Output format: text, json |
-| `--timezone TZ` | Show times in specific timezone |
+| `-v, --verbose` | Show detailed schedule for today |
 
 ### Examples
 ```bash
-# Basic status
+# Show current status and next events
 reminder status
 
-# Detailed status
+# Show detailed today's schedule
 reminder status -v
-
-# Show next 10 events
-reminder status --next 10
-
-# JSON output
-reminder status --format json
-
-# Show in different timezone
-reminder status --timezone America/New_York
 ```
 
-### Sample Output
-```
-Service Status: Running ✓
-Configuration: Loaded ✓
-Next Event: Pomodoro session in 15 minutes (09:00)
+## view
 
-Upcoming Events:
-09:00  - Pomodoro session (25 min)
-09:30  - Long break (40 min)
-10:15  - Pomodoro session (25 min)
-10:45  - Long break (40 min)
-11:30  - Team standup meeting (15 min)
+Generate a visual representation of your schedule as a PDF document. This command creates a multi-page PDF combining your Odd and Even week schedules and immediately opens it in your default PDF viewer on macOS.
+
+### Syntax
+```bash
+reminder view
 ```
 
-### Verbose Output
+### Examples
+```bash
+# Generate and open schedule PDF visualization
+reminder view
 ```
-Service Status: Running ✓
-PID: 12345
-Uptime: 2 hours 
+
+## edit
+
+Open the TOML schedule configuration files directly in your default system editor.
+
+### Syntax
+```bash
+reminder edit [FILE]
+```
+
+### Options
+FILE choices: `settings`, `odd`, `even`, `deadlines`, `habits` (default is `settings` if omitted).
+
+### Examples
+```bash
+# Edit settings (default)
+reminder edit
+
+# Edit odd weeks schedule
+reminder edit odd
+
+# Edit deadlines
+reminder edit deadlines
+```
+
+## stop
+
+Stop the reminder-runner background service.
+
+### Syntax
+```bash
+reminder stop
+```
+
+## report
+
+Generate a productivity report as a PDF document.
+
+### Syntax
+```bash
+reminder report TYPE [OPTIONS]
+```
+
+### Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `TYPE` | string | `weekly` or `monthly` |
+
+### Options
+| Option | Description |
+|--------|-------------|
+| `-d, --date` | Target date in YYYY-MM-DD format (default: today) |
+| `--days` | Number of days to include (default: 7) |
+
+### Examples
+```bash
+# Generate report for last 7 days
+reminder report weekly
+
+# Generate a monthly report
+reminder report monthly
+
+# Generate report starting from a specific date
+reminder report weekly -d 2024-02-01 --days 14
+```

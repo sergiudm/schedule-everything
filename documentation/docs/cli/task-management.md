@@ -1,4 +1,3 @@
-
 ---
 sidebar_position: 3
 ---
@@ -13,21 +12,14 @@ Add a new task or update an existing one with an importance level.
 
 ### Syntax
 ```bash
-reminder add "TASK_DESCRIPTION" IMPORTANCE_LEVEL [OPTIONS]
+reminder add "TASK_DESCRIPTION" PRIORITY_LEVEL
 ```
 
 ### Parameters
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `TASK_DESCRIPTION` | string | Description of the task (quoted if contains spaces) |
-| `IMPORTANCE_LEVEL` | integer | Importance level from 1-10 (higher = more important) |
-
-### Options
-| Option | Description |
-|--------|-------------|
-| `--due DATE` | Set due date (YYYY-MM-DD format) |
-| `--category CATEGORY` | Assign task to a category |
-| `--notes NOTES` | Add additional notes to the task |
+| `PRIORITY_LEVEL` | integer | Priority level from 1-10 (higher = more important) |
 
 ### Examples
 ```bash
@@ -39,19 +31,10 @@ reminder add "Review pull request #123" 5
 
 # Add high-priority task
 reminder add "Call dentist" 9
-
-# Add low-priority task
-reminder add "Organize desk" 2
-
-# Add task with due date
-reminder add "Submit expense report" 7 --due 2024-01-20
-
-# Add task with category and notes
-reminder add "Prepare presentation" 8 --category work --notes "Include Q4 results"
 ```
 
 ### Smart Duplicate Handling
-If you add a task with the same description as an existing task, it updates the importance level instead of creating a duplicate:
+If you add a task with the same description as an existing task, it updates the priority level instead of creating a duplicate:
 
 ```bash
 # Initial task
@@ -59,15 +42,6 @@ reminder add "Buy groceries" 3
 
 # Update importance (no duplicate created)
 reminder add "Buy groceries" 6
-
-# Task list shows only one entry with importance 6
-```
-
-### Output
-```
-✓ Task added: "Complete project proposal" (importance: 8)
-Task ID: 123
-Created: 2024-01-15 09:30:00
 ```
 
 ## rm
@@ -76,19 +50,13 @@ Remove one or more tasks by description or ID.
 
 ### Syntax
 ```bash
-reminder rm TASK_IDENTIFIER [TASK_IDENTIFIER...] [OPTIONS]
+reminder rm TASK_IDENTIFIER [TASK_IDENTIFIER...]
 ```
 
 ### Parameters
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `TASK_IDENTIFIER` | string/integer | Task description (quoted) or task ID number |
-
-### Options
-| Option | Description |
-|--------|-------------|
-| `--force` | Skip confirmation prompt |
-| `--category CATEGORY` | Remove all tasks in a category |
+| `TASK_IDENTIFIER` | string/integer | Task description (quoted) or task ID number (from `reminder ls`) |
 
 ### Examples
 ```bash
@@ -98,100 +66,28 @@ reminder rm "Buy groceries"
 # Remove multiple tasks by description
 reminder rm "Call dentist" "Organize desk"
 
-# Remove by task ID (from 'reminder ls' output)
-reminder rm 123
-
-# Remove multiple tasks by ID
-reminder rm 123 124 125
-
-# Remove all tasks in a category
-reminder rm --category work
-
-# Force removal without confirmation
-reminder rm "Old task" --force
-```
-
-### Interactive Removal
-When removing tasks, you'll see a confirmation prompt:
-
-```
-Remove task: "Buy groceries" (importance: 3)?
-[y/N]: y
-✓ Task removed: "Buy groceries"
-```
-
-### Output
-```
-✓ Task removed: "Complete project proposal"
-✓ Task removed: "Call dentist"
-2 tasks removed successfully
+# Remove by task ID
+reminder rm 1 2 3
 ```
 
 ## ls
 
-List all tasks sorted by importance (highest first).
+List all tasks sorted by urgency and importance (highest first).
 
 ### Syntax
 ```bash
-reminder ls [OPTIONS]
+reminder ls
 ```
-
-### Options
-| Option | Description |
-|--------|-------------|
-| `-v, --verbose` | Show detailed task information |
-| `--category CATEGORY` | Show only tasks in specific category |
-| `--importance MIN-MAX` | Filter by importance range (e.g., 5-8) |
-| `--due-before DATE` | Show tasks due before specific date |
-| `--due-after DATE` | Show tasks due after specific date |
-| `--completed` | Include completed tasks |
-| `--limit N` | Limit output to N tasks |
-| `--format FORMAT` | Output format: text, json, csv |
 
 ### Examples
 ```bash
 # Basic task list
 reminder ls
-
-# Detailed list with timestamps
-reminder ls -v
-
-# Show only work category
-reminder ls --category work
-
-# Show high-importance tasks (7-10)
-reminder ls --importance 7-10
-
-# Show tasks due this week
-reminder ls --due-before 2024-01-22
-
-# Show completed tasks
-reminder ls --completed
-
-# JSON output
-reminder ls --format json
-
-# Limit to 5 most important tasks
-reminder ls --limit 5
-```
-
-### Sample Output
-```
-╭──────────────────────────────────────╮
-│          Current Task List           │
-├────┬──────────────────┬──────────────┤
-│ ID │ Priority         │ Description  │
-├────┼──────────────────┼──────────────┤
-│  1 │ █████████░░ (9)  │ Finish report│
-│  2 │ ████████░░ (8)   │ ⏳ Draft mail │
-│  3 │ █████░░░░░ (5)   │ Buy groceries│
-╰────┴──────────────────┴──────────────╯
-Total tasks: 3
 ```
 
 ### Procrastinate Tag
 
-When urgent reminders ask about high-priority tasks (priority 8-10), tasks you mark as **not completed** are recorded in a procrastinate list file:
+When urgent reminders ask about high-priority tasks (priority 8-10) during a time point reminder, tasks you mark as **not completed** are recorded in a procrastinate list file:
 
 - `tasks/procrastinate.json` under your `REMINDER_CONFIG_DIR`
 - Entries are stored as task descriptions
@@ -201,4 +97,33 @@ In `reminder ls`, procrastinated tasks are shown with:
 - A `⏳` prefix
 - A dim/italic text style
 
-When a procrastinated task is completed (through reminder prompts or `reminder rm`), it is automatically removed from `tasks/procrastinate.json`.
+When a procrastinated task is complete (`reminder rm`), it is automatically removed from `tasks/procrastinate.json`.
+
+---
+
+# Habit Management Commands
+
+Commands for interacting with your configured daily habits.
+
+## <a name="habits"></a>track
+
+Log completed habits for today. Habits are loaded from `habits.toml`.
+
+### Syntax
+```bash
+reminder track [HABIT_IDS...]
+```
+
+### Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `HABIT_IDS` | array of strings | (Optional) Space-separated list of Habit IDs to mark completed for today. |
+
+### Examples
+```bash
+# Mark habits 1 and 2 as completed for today
+reminder track 1 2
+
+# Open an interactive prompt window to tick off habits
+reminder track
+```

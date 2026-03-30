@@ -92,13 +92,17 @@ alias reminder="$HOME/schedule_management/reminder"
 | ------------- | --------------------------------- | -------------------------------------------- |
 | **System**    | `reminder update`                 | Reload config and restart background service |
 |               | `reminder status [-v]`            | Show upcoming events (or full schedule)      |
+|               | `reminder view`                   | Generate and view a PDF schedule visualization |
+|               | `reminder edit <file>`            | Edit a config file directly                  |
 |               | `reminder stop`                   | Stop the alarm service                       |
 | **Tasks**     | `reminder add "task" <1-10>`      | Add/update task with importance level        |
 |               | `reminder ls`                     | List tasks by importance                     |
 |               | `reminder rm "task"` / `rm <id>`  | Remove task by name or ID                    |
 | **Deadlines** | `reminder ddl`                    | Show deadlines with urgency status           |
 |               | `reminder ddl add "name" "MM.DD"` | Add or update a deadline                     |
+|               | `reminder ddl rm <events...>`     | Remove one or more deadlines                 |
 | **Habits**    | `reminder track [ids...]`         | Log completed habits for today (opens a prompt if no IDs) |
+| **Reports**   | `reminder report <type>`          | Generate weekly or monthly PDF reports       |
 
 > For detailed usage, refer to the [CLI Overview](https://sergiudm.github.io/schedule-everything/docs/cli/overview).
 

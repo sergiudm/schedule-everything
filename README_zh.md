@@ -86,13 +86,17 @@ alias reminder="$HOME/schedule_management/reminder"
 | ------------ | --------------------------------- | -------------------------------- |
 | **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
 |              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
+|              | `reminder view`                   | 生成并查看 PDF 格式日程可视化界面 |
+|              | `reminder edit <file>`            | 直接编辑配置文件                 |
 |              | `reminder stop`                   | 停止提醒服务                     |
 | **任务**     | `reminder add "任务" <1-10>`      | 添加/更新任务及其重要性          |
 |              | `reminder ls`                     | 按重要性列出任务                 |
 |              | `reminder rm "任务"` / `rm <id>`  | 按名称或 ID 删除任务             |
 | **截止日期** | `reminder ddl`                    | 显示截止日期及紧急状态           |
 |              | `reminder ddl add "名称" "MM.DD"` | 添加或更新截止日期               |
+|              | `reminder ddl rm <events...>`     | 取消或移除截止日期               |
 | **习惯**     | `reminder track [ids...]`         | 记录今天完成的习惯（不传 ID 会弹出窗口）            |
+| **报告**     | `reminder report <type>`          | 生成每周或每月（weekly或monthly）的 PDF 报告        |
 
 ### 使用示例
 

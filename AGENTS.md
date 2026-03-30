@@ -64,7 +64,8 @@
 
 ## Existing Workspace Skills
 
-- .claude/skills/add-cli-feature/SKILL.md
-- .claude/skills/modify-cli-feature/SKILL.md
+- .agents/skills/add-cli-feature/SKILL.md
+- .agents/skills/modify-cli-feature/SKILL.md
+- .agents/skills/update-docs/SKILL.md
 
-Use these skills when implementing or modifying CLI functionality.
+Use these skills when implementing or modifying CLI functionality, and when synchronizing docs across README and documentation pages.

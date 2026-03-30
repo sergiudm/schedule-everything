@@ -23,7 +23,7 @@ source ~/.zshrc  # or source ~/.bash_profile
 
 ## Command Categories
 
-The CLI commands are organized into three main categories:
+The CLI commands are organized into these main categories:
 
 ### Schedule Management
 Commands for managing your schedule and service:
@@ -44,27 +44,24 @@ Commands for managing event deadlines:
 - [`reminder ddl rm`](deadline-management.md#remove) - Remove deadlines
 - [`reminder ddl`](deadline-management.md#list) - List all deadlines with urgency status
 
+### Habits
+Commands for tracking daily habits:
+- [`reminder track [ids...]`](task-management.md#habits) - Log completed habits for today (opens a prompt if no IDs given)
+
+### Reports
+Commands for generating productivity reports:
+- [`reminder report <type>`](schedule-management.md#report) - Generate weekly or monthly PDF reports
+
 ### System Commands
-- [`reminder --help`](overview.md#help) - Show help information
-- [`reminder --version`](overview.md#version) - Show version information
-
-## Global Options
-
-Most commands support these global options:
-
-| Option              | Description                            |
-| ------------------- | -------------------------------------- |
-| `-h, --help`        | Show help message for the command      |
-| `-v, --verbose`     | Enable verbose output                  |
-| `-q, --quiet`       | Suppress non-error output              |
-| `--config-dir PATH` | Specify custom configuration directory |
+- [`reminder edit <file>`](schedule-management.md#edit) - Open configuration files (`settings`, `odd`, `even`, `deadlines`, `habits`) in your default editor
+- `reminder --help` - Show help information
 
 ## Configuration Directory
 
 By default, the CLI looks for configuration files in:
 - `~/schedule_management/config/` (macOS/Linux)
 
-You can override this by setting the `REMINDER_CONFIG_DIR` environment variable or using the `--config-dir` option.
+You can override this by setting the `REMINDER_CONFIG_DIR` environment variable.
 
 ## Error Handling
 
@@ -109,10 +106,10 @@ reminder stop
 ### Advanced Usage
 ```bash
 # Update with custom config directory
-reminder update --config-dir /custom/path/config
+REMINDER_CONFIG_DIR=/custom/path/config reminder update
 
-# List tasks with verbose output
-reminder ls -v
+# List tasks with verbose output (if supported)
+reminder status -v
 
 # Remove multiple tasks
 reminder rm "Task 1" "Task 2" "Task 3"
