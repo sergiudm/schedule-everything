@@ -18,7 +18,6 @@ Example Usage (via CLI):
 import re
 import sys
 from datetime import date, datetime, timezone
-from typing import Any
 
 from schedule_management.data import (
     load_habits,

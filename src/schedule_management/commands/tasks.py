@@ -17,7 +17,6 @@ Example Usage (via CLI):
 """
 
 import sys
-from typing import Any
 
 try:
     from rich import box

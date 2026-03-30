@@ -33,7 +33,9 @@ class TestUpdateCommand:
         mock_path_instance.parent = mock_config_dir
         mock_path_class.return_value = mock_path_instance
 
-        mock_subprocess.return_value = MagicMock(returncode=0, stdout="Already up to date", stderr="")
+        mock_subprocess.return_value = MagicMock(
+            returncode=0, stdout="Already up to date", stderr=""
+        )
 
         args = MagicMock()
         result = reminder.update_command(args)
@@ -56,7 +58,9 @@ class TestUpdateCommand:
         mock_path_instance.parent = mock_config_dir
         mock_path_class.return_value = mock_path_instance
 
-        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="error: failed to pull")
+        mock_subprocess.return_value = MagicMock(
+            returncode=1, stdout="", stderr="error: failed to pull"
+        )
 
         args = MagicMock()
         result = reminder.update_command(args)
@@ -129,9 +133,7 @@ class TestStatusCommand:
 
     @patch("schedule_management.commands.status.get_today_schedule_for_status")
     @patch("schedule_management.commands.status.Console")
-    def test_status_normal_day(
-        self, mock_console_class, mock_get_schedule
-    ):
+    def test_status_normal_day(self, mock_console_class, mock_get_schedule):
         """Test status command on a normal day."""
         mock_get_schedule.return_value = (
             {
@@ -159,9 +161,7 @@ class TestStatusCommand:
 
         # Look for "Odd Week" in the calls (should be in one of the print calls)
         odd_week_found = any("Odd Week" in call for call in print_calls)
-        assert odd_week_found, (
-            f"Expected 'Odd Week' in print calls, got: {print_calls}"
-        )
+        assert odd_week_found, f"Expected 'Odd Week' in print calls, got: {print_calls}"
 
     @patch("schedule_management.commands.status.get_today_schedule_for_status")
     @patch("schedule_management.commands.status.Console")
@@ -220,9 +220,7 @@ class TestStatusCommand:
             and hasattr(call[0][0], "__class__")
             and "Panel" in str(type(call[0][0]))
         ]
-        assert len(panel_calls) > 0, (
-            "Expected a Panel to be printed for status message"
-        )
+        assert len(panel_calls) > 0, "Expected a Panel to be printed for status message"
 
 
 class TestHelperFunctions:
@@ -332,7 +330,9 @@ class TestHelperFunctions:
     @patch("schedule_management.commands.status.ScheduleConfig")
     @patch("schedule_management.commands.status.WeeklySchedule")
     @patch("schedule_management.commands.status.get_week_parity")
-    def test_get_today_schedule_for_status_normal(self, mock_parity, mock_weekly, mock_config):
+    def test_get_today_schedule_for_status_normal(
+        self, mock_parity, mock_weekly, mock_config
+    ):
         """Test get_today_schedule_for_status on a normal day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = False
@@ -344,9 +344,7 @@ class TestHelperFunctions:
         mock_weekly.return_value = mock_weekly_instance
 
         mock_parity.return_value = "odd"
-        schedule, parity, is_skipped, config = (
-            reminder.get_today_schedule_for_status()
-        )
+        schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
 
         assert schedule == {"09:00": "pomodoro"}
         assert parity == "odd"
@@ -356,7 +354,9 @@ class TestHelperFunctions:
     @patch("schedule_management.commands.status.ScheduleConfig")
     @patch("schedule_management.commands.status.WeeklySchedule")
     @patch("schedule_management.commands.status.get_week_parity")
-    def test_get_today_schedule_for_status_skipped(self, mock_parity, mock_weekly, mock_config):
+    def test_get_today_schedule_for_status_skipped(
+        self, mock_parity, mock_weekly, mock_config
+    ):
         """Test get_today_schedule_for_status on a skipped day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = True
@@ -364,9 +364,7 @@ class TestHelperFunctions:
         mock_config.return_value = mock_config_instance
 
         mock_parity.return_value = "even"
-        schedule, parity, is_skipped, config = (
-            reminder.get_today_schedule_for_status()
-        )
+        schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
 
         assert schedule == {}
         assert parity == "even"
