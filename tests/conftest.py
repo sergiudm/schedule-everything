@@ -24,6 +24,7 @@ TEST_HABIT_PATH = TEST_CONFIG_DIR / "habits.toml"
 TEST_TASKS_PATH = TEST_CONFIG_DIR / "tasks" / "tasks.json"
 TEST_TASK_LOG_PATH = TEST_CONFIG_DIR / "tasks" / "tasks.log"
 TEST_RECORD_PATH = TEST_CONFIG_DIR / "tasks" / "record.json"
+TEST_PROCRASTINATE_PATH = TEST_CONFIG_DIR / "tasks" / "procrastinate.json"
 
 
 def _apply_test_paths(module):
@@ -37,6 +38,7 @@ def _apply_test_paths(module):
     setattr(module, "TASKS_PATH", str(TEST_TASKS_PATH))
     setattr(module, "TASK_LOG_PATH", str(TEST_TASK_LOG_PATH))
     setattr(module, "RECORD_PATH", str(TEST_RECORD_PATH))
+    setattr(module, "PROCRASTINATE_PATH", str(TEST_PROCRASTINATE_PATH))
 
 
 @pytest.fixture(autouse=True)
@@ -79,4 +81,5 @@ __all__ = [
     "TEST_TASKS_PATH",
     "TEST_TASK_LOG_PATH",
     "TEST_RECORD_PATH",
+    "TEST_PROCRASTINATE_PATH",
 ]

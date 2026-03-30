@@ -22,6 +22,7 @@ try:
     from rich import box
     from rich.console import Console
     from rich.table import Table
+    from rich.text import Text
 except ImportError:
     print("Please install the 'rich' library: pip install rich")
     sys.exit(1)
@@ -29,6 +30,8 @@ except ImportError:
 from schedule_management.data import (
     load_tasks,
     save_tasks,
+    load_procrastinate_list,
+    save_procrastinate_list,
     log_task_action,
 )
 
@@ -142,6 +145,8 @@ def delete_task(args) -> int:
 
     # Load existing tasks
     tasks = load_tasks()
+    procrastinate_list = load_procrastinate_list()
+    procrastinate_updated = False
 
     if not tasks:
         print("⚠️  No tasks found to delete")
@@ -194,6 +199,13 @@ def delete_task(args) -> int:
         except Exception as e:
             print(f"⚠️  Warning: Could not log task deletion: {e}")
 
+        # Keep procrastinate list in sync with completed tasks
+        for deleted_task in deleted_tasks:
+            description = deleted_task.get("description")
+            if isinstance(description, str) and description in procrastinate_list:
+                procrastinate_list.discard(description)
+                procrastinate_updated = True
+
         deleted_count = original_count - len(tasks)
         total_deleted_count += deleted_count
 
@@ -211,6 +223,8 @@ def delete_task(args) -> int:
     if successful_deletions:
         try:
             save_tasks(tasks)
+            if procrastinate_updated:
+                save_procrastinate_list(procrastinate_list)
             if len(successful_deletions) == 1:
                 print(f"✅ {successful_deletions[0]} deleted successfully!")
             else:
@@ -258,6 +272,7 @@ def show_tasks(args) -> int:
         ╰────┴──────────────────┴──────────────╯
     """
     tasks = load_tasks()
+    procrastinate_list = load_procrastinate_list()
 
     console = Console()
 
@@ -287,21 +302,22 @@ def show_tasks(args) -> int:
         # Color based on priority level
         if priority >= 8:
             color = "red"
-            icon = "🔴"
         elif priority >= 5:
             color = "yellow"
-            icon = "🟡"
         else:
             color = "blue"
-            icon = "🔵"
 
         # Visual priority bar (max 10 blocks for layout)
         filled = "█" * min(priority, 10)
         empty = "░" * (10 - min(priority, 10))
 
         prio_visual = f"[{color}]{filled}[dim]{empty}[/dim] ({priority})[/{color}]"
+        if description in procrastinate_list:
+            description_text = Text(f"⏳ {description}", style="italic dim")
+        else:
+            description_text = Text(description)
 
-        table.add_row(str(i), prio_visual, description)
+        table.add_row(str(i), prio_visual, description_text)
 
     console.print(table)
     console.print(f"[dim]Total tasks: {len(tasks)}[/dim]", justify="right")

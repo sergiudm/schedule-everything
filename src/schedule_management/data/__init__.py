@@ -11,6 +11,8 @@ This package provides functions to load and save various data files:
 from schedule_management.data.loaders import (
     load_tasks,
     save_tasks,
+    load_procrastinate_list,
+    save_procrastinate_list,
     load_task_log,
     save_task_log,
     log_task_action,
@@ -24,6 +26,8 @@ from schedule_management.data.loaders import (
 __all__ = [
     "load_tasks",
     "save_tasks",
+    "load_procrastinate_list",
+    "save_procrastinate_list",
     "load_task_log",
     "save_task_log",
     "log_task_action",

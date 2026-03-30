@@ -38,7 +38,8 @@ The `install.sh` script handles dependency installation, configuration scaffoldi
     The script will:
     *   Install the Python package and dependencies.
     *   Create the `~/schedule_management` directory structure.
-    *   Copy default configuration templates.
+    *   Ensure required config files exist.
+    *   Prompt for missing required config values one by one.
     *   Register the background service (on macOS).
 
 3.  **Finalize Setup**:

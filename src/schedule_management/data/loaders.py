@@ -30,6 +30,7 @@ from schedule_management import (
     DDL_PATH,
     HABIT_PATH,
     RECORD_PATH,
+    PROCRASTINATE_PATH,
 )
 
 
@@ -77,6 +78,48 @@ def save_tasks(tasks: list[dict[str, Any]]) -> None:
 
     with open(tasks_path, "w", encoding="utf-8") as f:
         json.dump(tasks, f, indent=2, ensure_ascii=False)
+
+
+def load_procrastinate_list() -> set[str]:
+    """
+    Load procrastinated task descriptions from JSON.
+
+    Returns:
+        Set of task descriptions currently marked as procrastinated.
+        Returns an empty set if file is missing/invalid.
+    """
+    try:
+        with open(PROCRASTINATE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return set()
+
+    if not isinstance(data, list):
+        return set()
+
+    return {item for item in data if isinstance(item, str) and item.strip()}
+
+
+def save_procrastinate_list(descriptions: set[str] | list[str]) -> None:
+    """
+    Save procrastinated task descriptions to JSON.
+
+    Args:
+        descriptions: Task descriptions to persist.
+    """
+    procrastinate_path = Path(PROCRASTINATE_PATH)
+    procrastinate_path.parent.mkdir(parents=True, exist_ok=True)
+
+    normalized = sorted(
+        {
+            item.strip()
+            for item in descriptions
+            if isinstance(item, str) and item.strip()
+        }
+    )
+
+    with open(procrastinate_path, "w", encoding="utf-8") as f:
+        json.dump(normalized, f, indent=2, ensure_ascii=False)
 
 
 # =============================================================================

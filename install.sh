@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -295,6 +297,31 @@ install_dependencies() {
     cd - > /dev/null
 }
 
+# Validate and complete missing configuration values
+configure_configs() {
+    log_info "Checking configuration files and required values..."
+
+    local wizard_script="$INSTALL_DIR/src/schedule_management/install_config_wizard.py"
+    local template_dir="$SCRIPT_DIR/config"
+
+    if [[ ! -f "$wizard_script" ]]; then
+        log_error "Config wizard not found: $wizard_script"
+        exit 1
+    fi
+
+    if [[ -d "$template_dir" ]]; then
+        "$INSTALL_DIR/.venv/bin/python" "$wizard_script" \
+            --config-dir "$INSTALL_CONFIG_DIR" \
+            --template-dir "$template_dir"
+    else
+        log_warning "Template directory not found at $template_dir; using config directory as template source."
+        "$INSTALL_DIR/.venv/bin/python" "$wizard_script" \
+            --config-dir "$INSTALL_CONFIG_DIR"
+    fi
+
+    log_success "Configuration checks complete"
+}
+
 # Create systemd service (Linux only)
 create_systemd_service() {
     if [[ "$OS_TYPE" != "linux" ]]; then
@@ -534,6 +561,7 @@ main() {
     # install_python
     setup_project
     create_venv
+    configure_configs
     install_dependencies
     
     if [[ "$OS_TYPE" == "macos" ]]; then

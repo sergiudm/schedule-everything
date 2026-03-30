@@ -36,11 +36,17 @@ from typing import Any
 from schedule_management import (
     SETTINGS_PATH,
     DDL_PATH,
-    TASKS_PATH,
 )
 from schedule_management.config import ScheduleConfig, WeeklySchedule
 from schedule_management.time_utils import add_minutes_to_time, alarm
-from schedule_management.platform import play_sound
+from schedule_management.platform import ask_yes_no
+from schedule_management.data import (
+    load_tasks,
+    save_tasks,
+    load_procrastinate_list,
+    save_procrastinate_list,
+    log_task_action,
+)
 from schedule_management.popups import (
     show_daily_summary_popup,
     show_habit_tracking_popup,
@@ -114,6 +120,7 @@ class ScheduleRunner:
         self.weekly_schedule = weekly_schedule
         self.notified_today = set()  # Events already handled today
         self.pending_end_alarms = {}  # {end_time_str: message}
+        self._urgent_task_prompt_lock = threading.Lock()
 
     # =========================================================================
     # ALARM HANDLING
@@ -212,6 +219,14 @@ class ScheduleRunner:
     # URGENT TASKS & DEADLINES
     # =========================================================================
 
+    @staticmethod
+    def _task_priority(task: dict[str, Any]) -> int:
+        """Safely parse a task priority value."""
+        try:
+            return int(task.get("priority", 0))
+        except (TypeError, ValueError):
+            return 0
+
     def _get_unfinished_urgent_tasks(self) -> list[dict[str, Any]]:
         """
         Get high-priority tasks that are still pending.
@@ -219,12 +234,88 @@ class ScheduleRunner:
         Returns:
             List of task dicts with priority > 7
         """
+        tasks = load_tasks()
+        urgent_tasks = []
+        for task in tasks:
+            if not isinstance(task, dict):
+                continue
+            if self._task_priority(task) > 7:
+                urgent_tasks.append(task)
+        return urgent_tasks
+
+    def _prompt_urgent_tasks(self) -> None:
+        """Ask for completion of urgent tasks one-by-one and sync procrastinate list."""
+        if not hasattr(self, "_urgent_task_prompt_lock"):
+            self._urgent_task_prompt_lock = threading.Lock()
+
+        if not self._urgent_task_prompt_lock.acquire(blocking=False):
+            return
+
         try:
-            with open(TASKS_PATH, "r", encoding="utf-8") as f:
-                tasks = json.load(f)
-            return [t for t in tasks if t.get("priority", 0) > 7]
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
+            tasks = load_tasks()
+            urgent_tasks = [
+                task
+                for task in tasks
+                if isinstance(task, dict) and self._task_priority(task) > 7
+            ]
+
+            if not urgent_tasks:
+                return
+
+            urgent_tasks.sort(
+                key=lambda task: (
+                    -self._task_priority(task),
+                    str(task.get("description", "")),
+                )
+            )
+
+            procrastinate_list = load_procrastinate_list()
+            tasks_changed = False
+            procrastinate_changed = False
+            total_tasks = len(urgent_tasks)
+
+            for index, task in enumerate(urgent_tasks, 1):
+                description = str(task.get("description", "未知任务")).strip()
+                if not description:
+                    description = "未知任务"
+                priority = self._task_priority(task)
+
+                question = (
+                    "Did you complete this task?\n\n"
+                    f"{description}\n"
+                    f"Priority: {priority}"
+                )
+                title = f"Urgent Task ({index}/{total_tasks})"
+
+                result = ask_yes_no(question, title)
+                if result is None:
+                    break
+
+                if result:
+                    if task in tasks:
+                        tasks.remove(task)
+                        tasks_changed = True
+                        try:
+                            log_task_action("deleted", task)
+                        except Exception as exc:
+                            print(f"⚠️  Warning: Could not log task deletion: {exc}")
+
+                    if description in procrastinate_list:
+                        procrastinate_list.discard(description)
+                        procrastinate_changed = True
+                else:
+                    if description not in procrastinate_list:
+                        procrastinate_list.add(description)
+                        procrastinate_changed = True
+
+            if tasks_changed:
+                save_tasks(tasks)
+            if procrastinate_changed:
+                save_procrastinate_list(procrastinate_list)
+        except Exception as exc:
+            print(f"⚠️  Urgent task prompt skipped: {exc}")
+        finally:
+            self._urgent_task_prompt_lock.release()
 
     def _get_urgent_deadlines(self) -> list[dict[str, Any]]:
         """
@@ -276,15 +367,14 @@ class ScheduleRunner:
         return urgent
 
     def _check_urgent_tasks(self) -> None:
-        """Show reminder for high-priority unfinished tasks."""
-        urgent_tasks = self._get_unfinished_urgent_tasks()
-        if urgent_tasks:
-            task_descriptions = [
-                f"{t.get('description', '未知任务')} (优先级: {t.get('priority', 0)})"
-                for t in urgent_tasks
-            ]
-            message = "🚨 今日紧急任务提醒 🚨\n\n" + "\n".join(task_descriptions)
-            self._trigger_alarm("Today's Urgent Tasks", message, sound="Glass")
+        """Prompt high-priority unfinished tasks one-by-one without blocking the run loop."""
+        if not hasattr(self, "_urgent_task_prompt_lock"):
+            self._urgent_task_prompt_lock = threading.Lock()
+
+        if self._urgent_task_prompt_lock.locked():
+            return
+
+        threading.Thread(target=self._prompt_urgent_tasks, daemon=True).start()
 
     def _check_urgent_deadlines(self) -> None:
         """Show reminder for approaching deadlines."""

@@ -365,6 +365,116 @@ class TestFullFlow:
         assert "RESET" in event_log
 
 
+class TestUrgentTasksProcrastinate:
+    def test_prompt_urgent_tasks_updates_task_and_procrastinate_lists(
+        self, tmp_path, monkeypatch
+    ):
+        import json
+        import threading
+
+        import schedule_management.runner as runner_module
+        import schedule_management.data.loaders as data_loaders
+
+        tasks_path = tmp_path / "tasks.json"
+        procrastinate_path = tmp_path / "procrastinate.json"
+
+        tasks_path.write_text(
+            json.dumps(
+                [
+                    {"description": "Task A", "priority": 9},
+                    {"description": "Task B", "priority": 8},
+                    {"description": "Task C", "priority": 7},
+                    {"description": "Task D", "priority": 4},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        procrastinate_path.write_text(json.dumps(["Task B"]), encoding="utf-8")
+
+        monkeypatch.setattr(data_loaders, "TASKS_PATH", str(tasks_path))
+        monkeypatch.setattr(data_loaders, "PROCRASTINATE_PATH", str(procrastinate_path))
+
+        answers = iter([False, True])
+        monkeypatch.setattr(
+            runner_module,
+            "ask_yes_no",
+            lambda question, title: next(answers),
+        )
+
+        logged_actions = []
+
+        def mock_log_task_action(action, task):
+            logged_actions.append((action, task.get("description")))
+
+        monkeypatch.setattr(runner_module, "log_task_action", mock_log_task_action)
+
+        runner = runner_module.ScheduleRunner.__new__(runner_module.ScheduleRunner)
+        runner._urgent_task_prompt_lock = threading.Lock()
+
+        runner._prompt_urgent_tasks()
+
+        updated_tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
+        assert [task["description"] for task in updated_tasks] == [
+            "Task A",
+            "Task C",
+            "Task D",
+        ]
+
+        procrastinate_entries = json.loads(
+            procrastinate_path.read_text(encoding="utf-8")
+        )
+        assert procrastinate_entries == ["Task A"]
+        assert logged_actions == [("deleted", "Task B")]
+
+    def test_prompt_urgent_tasks_stops_on_cancel(self, tmp_path, monkeypatch):
+        import json
+        import threading
+
+        import schedule_management.runner as runner_module
+        import schedule_management.data.loaders as data_loaders
+
+        tasks_path = tmp_path / "tasks.json"
+        procrastinate_path = tmp_path / "procrastinate.json"
+
+        initial_tasks = [
+            {"description": "Task A", "priority": 9},
+            {"description": "Task B", "priority": 8},
+        ]
+
+        tasks_path.write_text(json.dumps(initial_tasks), encoding="utf-8")
+        procrastinate_path.write_text(json.dumps([]), encoding="utf-8")
+
+        monkeypatch.setattr(data_loaders, "TASKS_PATH", str(tasks_path))
+        monkeypatch.setattr(data_loaders, "PROCRASTINATE_PATH", str(procrastinate_path))
+
+        monkeypatch.setattr(
+            runner_module,
+            "ask_yes_no",
+            lambda question, title: None,
+        )
+
+        logged_actions = []
+        monkeypatch.setattr(
+            runner_module,
+            "log_task_action",
+            lambda action, task: logged_actions.append((action, task)),
+        )
+
+        runner = runner_module.ScheduleRunner.__new__(runner_module.ScheduleRunner)
+        runner._urgent_task_prompt_lock = threading.Lock()
+
+        runner._prompt_urgent_tasks()
+
+        updated_tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
+        updated_procrastinate = json.loads(
+            procrastinate_path.read_text(encoding="utf-8")
+        )
+
+        assert updated_tasks == initial_tasks
+        assert updated_procrastinate == []
+        assert logged_actions == []
+
+
 class TestUrgentDeadlines:
     def test_get_urgent_deadlines_filters_and_sorts(self, tmp_path, monkeypatch):
         import json
@@ -400,7 +510,9 @@ class TestUrgentDeadlines:
         monkeypatch.setattr(runner_module, "DDL_PATH", str(ddl_path))
 
         ddl_path.write_text(
-            json.dumps([{"event": "due", "deadline": datetime.now().date().isoformat()}]),
+            json.dumps(
+                [{"event": "due", "deadline": datetime.now().date().isoformat()}]
+            ),
             encoding="utf-8",
         )
 

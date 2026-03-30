@@ -22,6 +22,7 @@ HABIT_PATH = f"{CONFIG_DIR}/habits.toml"
 TASKS_PATH = f"{CONFIG_DIR}/tasks/tasks.json"
 TASK_LOG_PATH = f"{CONFIG_DIR}/tasks/tasks.log"
 RECORD_PATH = f"{CONFIG_DIR}/tasks/record.json"
+PROCRASTINATE_PATH = f"{CONFIG_DIR}/tasks/procrastinate.json"
 
 
 __all__ = [
@@ -35,4 +36,5 @@ __all__ = [
     "TASKS_PATH",
     "TASK_LOG_PATH",
     "RECORD_PATH",
+    "PROCRASTINATE_PATH",
 ]

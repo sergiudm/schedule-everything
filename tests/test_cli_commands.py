@@ -1252,6 +1252,83 @@ class TestTaskManagement:
         ]
         assert len(total_calls) > 0, "Expected total tasks count to be printed"
 
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.load_procrastinate_list")
+    @patch("schedule_management.commands.tasks.Table")
+    def test_show_tasks_marks_procrastinated_tasks(
+        self,
+        mock_table_class,
+        mock_load_procrastinate_list,
+        mock_load_tasks,
+    ):
+        """Test that procrastinated tasks are prefixed and styled differently."""
+        mock_load_tasks.return_value = [
+            {"description": "Normal task", "priority": 9},
+            {"description": "Delayed task", "priority": 8},
+        ]
+        mock_load_procrastinate_list.return_value = {"Delayed task"}
+
+        mock_table = MagicMock()
+        mock_table_class.return_value = mock_table
+
+        args = MagicMock()
+
+        with patch("schedule_management.commands.tasks.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            result = reminder.show_tasks(args)
+
+        assert result == 0
+        description_cells = [
+            call.args[2]
+            for call in mock_table.add_row.call_args_list
+            if len(call.args) >= 3
+        ]
+
+        procrastinated_cells = [
+            cell
+            for cell in description_cells
+            if hasattr(cell, "plain") and cell.plain.startswith("⏳ ")
+        ]
+        assert len(procrastinated_cells) == 1
+        assert procrastinated_cells[0].plain == "⏳ Delayed task"
+        assert procrastinated_cells[0].style == "italic dim"
+
+    @patch("schedule_management.commands.tasks.log_task_action")
+    @patch("schedule_management.commands.tasks.save_procrastinate_list")
+    @patch("schedule_management.commands.tasks.load_procrastinate_list")
+    @patch("schedule_management.commands.tasks.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    def test_delete_task_removes_from_procrastinate_list(
+        self,
+        mock_load_tasks,
+        mock_save_tasks,
+        mock_load_procrastinate_list,
+        mock_save_procrastinate_list,
+        mock_log_task_action,
+    ):
+        """Test that deleting a task also removes it from procrastinate list."""
+        mock_load_tasks.return_value = [
+            {"description": "Review code", "priority": 9},
+            {"description": "Write tests", "priority": 5},
+        ]
+        mock_load_procrastinate_list.return_value = {"Review code", "Write tests"}
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.tasks = ["Review code"]
+
+        result = reminder.delete_task(args)
+
+        assert result == 0
+        mock_log_task_action.assert_called_once()
+        mock_save_tasks.assert_called_once()
+        mock_save_procrastinate_list.assert_called_once()
+
+        saved_list = mock_save_procrastinate_list.call_args[0][0]
+        assert "Review code" not in saved_list
+        assert "Write tests" in saved_list
+
 
 class TestMainFunctions:
     """Test the main entry point function."""

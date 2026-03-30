@@ -71,6 +71,7 @@ Run the installer to set up the background service:
 ```bash
 ./install.sh
 ```
+During installation, existing config is checked and any missing required values are prompted one by one.
 *Follow the output instructions to load the launchd agent if required.*
 
 ---

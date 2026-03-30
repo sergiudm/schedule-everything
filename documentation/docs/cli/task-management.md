@@ -177,4 +177,28 @@ reminder ls --limit 5
 
 ### Sample Output
 ```
-Task List (sorted by
+╭──────────────────────────────────────╮
+│          Current Task List           │
+├────┬──────────────────┬──────────────┤
+│ ID │ Priority         │ Description  │
+├────┼──────────────────┼──────────────┤
+│  1 │ █████████░░ (9)  │ Finish report│
+│  2 │ ████████░░ (8)   │ ⏳ Draft mail │
+│  3 │ █████░░░░░ (5)   │ Buy groceries│
+╰────┴──────────────────┴──────────────╯
+Total tasks: 3
+```
+
+### Procrastinate Tag
+
+When urgent reminders ask about high-priority tasks (priority 8-10), tasks you mark as **not completed** are recorded in a procrastinate list file:
+
+- `tasks/procrastinate.json` under your `REMINDER_CONFIG_DIR`
+- Entries are stored as task descriptions
+
+In `reminder ls`, procrastinated tasks are shown with:
+
+- A `⏳` prefix
+- A dim/italic text style
+
+When a procrastinated task is completed (through reminder prompts or `reminder rm`), it is automatically removed from `tasks/procrastinate.json`.
