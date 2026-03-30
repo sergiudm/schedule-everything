@@ -19,9 +19,9 @@ TEST_CONFIG_DIR = Path(__file__).resolve().parent / "config"
 class TestAddDeadline:
     """Test the add_deadline command functionality."""
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_add_deadline_success(self, mock_datetime, mock_load, mock_save):
         """Test adding a new deadline successfully."""
         # Mock current date as November 22, 2025
@@ -51,9 +51,9 @@ class TestAddDeadline:
         mock_print.assert_called_once()
         assert "✅" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_add_deadline_current_year(self, mock_datetime, mock_load, mock_save):
         """Test adding a deadline for date that hasn't passed this year."""
         # Mock current date as November 22, 2025
@@ -76,9 +76,9 @@ class TestAddDeadline:
         saved_deadlines = mock_save.call_args[0][0]
         assert "2025-12-15" in saved_deadlines[0]["deadline"]  # Current year
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_add_deadline_update_existing(self, mock_datetime, mock_load, mock_save):
         """Test updating an existing deadline."""
         mock_now = MagicMock()
@@ -150,9 +150,9 @@ class TestAddDeadline:
         assert "❌" in mock_print.call_args[0][0]
         assert "Day must be between 1 and 31" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_add_deadline_save_error(self, mock_datetime, mock_load, mock_save):
         """Test handling error when saving deadline fails."""
         mock_now = MagicMock()
@@ -174,9 +174,9 @@ class TestAddDeadline:
         assert result == 1
         assert "❌ Error saving deadline:" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_add_deadline_with_leading_zeros(self, mock_datetime, mock_load, mock_save):
         """Test adding deadline with leading zeros in date."""
         mock_now = MagicMock()
@@ -202,8 +202,8 @@ class TestAddDeadline:
 class TestDeleteDeadline:
     """Test the delete_deadline command functionality."""
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_deadline_success(self, mock_load, mock_save):
         """Test deleting a deadline successfully."""
         existing = [
@@ -235,8 +235,8 @@ class TestDeleteDeadline:
         assert "✅" in mock_print.call_args[0][0]
         assert "homework2" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_multiple_deadlines(self, mock_load, mock_save):
         """Test deleting multiple deadlines at once."""
         existing = [
@@ -269,7 +269,7 @@ class TestDeleteDeadline:
         assert len(saved_deadlines) == 1
         assert saved_deadlines[0]["event"] == "project"
 
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_deadline_not_found(self, mock_load):
         """Test deleting a non-existent deadline."""
         existing = [
@@ -292,7 +292,7 @@ class TestDeleteDeadline:
         assert "❌" in mock_print.call_args[0][0]
         assert "not found" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_deadline_empty_list(self, mock_load):
         """Test deleting from empty deadline list."""
         mock_load.return_value = []
@@ -308,8 +308,8 @@ class TestDeleteDeadline:
         assert "⚠️" in mock_print.call_args[0][0]
         assert "No deadlines found" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_deadline_partial_success(self, mock_load, mock_save):
         """Test deleting multiple deadlines with some failures."""
         existing = [
@@ -339,8 +339,8 @@ class TestDeleteDeadline:
         calls = [str(call) for call in mock_print.call_args_list]
         assert any("nonexistent" in call and "not found" in call for call in calls)
 
-    @patch("schedule_management.reminder.save_deadlines")
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_delete_deadline_save_error(self, mock_load, mock_save):
         """Test handling error when saving after deletion fails."""
         existing = [
@@ -367,14 +367,14 @@ class TestDeleteDeadline:
 class TestShowDeadlines:
     """Test the show_deadlines command functionality."""
 
-    @patch("schedule_management.reminder.load_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
     def test_show_deadlines_empty(self, mock_load):
         """Test showing deadlines when list is empty."""
         mock_load.return_value = []
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.deadlines.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
@@ -385,8 +385,8 @@ class TestShowDeadlines:
         call_args = str(mock_console.print.call_args)
         assert "No deadlines found" in call_args or "📅" in call_args
 
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_show_deadlines_with_data(self, mock_datetime, mock_load):
         """Test showing deadlines with data."""
         mock_now = MagicMock()
@@ -410,7 +410,7 @@ class TestShowDeadlines:
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.deadlines.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
@@ -420,8 +420,8 @@ class TestShowDeadlines:
         # Should print table and summary
         assert mock_console.print.call_count >= 2
 
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_show_deadlines_sorted_by_date(self, mock_datetime, mock_load):
         """Test that deadlines are displayed sorted by date."""
         mock_now = MagicMock()
@@ -450,7 +450,7 @@ class TestShowDeadlines:
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.deadlines.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
@@ -460,8 +460,8 @@ class TestShowDeadlines:
         # Verify table was created (should be in print calls)
         assert mock_console.print.call_count >= 2
 
-    @patch("schedule_management.reminder.load_deadlines")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
     def test_show_deadlines_urgency_status(self, mock_datetime, mock_load):
         """Test deadline urgency status calculations."""
         # Set current date to November 22, 2025
@@ -496,7 +496,7 @@ class TestShowDeadlines:
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.deadlines.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 

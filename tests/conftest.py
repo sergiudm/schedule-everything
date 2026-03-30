@@ -44,14 +44,28 @@ def configure_test_environment(monkeypatch):
     """Ensure every test runs against the dedicated config directory."""
     monkeypatch.setenv("REMINDER_CONFIG_DIR", str(TEST_CONFIG_DIR))
 
-    # Update both the package constants and the modules that imported them
+    # Update both the package constants and modules that imported them
     import schedule_management
     import schedule_management.reminder as reminder_module
     import schedule_management.reminder_macos as reminder_macos_module
+    import schedule_management.data.loaders as data_loaders
+    import schedule_management.commands.tasks as tasks_commands
+    import schedule_management.commands.deadlines as deadlines_commands
+    import schedule_management.commands.service as service_commands
+    import schedule_management.commands.status as status_commands
+    import schedule_management.popups as popups_module
+    import schedule_management.runner as runner_module
 
     _apply_test_paths(schedule_management)
     _apply_test_paths(reminder_module)
     _apply_test_paths(reminder_macos_module)
+    _apply_test_paths(data_loaders)
+    _apply_test_paths(tasks_commands)
+    _apply_test_paths(deadlines_commands)
+    _apply_test_paths(service_commands)
+    _apply_test_paths(status_commands)
+    _apply_test_paths(popups_module)
+    _apply_test_paths(runner_module)
 
 
 # Export all test paths for easy import in test files

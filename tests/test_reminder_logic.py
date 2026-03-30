@@ -54,7 +54,7 @@ class TestScheduleConfig:
         config.settings = {}
         assert not config.should_skip_today()
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.config.datetime")
     def test_should_skip_today_with_matching_day(self, mock_datetime):
         """Test should_skip_today when current day is in skip_days"""
         mock_now = MagicMock()
@@ -65,7 +65,7 @@ class TestScheduleConfig:
         config.settings = {"skip_days": ["sunday"]}
         assert config.should_skip_today()
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.config.datetime")
     def test_should_skip_today_with_non_matching_day(self, mock_datetime):
         """Test should_skip_today when current day is not in skip_days"""
         mock_now = MagicMock()
@@ -76,7 +76,7 @@ class TestScheduleConfig:
         config.settings = {"skip_days": ["sunday"]}
         assert not config.should_skip_today()
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.config.datetime")
     def test_should_skip_today_with_multiple_skip_days(self, mock_datetime):
         """Test should_skip_today with multiple days in skip_days"""
         mock_now = MagicMock()
@@ -103,8 +103,8 @@ class TestWeeklySchedule:
         assert weekly.get_schedule_for_parity("odd") == odd_data
         assert weekly.get_schedule_for_parity("even") == even_data
 
-    @patch("schedule_management.reminder_macos.get_week_parity")
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.time_utils.get_week_parity")
+    @patch("schedule_management.config.datetime")
     def test_get_today_schedule_normal_day(self, mock_datetime, mock_parity):
         """Test get_today_schedule on a normal day"""
         mock_now = MagicMock()
@@ -126,8 +126,8 @@ class TestWeeklySchedule:
         result = weekly.get_today_schedule(config)
         assert result == {"09:00": "pomodoro", "21:00": "summary_time"}
 
-    @patch("schedule_management.reminder_macos.get_week_parity")
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.time_utils.get_week_parity")
+    @patch("schedule_management.config.datetime")
     def test_get_today_schedule_skip_day(self, mock_datetime, mock_parity):
         """Test get_today_schedule returns empty on skip days"""
         mock_now = MagicMock()
@@ -176,7 +176,7 @@ class TestScheduleRunner:
         self.runner.pending_end_alarms = {}
         self.runner.weekly_schedule = MagicMock()
 
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.alarm")
     def test_handle_string_block_event(self, mock_alarm):
         """测试字符串类型的 time_block 事件"""
         self.runner._handle_event("08:30", "pomodoro")
@@ -186,7 +186,7 @@ class TestScheduleRunner:
         assert "08:55" in self.runner.pending_end_alarms
         assert self.runner.pending_end_alarms["08:55"] == "pomodoro 结束！休息一下 🎉"
 
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.alarm")
     def test_handle_time_point_event(self, mock_alarm):
         """测试 time_point 事件触发一次性提醒"""
         self.runner._handle_event("21:00", "summary")
@@ -195,7 +195,7 @@ class TestScheduleRunner:
         assert "21:00" in self.runner.notified_today
         assert len(self.runner.pending_end_alarms) == 0
 
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.alarm")
     def test_handle_direct_message_event(self, mock_alarm):
         """测试直接消息字符串触发一次性提醒"""
         self.runner._handle_event("10:00", "该喝水了")
@@ -204,7 +204,7 @@ class TestScheduleRunner:
         assert "10:00" in self.runner.notified_today
         assert len(self.runner.pending_end_alarms) == 0
 
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.alarm")
     def test_handle_dict_block_event(self, mock_alarm):
         """测试字典类型的 block 事件"""
         event = {"block": "pomodoro", "title": "写代码"}
@@ -215,7 +215,7 @@ class TestScheduleRunner:
         assert "09:35" in self.runner.pending_end_alarms
         assert self.runner.pending_end_alarms["09:35"] == "写代码 结束！休息一下 🎉"
 
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.alarm")
     def test_handle_unknown_block_type(self, mock_alarm):
         """测试处理未知的 block 类型"""
         event = {"block": "unknown_block", "title": "Unknown"}
@@ -224,8 +224,8 @@ class TestScheduleRunner:
         mock_alarm.assert_not_called()
         assert "10:00" not in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
-    @patch("schedule_management.reminder_macos.alarm")
+    @patch("schedule_management.runner.datetime")
+    @patch("schedule_management.runner.alarm")
     def test_process_end_alarms(self, mock_alarm, mock_datetime):
         """测试处理结束提醒"""
         mock_now = MagicMock()
@@ -249,7 +249,7 @@ class TestScheduleRunner:
         assert "09:35" in self.runner.notified_today
         assert "09:35" not in self.runner.pending_end_alarms
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_midnight_reset(self, mock_datetime):
         """测试午夜重置功能"""
         # Setup some state
@@ -291,9 +291,9 @@ class TestFullFlow:
         self.runner = ScheduleRunner(self.config, self.weekly)
         self.events_log = []
 
-    @patch("schedule_management.reminder_macos.alarm")
-    @patch("schedule_management.reminder_macos.datetime")
-    @patch("schedule_management.reminder_macos.time.sleep")
+    @patch("schedule_management.runner.alarm")
+    @patch("schedule_management.runner.datetime")
+    @patch("schedule_management.runner.time.sleep")
     def test_full_day_flow(self, mock_sleep, mock_datetime, mock_alarm):
         """Test complete day flow"""
         mock_sleep.side_effect = lambda x: None
@@ -370,10 +370,10 @@ class TestUrgentDeadlines:
         import json
         from datetime import datetime, timedelta
 
-        import schedule_management.reminder_macos as reminder_macos
+        import schedule_management.runner as runner_module
 
         ddl_path = tmp_path / "ddl.json"
-        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+        monkeypatch.setattr(runner_module, "DDL_PATH", str(ddl_path))
 
         today = datetime.now().date()
         deadlines = [
@@ -394,10 +394,10 @@ class TestUrgentDeadlines:
         import json
         from datetime import datetime
 
-        import schedule_management.reminder_macos as reminder_macos
+        import schedule_management.runner as runner_module
 
         ddl_path = tmp_path / "ddl.json"
-        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+        monkeypatch.setattr(runner_module, "DDL_PATH", str(ddl_path))
 
         ddl_path.write_text(
             json.dumps([{"event": "due", "deadline": datetime.now().date().isoformat()}]),
@@ -413,10 +413,10 @@ class TestUrgentDeadlines:
         runner._trigger_alarm.assert_called_once()
 
     def test_check_urgent_deadlines_noop_when_empty(self, tmp_path, monkeypatch):
-        import schedule_management.reminder_macos as reminder_macos
+        import schedule_management.runner as runner_module
 
         ddl_path = tmp_path / "ddl.json"
-        monkeypatch.setattr(reminder_macos, "DDL_PATH", str(ddl_path))
+        monkeypatch.setattr(runner_module, "DDL_PATH", str(ddl_path))
         ddl_path.write_text("[]", encoding="utf-8")
 
         runner = ScheduleRunner.__new__(ScheduleRunner)

@@ -18,47 +18,61 @@ from conftest import TEST_CONFIG_DIR
 class TestUpdateCommand:
     """Test the update command functionality."""
 
-    @patch("schedule_management.reminder.subprocess.run")
-    @patch("schedule_management.reminder.Path.exists")
-    @patch("schedule_management.reminder.ScheduleConfig")
-    @patch("schedule_management.reminder.WeeklySchedule")
-    def test_update_success(
-        self, mock_weekly, mock_config, mock_exists, mock_subprocess
-    ):
+    @patch("schedule_management.commands.service.subprocess.run")
+    @patch("schedule_management.commands.service.Path")
+    def test_update_success(self, mock_path_class, mock_subprocess):
         """Test successful update command."""
-        mock_exists.return_value = True
-        mock_subprocess.return_value = MagicMock(returncode=0, stderr="")
+        # Mock Path to return paths that exist and have .git
+        mock_config_dir = MagicMock()
+        mock_config_dir.exists.return_value = True
+        mock_git_dir = MagicMock()
+        mock_git_dir.exists.return_value = True
+        mock_config_dir.__truediv__ = MagicMock(return_value=mock_git_dir)
 
-        # Configure the mock config to return a proper config_dir
-        mock_config_instance = MagicMock()
-        mock_config_instance.config_dir = TEST_CONFIG_DIR
-        mock_config.return_value = mock_config_instance
+        mock_path_instance = MagicMock()
+        mock_path_instance.parent = mock_config_dir
+        mock_path_class.return_value = mock_path_instance
+
+        mock_subprocess.return_value = MagicMock(returncode=0, stdout="Already up to date", stderr="")
 
         args = MagicMock()
         result = reminder.update_command(args)
 
         assert result == 0
-        assert mock_subprocess.call_count == 2  # unload + load
+        mock_subprocess.assert_called_once()
 
-    @patch("schedule_management.reminder.ScheduleConfig")
-    @patch("schedule_management.reminder.Path.exists")
-    def test_update_invalid_config(self, mock_exists, mock_config):
-        """Test update command with invalid configuration."""
-        mock_exists.return_value = True
-        mock_config_instance = MagicMock()
-        mock_config_instance.config_dir = TEST_CONFIG_DIR
-        mock_config.return_value = mock_config_instance
-        mock_config.side_effect = Exception("Invalid config")
+    @patch("schedule_management.commands.service.subprocess.run")
+    @patch("schedule_management.commands.service.Path")
+    def test_update_invalid_config(self, mock_path_class, mock_subprocess):
+        """Test update command when git pull fails."""
+        # Mock Path to return paths that exist
+        mock_config_dir = MagicMock()
+        mock_config_dir.exists.return_value = True
+        mock_git_dir = MagicMock()
+        mock_git_dir.exists.return_value = True
+        mock_config_dir.__truediv__ = MagicMock(return_value=mock_git_dir)
+
+        mock_path_instance = MagicMock()
+        mock_path_instance.parent = mock_config_dir
+        mock_path_class.return_value = mock_path_instance
+
+        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="error: failed to pull")
 
         args = MagicMock()
         result = reminder.update_command(args)
 
         assert result == 1
 
-    @patch("schedule_management.reminder.Path.exists")
-    def test_update_missing_files(self, mock_exists):
+    @patch("schedule_management.commands.service.Path")
+    def test_update_missing_files(self, mock_path_class):
         """Test update command with missing configuration files."""
-        mock_exists.return_value = False
+        # Mock Path to return a path that doesn't exist
+        mock_config_dir = MagicMock()
+        mock_config_dir.exists.return_value = False
+
+        mock_path_instance = MagicMock()
+        mock_path_instance.parent = mock_config_dir
+        mock_path_class.return_value = mock_path_instance
 
         args = MagicMock()
         result = reminder.update_command(args)
@@ -69,10 +83,10 @@ class TestUpdateCommand:
 class TestViewCommand:
     """Test the view command functionality."""
 
-    @patch("schedule_management.reminder.ScheduleVisualizer")
-    @patch("schedule_management.reminder.WeeklySchedule")
-    @patch("schedule_management.reminder.ScheduleConfig")
-    @patch("schedule_management.reminder.subprocess.run")
+    @patch("schedule_management.commands.status.ScheduleVisualizer")
+    @patch("schedule_management.commands.status.WeeklySchedule")
+    @patch("schedule_management.commands.status.ScheduleConfig")
+    @patch("schedule_management.commands.status.subprocess.run")
     def test_view_success(
         self, mock_subprocess, mock_config, mock_weekly, mock_visualizer
     ):
@@ -92,9 +106,9 @@ class TestViewCommand:
         assert result == 0
         mock_visualizer_instance.visualize.assert_called_once()
 
-    @patch("schedule_management.reminder.ScheduleVisualizer")
-    @patch("schedule_management.reminder.WeeklySchedule")
-    @patch("schedule_management.reminder.ScheduleConfig")
+    @patch("schedule_management.commands.status.ScheduleVisualizer")
+    @patch("schedule_management.commands.status.WeeklySchedule")
+    @patch("schedule_management.commands.status.ScheduleConfig")
     def test_view_visualization_error(self, mock_config, mock_weekly, mock_visualizer):
         """Test view command when visualization fails."""
         mock_visualizer.side_effect = Exception("Visualization error")
@@ -113,22 +127,12 @@ class TestViewCommand:
 class TestStatusCommand:
     """Test the status command functionality."""
 
-    @patch("schedule_management.reminder.get_today_schedule_for_status")
-    @patch("schedule_management.reminder.get_week_parity")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.status.get_today_schedule_for_status")
+    @patch("schedule_management.commands.status.Console")
     def test_status_normal_day(
-        self, mock_datetime, mock_week_parity, mock_get_schedule
+        self, mock_console_class, mock_get_schedule
     ):
         """Test status command on a normal day."""
-        # Mock current time as 09:30 to ensure there are upcoming events
-        mock_now = MagicMock()
-        mock_now.time.return_value = time(9, 30)
-        mock_now.strftime.return_value = "09:30"
-        mock_now.date.return_value = date(2024, 1, 1)
-        mock_datetime.now.return_value = mock_now
-        mock_datetime.combine = datetime.combine
-
-        mock_week_parity.return_value = "odd"
         mock_get_schedule.return_value = (
             {
                 "09:00": "pomodoro",
@@ -140,58 +144,56 @@ class TestStatusCommand:
             MagicMock(time_blocks={"pomodoro": 25}, time_points={"summary": "done"}),
         )
 
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
         args = MagicMock(verbose=False)
+        result = reminder.status_command(args)
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
+        assert result == 0
+        # Verify console.print was called
+        assert mock_console.print.called
 
-            result = reminder.status_command(args)
+        # Check the calls contain expected content
+        print_calls = [str(call) for call in mock_console.print.call_args_list]
 
-            assert result == 0
-            # Verify console.print was called
-            assert mock_console.print.called
+        # Look for "Odd Week" in the calls (should be in one of the print calls)
+        odd_week_found = any("Odd Week" in call for call in print_calls)
+        assert odd_week_found, (
+            f"Expected 'Odd Week' in print calls, got: {print_calls}"
+        )
 
-            # Check the calls contain expected content
-            print_calls = [str(call) for call in mock_console.print.call_args_list]
-
-            # Look for "Odd Week" in the calls (should be in one of the print calls)
-            odd_week_found = any("Odd Week" in call for call in print_calls)
-            assert odd_week_found, (
-                f"Expected 'Odd Week' in print calls, got: {print_calls}"
-            )
-
-    @patch("schedule_management.reminder.get_today_schedule_for_status")
-    def test_status_skip_day(self, mock_get_schedule):
+    @patch("schedule_management.commands.status.get_today_schedule_for_status")
+    @patch("schedule_management.commands.status.Console")
+    def test_status_skip_day(self, mock_console_class, mock_get_schedule):
         """Test status command on a skipped day."""
         mock_get_schedule.return_value = ({}, "odd", True, MagicMock())
 
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
         args = MagicMock(verbose=False)
+        result = reminder.status_command(args)
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
+        assert result == 0
+        # Verify console.print was called
+        assert mock_console.print.called
 
-            result = reminder.status_command(args)
+        # Verify that a Panel object was printed (indicating skipped day message)
+        panel_calls = [
+            call
+            for call in mock_console.print.call_args_list
+            if len(call[0]) > 0
+            and hasattr(call[0][0], "__class__")
+            and "Panel" in str(type(call[0][0]))
+        ]
+        assert len(panel_calls) > 0, (
+            "Expected a Panel to be printed for skipped day message"
+        )
 
-            assert result == 0
-            # Verify console.print was called
-            assert mock_console.print.called
-
-            # Verify that a Panel object was printed (indicating skipped day message)
-            panel_calls = [
-                call
-                for call in mock_console.print.call_args_list
-                if len(call[0]) > 0
-                and hasattr(call[0][0], "__class__")
-                and "Panel" in str(type(call[0][0]))
-            ]
-            assert len(panel_calls) > 0, (
-                "Expected a Panel to be printed for skipped day message"
-            )
-
-    @patch("schedule_management.reminder.get_today_schedule_for_status")
-    def test_status_no_schedule(self, mock_get_schedule):
+    @patch("schedule_management.commands.status.get_today_schedule_for_status")
+    @patch("schedule_management.commands.status.Console")
+    def test_status_no_schedule(self, mock_console_class, mock_get_schedule):
         """Test status command when no schedule exists."""
         mock_get_schedule.return_value = (
             {},
@@ -200,29 +202,27 @@ class TestStatusCommand:
             MagicMock(time_blocks={}, time_points={}),
         )
 
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+
         args = MagicMock(verbose=False)
+        result = reminder.status_command(args)
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
+        assert result == 0
+        # Verify console.print was called
+        assert mock_console.print.called
 
-            result = reminder.status_command(args)
-
-            assert result == 0
-            # Verify console.print was called
-            assert mock_console.print.called
-
-            # Verify that a Panel object was printed (status panel)
-            panel_calls = [
-                call
-                for call in mock_console.print.call_args_list
-                if len(call[0]) > 0
-                and hasattr(call[0][0], "__class__")
-                and "Panel" in str(type(call[0][0]))
-            ]
-            assert len(panel_calls) > 0, (
-                "Expected a Panel to be printed for status message"
-            )
+        # Verify that a Panel object was printed (status panel)
+        panel_calls = [
+            call
+            for call in mock_console.print.call_args_list
+            if len(call[0]) > 0
+            and hasattr(call[0][0], "__class__")
+            and "Panel" in str(type(call[0][0]))
+        ]
+        assert len(panel_calls) > 0, (
+            "Expected a Panel to be printed for status message"
+        )
 
 
 class TestHelperFunctions:
@@ -253,8 +253,8 @@ class TestHelperFunctions:
         assert next_event is None
         assert time_to_next is None
 
-    @patch("schedule_management.reminder.parse_time")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.status.parse_time")
+    @patch("schedule_management.commands.status.datetime")
     def test_get_current_and_next_events_specific_times(
         self, mock_datetime, mock_parse_time
     ):
@@ -294,8 +294,8 @@ class TestHelperFunctions:
         assert next_event == "focus_session at 10:00"
         assert time_to_next == "30m"
 
-    @patch("schedule_management.reminder.parse_time")
-    @patch("schedule_management.reminder.datetime")
+    @patch("schedule_management.commands.status.parse_time")
+    @patch("schedule_management.commands.status.datetime")
     def test_get_current_and_next_events_idle_between_blocks(
         self, mock_datetime, mock_parse_time
     ):
@@ -329,9 +329,10 @@ class TestHelperFunctions:
         assert next_event == "block_b at 10:00"
         assert time_to_next == "30m"
 
-    @patch("schedule_management.reminder.ScheduleConfig")
-    @patch("schedule_management.reminder.WeeklySchedule")
-    def test_get_today_schedule_for_status_normal(self, mock_weekly, mock_config):
+    @patch("schedule_management.commands.status.ScheduleConfig")
+    @patch("schedule_management.commands.status.WeeklySchedule")
+    @patch("schedule_management.commands.status.get_week_parity")
+    def test_get_today_schedule_for_status_normal(self, mock_parity, mock_weekly, mock_config):
         """Test get_today_schedule_for_status on a normal day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = False
@@ -342,31 +343,35 @@ class TestHelperFunctions:
         mock_weekly_instance.get_today_schedule.return_value = {"09:00": "pomodoro"}
         mock_weekly.return_value = mock_weekly_instance
 
-        with patch("schedule_management.reminder.get_week_parity") as mock_parity:
-            mock_parity.return_value = "odd"
-            schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
+        mock_parity.return_value = "odd"
+        schedule, parity, is_skipped, config = (
+            reminder.get_today_schedule_for_status()
+        )
 
-            assert schedule == {"09:00": "pomodoro"}
-            assert parity == "odd"
-            assert is_skipped is False
-            assert config is mock_config_instance
+        assert schedule == {"09:00": "pomodoro"}
+        assert parity == "odd"
+        assert is_skipped is False
+        assert config is mock_config_instance
 
-    @patch("schedule_management.reminder.ScheduleConfig")
-    def test_get_today_schedule_for_status_skipped(self, mock_config):
+    @patch("schedule_management.commands.status.ScheduleConfig")
+    @patch("schedule_management.commands.status.WeeklySchedule")
+    @patch("schedule_management.commands.status.get_week_parity")
+    def test_get_today_schedule_for_status_skipped(self, mock_parity, mock_weekly, mock_config):
         """Test get_today_schedule_for_status on a skipped day."""
         mock_config_instance = MagicMock()
         mock_config_instance.should_skip_today.return_value = True
         mock_config_instance.config_dir = TEST_CONFIG_DIR
         mock_config.return_value = mock_config_instance
 
-        with patch("schedule_management.reminder.get_week_parity") as mock_parity:
-            mock_parity.return_value = "even"
-            schedule, parity, is_skipped, config = reminder.get_today_schedule_for_status()
+        mock_parity.return_value = "even"
+        schedule, parity, is_skipped, config = (
+            reminder.get_today_schedule_for_status()
+        )
 
-            assert schedule == {}
-            assert parity == "even"
-            assert is_skipped is True
-            assert config is mock_config_instance
+        assert schedule == {}
+        assert parity == "even"
+        assert is_skipped is True
+        assert config is mock_config_instance
 
 
 class TestMainFunction:
@@ -534,8 +539,8 @@ class TestTaskManagement:
 
         assert loaded_tasks == test_tasks
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_add_task_success(self, mock_save_tasks, mock_load_tasks):
         """Test adding a new task successfully."""
         mock_load_tasks.return_value = []
@@ -556,8 +561,8 @@ class TestTaskManagement:
         assert saved_tasks[0]["description"] == "Complete project"
         assert saved_tasks[0]["priority"] == 7
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_add_task_duplicate(self, mock_save_tasks, mock_load_tasks):
         """Test adding a duplicate task updates the existing one."""
         existing_tasks = [
@@ -584,8 +589,8 @@ class TestTaskManagement:
         )
         assert updated_task["priority"] == 9
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_add_task_negative_priority(self, mock_save_tasks, mock_load_tasks):
         """Test adding a task with negative priority fails."""
         args = MagicMock()
@@ -602,8 +607,8 @@ class TestTaskManagement:
             "❌ Error: Priority must be a positive integer"
         )
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_add_task_zero_priority(self, mock_save_tasks, mock_load_tasks):
         """Test adding a task with zero priority fails."""
         args = MagicMock()
@@ -620,8 +625,8 @@ class TestTaskManagement:
             "❌ Error: Priority must be a positive integer"
         )
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_add_task_save_error(self, mock_save_tasks, mock_load_tasks):
         """Test handling error when saving tasks fails."""
         mock_load_tasks.return_value = []
@@ -639,8 +644,8 @@ class TestTaskManagement:
         mock_print.assert_called_once()
         assert "❌ Error saving task:" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_success(self, mock_save_tasks, mock_load_tasks):
         """Test deleting an existing task successfully."""
         existing_tasks = [
@@ -664,8 +669,8 @@ class TestTaskManagement:
         assert len(saved_tasks) == 2
         assert not any(t["description"] == "Review code" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_not_found(self, mock_save_tasks, mock_load_tasks):
         """Test deleting a non-existent task."""
         existing_tasks = [
@@ -686,7 +691,7 @@ class TestTaskManagement:
         mock_save_tasks.assert_not_called()
         mock_print.assert_called_once_with("❌ Task 'Non-existent task' not found")
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_empty_list(self, mock_load_tasks):
         """Test deleting a task from an empty list."""
         mock_load_tasks.return_value = []
@@ -701,8 +706,8 @@ class TestTaskManagement:
         assert result == 1
         mock_print.assert_called_once_with("⚠️  No tasks found to delete")
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_multiple_occurrences(self, mock_save_tasks, mock_load_tasks):
         """Test deleting multiple tasks with the same description."""
         existing_tasks = [
@@ -729,8 +734,8 @@ class TestTaskManagement:
         assert len(saved_tasks) == 1
         assert saved_tasks[0]["description"] == "Write documentation"
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_save_error(self, mock_save_tasks, mock_load_tasks):
         """Test handling error when saving tasks fails after deletion."""
         existing_tasks = [{"description": "Complete project", "priority": 7}]
@@ -748,8 +753,8 @@ class TestTaskManagement:
         mock_print.assert_called_once()
         assert "❌ Error saving tasks:" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_by_id_success(self, mock_save_tasks, mock_load_tasks):
         """Test deleting a task by ID successfully."""
         existing_tasks = [
@@ -779,8 +784,8 @@ class TestTaskManagement:
         # Low priority task should still be there
         assert any(t["description"] == "Low priority task" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_by_id_first_item(self, mock_save_tasks, mock_load_tasks):
         """Test deleting the first task (highest priority) by ID."""
         existing_tasks = [
@@ -804,8 +809,8 @@ class TestTaskManagement:
         assert len(saved_tasks) == 2
         assert not any(t["description"] == "High priority task" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_by_id_last_item(self, mock_save_tasks, mock_load_tasks):
         """Test deleting the last task (lowest priority) by ID."""
         existing_tasks = [
@@ -829,7 +834,7 @@ class TestTaskManagement:
         assert len(saved_tasks) == 2
         assert not any(t["description"] == "Low priority task" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_by_id_invalid_id_too_high(self, mock_load_tasks):
         """Test deleting a task with ID that's too high."""
         existing_tasks = [
@@ -850,7 +855,7 @@ class TestTaskManagement:
         assert "Invalid task ID: 5" in mock_print.call_args[0][0]
         assert "Please use a number between 1 and 2" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_by_id_invalid_id_zero(self, mock_load_tasks):
         """Test deleting a task with ID of zero."""
         existing_tasks = [
@@ -870,7 +875,7 @@ class TestTaskManagement:
         mock_print.assert_called_once()
         assert "Invalid task ID: 0" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_by_id_invalid_id_negative(self, mock_load_tasks):
         """Test deleting a task with negative ID."""
         existing_tasks = [
@@ -890,7 +895,7 @@ class TestTaskManagement:
         mock_print.assert_called_once()
         assert "Invalid task ID: -1" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_by_id_empty_list(self, mock_load_tasks):
         """Test deleting a task by ID from an empty list."""
         mock_load_tasks.return_value = []
@@ -905,7 +910,7 @@ class TestTaskManagement:
         assert result == 1
         mock_print.assert_called_once_with("⚠️  No tasks found to delete")
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_delete_task_by_id_numeric_string_fallback(self, mock_load_tasks):
         """Test that numeric string descriptions are treated as IDs first, not descriptions."""
         existing_tasks = [
@@ -932,8 +937,8 @@ class TestTaskManagement:
         assert "Invalid task ID: 123" in mock_print.call_args[0][0]
         assert "Please use a number between 1 and 2" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_by_id_with_valid_id_as_string(
         self, mock_save_tasks, mock_load_tasks
     ):
@@ -959,8 +964,8 @@ class TestTaskManagement:
         assert saved_tasks[0]["description"] == "Regular task"
 
     # New tests for multi-argument delete functionality
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_success(self, mock_save_tasks, mock_load_tasks):
         """Test deleting multiple tasks successfully by description."""
         existing_tasks = [
@@ -989,8 +994,8 @@ class TestTaskManagement:
         assert any(t["description"] == "Complete project" for t in saved_tasks)
         assert any(t["description"] == "Test application" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_by_ids(self, mock_save_tasks, mock_load_tasks):
         """Test deleting multiple tasks successfully by IDs."""
         existing_tasks = [
@@ -1019,8 +1024,8 @@ class TestTaskManagement:
         assert any(t["description"] == "Medium priority task" for t in saved_tasks)
         assert any(t["description"] == "Very low priority task" for t in saved_tasks)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_mixed_ids_and_descriptions(
         self, mock_save_tasks, mock_load_tasks
     ):
@@ -1047,8 +1052,8 @@ class TestTaskManagement:
         assert len(saved_tasks) == 1
         assert saved_tasks[0]["description"] == "Code review"
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_partial_success(
         self, mock_save_tasks, mock_load_tasks
     ):
@@ -1077,8 +1082,8 @@ class TestTaskManagement:
         # Verify error was printed for non-existent task
         mock_print.assert_any_call("❌ Task 'Non-existent task' not found")
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_all_fail(self, mock_save_tasks, mock_load_tasks):
         """Test deleting multiple tasks where none exist."""
         existing_tasks = [
@@ -1105,8 +1110,8 @@ class TestTaskManagement:
         for expected_call in expected_calls:
             mock_print.assert_any_call(expected_call)
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_invalid_ids(self, mock_save_tasks, mock_load_tasks):
         """Test deleting multiple tasks with some invalid IDs."""
         existing_tasks = [
@@ -1136,8 +1141,8 @@ class TestTaskManagement:
             "❌ Invalid task ID: -1. Please use a number between 1 and 2"
         )
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_with_duplicate_occurrences(
         self, mock_save_tasks, mock_load_tasks
     ):
@@ -1165,8 +1170,8 @@ class TestTaskManagement:
         assert saved_tasks[0]["description"] == "Write documentation"
         # Both "Review code" tasks should be removed
 
-    @patch("schedule_management.reminder.load_tasks")
-    @patch("schedule_management.reminder.save_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_multiple_tasks_save_error(self, mock_save_tasks, mock_load_tasks):
         """Test handling error when saving tasks fails after multiple deletions."""
         existing_tasks = [
@@ -1188,14 +1193,14 @@ class TestTaskManagement:
         mock_print.assert_called_once()
         assert "❌ Error saving tasks:" in mock_print.call_args[0][0]
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_show_tasks_empty(self, mock_load_tasks):
         """Test showing tasks when there are no tasks."""
         mock_load_tasks.return_value = []
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.tasks.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 
@@ -1208,7 +1213,7 @@ class TestTaskManagement:
         call_args = mock_console.print.call_args[0][0]
         assert "No tasks found" in call_args or "📋" in call_args
 
-    @patch("schedule_management.reminder.load_tasks")
+    @patch("schedule_management.commands.tasks.load_tasks")
     def test_show_tasks_sorted_by_importance(self, mock_load_tasks):
         """Test that tasks are displayed sorted by importance (descending)."""
         test_tasks = [
@@ -1220,7 +1225,7 @@ class TestTaskManagement:
 
         args = MagicMock()
 
-        with patch("schedule_management.reminder.Console") as mock_console_class:
+        with patch("schedule_management.commands.tasks.Console") as mock_console_class:
             mock_console = MagicMock()
             mock_console_class.return_value = mock_console
 

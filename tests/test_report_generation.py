@@ -60,8 +60,8 @@ class TestReportGeneration:
         
         assert config.monthly_review_time == ""
 
-    @patch("schedule_management.reminder_macos.try_auto_generate_reports")
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.try_auto_generate_reports")
+    @patch("schedule_management.runner.datetime")
     def test_weekly_review_triggered_on_correct_day_and_time(self, mock_datetime, mock_auto_generate):
         """Test that weekly review is triggered on the correct day and time"""
         # Mock datetime to simulate Sunday 20:00
@@ -98,7 +98,7 @@ class TestReportGeneration:
         # Verify that the weekly review flag was added to notified_today
         assert f"weekly_review_{now_date}" in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_weekly_review_not_triggered_on_wrong_day(self, mock_datetime):
         """Test that weekly review is not triggered on wrong day"""
         # Mock datetime to simulate Monday 20:00 (not Sunday)
@@ -133,7 +133,7 @@ class TestReportGeneration:
         # Verify that the weekly review flag was NOT added to notified_today
         assert f"weekly_review_{now.strftime('%Y-%m-%d')}" not in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_weekly_review_not_triggered_on_wrong_time(self, mock_datetime):
         """Test that weekly review is not triggered on wrong time"""
         # Mock datetime to simulate Sunday 19:00 (not 20:00)
@@ -168,7 +168,7 @@ class TestReportGeneration:
         # Verify that the weekly review flag was NOT added to notified_today
         assert f"weekly_review_{now.strftime('%Y-%m-%d')}" not in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_monthly_review_triggered_on_correct_day_and_time(self, mock_datetime):
         """Test that monthly review is triggered on the correct day of month and time"""
         # Mock datetime to simulate 1st day of month at 20:00
@@ -205,7 +205,7 @@ class TestReportGeneration:
         # Verify that the monthly review flag was added to notified_today
         assert f"monthly_review_{now_month}" in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_monthly_review_not_triggered_on_wrong_day(self, mock_datetime):
         """Test that monthly review is not triggered on wrong day of month"""
         # Mock datetime to simulate 2nd day of month at 20:00 (not 1st)
@@ -241,7 +241,7 @@ class TestReportGeneration:
         # Verify that the monthly review flag was NOT added to notified_today
         assert f"monthly_review_{now.strftime('%Y-%m')}" not in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_monthly_review_not_triggered_on_wrong_time(self, mock_datetime):
         """Test that monthly review is not triggered on wrong time"""
         # Mock datetime to simulate 1st day of month at 19:00 (not 20:00)
@@ -277,7 +277,7 @@ class TestReportGeneration:
         # Verify that the monthly review flag was NOT added to notified_today
         assert f"monthly_review_{now.strftime('%Y-%m')}" not in self.runner.notified_today
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_weekly_review_prevents_duplicate_generation_same_day(self, mock_datetime):
         """Test that weekly review is not triggered multiple times on the same day"""
         # Mock datetime to simulate Sunday 20:00
@@ -315,7 +315,7 @@ class TestReportGeneration:
         final_size = len(self.runner.notified_today)
         assert initial_size == final_size
 
-    @patch("schedule_management.reminder_macos.datetime")
+    @patch("schedule_management.runner.datetime")
     def test_monthly_review_prevents_duplicate_generation_same_month(self, mock_datetime):
         """Test that monthly review is not triggered multiple times in the same month"""
         # Mock datetime to simulate 1st of month at 20:00
