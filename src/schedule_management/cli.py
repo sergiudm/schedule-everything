@@ -34,10 +34,12 @@ Module Dependencies:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
-from schedule_management import CONFIG_DIR, COLORS
+import schedule_management
+from schedule_management import COLORS
 
 # Import command handlers from organized modules
 from schedule_management.commands.tasks import add_task, delete_task, show_tasks
@@ -84,8 +86,11 @@ def create_parser() -> argparse.ArgumentParser:
         ├── report <type>               - Generate report
         └── edit <file>                 - Edit config file
     """
-    # Get config directory path for display in help
-    config_dir_path = Path(CONFIG_DIR).resolve()
+    # Resolve config directory at runtime so test fixtures and env overrides apply.
+    config_dir = (
+        schedule_management.CONFIG_DIR or os.getenv("REMINDER_CONFIG_DIR") or "config"
+    )
+    config_dir_path = Path(config_dir).expanduser().resolve()
 
     # Build colored help text
     colored_description = (
