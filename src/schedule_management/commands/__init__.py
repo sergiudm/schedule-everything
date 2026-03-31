@@ -7,6 +7,7 @@ This package contains all CLI command implementations, organized by domain:
 - habits: Habit tracking commands
 - status: Status and schedule viewing commands
 - service: Service management (update, stop, report)
+- setup: Interactive AI-assisted schedule setup
 """
 
 from schedule_management.commands.tasks import add_task, delete_task, show_tasks
@@ -23,6 +24,7 @@ from schedule_management.commands.service import (
     report_command,
     edit_schedule_command,
 )
+from schedule_management.commands.setup import setup_command
 
 __all__ = [
     # Task commands
@@ -43,4 +45,6 @@ __all__ = [
     "stop_command",
     "report_command",
     "edit_schedule_command",
+    # Setup command
+    "setup_command",
 ]

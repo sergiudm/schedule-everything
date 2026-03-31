@@ -6,6 +6,22 @@ sidebar_position: 2
 
 Commands for managing your schedule, viewing upcoming events, and controlling the reminder service.
 
+## setup
+
+Launch an interactive setup wizard that can configure your model provider credentials and then build or modify schedules with an LLM assistant.
+
+### Syntax
+```bash
+reminder setup
+```
+
+### What it does
+- Prompts for model vendor/model id/api key if no valid model config is detected.
+- Stores model settings in a separate TOML file (`~/.schedule_management/llm.toml`).
+- Checks whether a complete local schedule configuration already exists.
+- Routes to either a build flow (new schedule) or a modify flow (existing schedule).
+- In build flow, asks for an image/file path describing your timetable, creates a first schedule version, then recommends `reminder view` and supports iterative adjustments.
+
 ## update
 
 Reload the schedule configuration files (pulling from a remote Git repository if `.git` is present) and restart the background service.

@@ -11,7 +11,8 @@ Architecture:
     ├── commands/deadlines.py - ddl add, rm, show commands
     ├── commands/habits.py    - track command
     ├── commands/status.py    - status, view commands
-    └── commands/service.py   - update, stop, report commands
+    ├── commands/service.py   - update, stop, report commands
+    └── commands/setup.py     - setup command
 
 Entry Points:
     - `reminder`: The main CLI command (defined in pyproject.toml)
@@ -31,6 +32,7 @@ Module Dependencies:
     - schedule_management.commands.habits
     - schedule_management.commands.status
     - schedule_management.commands.service
+    - schedule_management.commands.setup
 """
 
 import argparse
@@ -56,6 +58,7 @@ from schedule_management.commands.service import (
     report_command,
     edit_schedule_command,
 )
+from schedule_management.commands.setup import setup_command
 
 
 # =============================================================================
@@ -84,7 +87,8 @@ def create_parser() -> argparse.ArgumentParser:
         ├── update                      - Update config from git
         ├── stop                        - Stop reminder service
         ├── report <type>               - Generate report
-        └── edit <file>                 - Edit config file
+        ├── edit <file>                 - Edit config file
+        └── setup                       - Interactive schedule setup
     """
     # Resolve config directory at runtime so test fixtures and env overrides apply.
     config_dir = (
@@ -309,6 +313,17 @@ def create_parser() -> argparse.ArgumentParser:
         help="File to edit (default: settings)",
     )
     edit_parser.set_defaults(func=edit_schedule_command)
+
+    # setup - Interactive LLM-assisted setup
+    setup_parser = subparsers.add_parser(
+        "setup",
+        help="Interactive setup with LLM-assisted schedule generation",
+        description=(
+            "Configure model credentials and build or modify schedules "
+            "through an interactive wizard."
+        ),
+    )
+    setup_parser.set_defaults(func=setup_command)
 
     return parser
 

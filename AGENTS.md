@@ -16,6 +16,7 @@
 - When changing CLI behavior, update tests and docs in the same change.
 - Prefer additive, backward-compatible changes.
 - Keep imports and constants consistent with the existing module layout.
+- Encourage a brief comment section at the top of each module describing what it does in a few lines.
 - For all Python-related setup and commands, use `uv`.
 
 ## Local Setup

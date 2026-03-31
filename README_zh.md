@@ -68,6 +68,15 @@ cp config/week_schedule_template.toml config/even_weeks.toml
 ```
 *请按照输出提示加载 launchd 代理（如果需要）。*
 
+### 4. 可选：交互式 AI 初始化
+你可以使用新的初始化向导来配置模型信息，并交互式创建/修改日程：
+
+```bash
+reminder setup
+```
+
+该向导会将模型配置保存到 `~/.schedule_management/llm.toml`，检测本机是否已有完整配置，并根据结果引导你创建或调整日程。
+
 ---
 
 ## 🛠️ CLI 参考
@@ -85,6 +94,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | 类别         | 命令                              | 说明                             |
 | ------------ | --------------------------------- | -------------------------------- |
 | **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
+|              | `reminder setup`                  | 交互式 AI 初始化（创建/修改日程） |
 |              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
 |              | `reminder view`                   | 生成并查看 PDF 格式日程可视化界面 |
 |              | `reminder edit <file>`            | 直接编辑配置文件                 |
@@ -106,6 +116,9 @@ reminder add "完成报告" 9
 
 # 记录习惯（不需要输入 ID，会弹出窗口）
 reminder track
+
+# 启动交互式初始化向导
+reminder setup
 ```
 
 也可以在 `config/settings.toml` 里设置自动弹窗时间：`[tasks].habit_prompt = "HH:MM"`。

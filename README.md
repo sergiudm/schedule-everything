@@ -40,6 +40,23 @@ A simple, persistent way to manage your daily schedule.
 
 ## 🚀 Quickstart
 
+### 1. Install
+```bash
+git clone https://github.com/sergiudm/schedule-everything.git
+cd schedule-everything
+./install.sh
+```
+
+### 2. Build Your Schedule with AI Assistance
+```bash
+reminder setup
+```
+This command will guide you through configuring model credentials and interactively building or modifying your schedules.
+
+---
+
+## 🛠️ Manual Setup
+
 ### 1. Setup Configuration
 Copy the templates to create your configuration files in `config/`:
 
@@ -74,6 +91,15 @@ Run the installer to set up the background service:
 During installation, existing config is checked and any missing required values are prompted one by one.
 *Follow the output instructions to load the launchd agent if required.*
 
+### 4. Optional: Interactive AI Setup
+Use the new setup wizard to configure model credentials and build/modify schedules interactively:
+
+```bash
+reminder setup
+```
+
+The wizard stores model settings in `~/.schedule_management/llm.toml`, checks whether a complete local schedule config already exists, and then guides you to build or modify schedules.
+
 ---
 
 ## 🛠️ CLI Reference
@@ -91,6 +117,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | Category      | Command                           | Description                                  |
 | ------------- | --------------------------------- | -------------------------------------------- |
 | **System**    | `reminder update`                 | Reload config and restart background service |
+|               | `reminder setup`                  | Interactive AI setup for build/modify schedules |
 |               | `reminder status [-v]`            | Show upcoming events (or full schedule)      |
 |               | `reminder view`                   | Generate and view a PDF schedule visualization |
 |               | `reminder edit <file>`            | Edit a config file directly                  |
@@ -120,6 +147,9 @@ reminder track 1 2
 
 # Or use the prompt window (no IDs)
 reminder track
+
+# Launch interactive setup/build wizard
+reminder setup
 ```
 
 Habit prompts can also be scheduled automatically via `config/settings.toml` (`[tasks].habit_prompt = "HH:MM"`).

@@ -40,6 +40,7 @@ from schedule_management.commands import (
     stop_command,
     report_command,
     edit_schedule_command,
+    setup_command,
 )
 
 # Data loaders
@@ -87,6 +88,7 @@ __all__ = [
     "stop_command",
     "report_command",
     "edit_schedule_command",
+    "setup_command",
     # Data loaders
     "load_tasks",
     "save_tasks",
@@ -110,4 +112,3 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(main())
-

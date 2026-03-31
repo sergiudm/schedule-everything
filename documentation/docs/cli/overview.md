@@ -28,6 +28,7 @@ The CLI commands are organized into these main categories:
 ### Schedule Management
 Commands for managing your schedule and service:
 - [`reminder update`](schedule-management.md#update) - Reload config and restart service
+- [`reminder setup`](schedule-management.md#setup) - Interactive AI-assisted setup for schedule build/modify
 - [`reminder view`](schedule-management.md#view) - Generate schedule visualization
 - [`reminder status`](schedule-management.md#status) - Show upcoming events
 - [`reminder stop`](schedule-management.md#stop) - Stop the alarm service

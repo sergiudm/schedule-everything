@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-management"
-version = "0.5.0"
+version = "0.6.0"
 description = "A TOML based scheduling tool"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,9 @@ dependencies = [
     "matplotlib>=3.10.6",
     "pytest>=8.4.2",
     "rich>=14.2.0",
+    "anthropic>=0.72.0",
+    "google-genai>=1.31.0",
+    "openai>=2.7.0",
 ]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -20,4 +23,4 @@ license-files = ["LICENSE"]
 reminder = "schedule_management.reminder:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
