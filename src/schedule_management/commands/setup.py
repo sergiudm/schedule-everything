@@ -46,6 +46,7 @@ SUPPORTED_VENDORS: list[tuple[str, str]] = [
     ("gemini", "Gemini"),
 ]
 SUPPORTED_VENDOR_SET = {item[0] for item in SUPPORTED_VENDORS}
+VALID_AGENT_PHASES = {"discovery", "summary", "final"}
 
 REQUIRED_CONFIG_FILES = (
     "settings.toml",
@@ -93,11 +94,13 @@ class SourceAttachment:
 
 @dataclass
 class AgentTurn:
+    phase: str
     conversation: str
     needs_user_input: bool
     question_to_user: str | None = None
     missing_information: list[str] = field(default_factory=list)
     actions: list[str] = field(default_factory=list)
+    schedule_summary: str | None = None
     bundle: dict[str, str] | None = None
 
 
@@ -148,6 +151,42 @@ def _prompt_non_empty(prompt: str, *, secret: bool = False) -> str:
         if value:
             return value
         CONSOLE.print("[bold yellow]This value cannot be empty.[/]")
+
+
+def _interpret_confirmation(answer: str) -> bool | None:
+    normalized = answer.strip().lower()
+    if not normalized:
+        return None
+
+    affirmative = {
+        "y",
+        "yes",
+        "ok",
+        "okay",
+        "approve",
+        "approved",
+        "confirm",
+        "confirmed",
+        "looks good",
+        "good",
+        "sounds good",
+    }
+    negative = {
+        "n",
+        "no",
+        "reject",
+        "rejected",
+        "not yet",
+        "needs changes",
+        "change",
+        "adjust",
+    }
+
+    if normalized in affirmative:
+        return True
+    if normalized in negative:
+        return False
+    return None
 
 
 def _draw_vendor_menu(options: list[tuple[str, str]], index: int) -> None:
@@ -814,6 +853,16 @@ def _parse_agent_turn(response_text: str) -> tuple[AgentTurn | None, str | None]
     if not isinstance(needs_user_input, bool):
         return None, "missing or invalid 'needs_user_input' (must be boolean)"
 
+    phase_raw = payload.get("phase")
+    if phase_raw is None:
+        phase = "discovery" if needs_user_input else "final"
+    else:
+        if not isinstance(phase_raw, str):
+            return None, "'phase' must be a string"
+        phase = phase_raw.strip().lower()
+        if phase not in VALID_AGENT_PHASES:
+            return None, "'phase' must be one of: discovery, summary, final"
+
     question_to_user_raw = payload.get("question_to_user")
     question_to_user: str | None = None
     if question_to_user_raw is not None:
@@ -841,9 +890,27 @@ def _parse_agent_turn(response_text: str) -> tuple[AgentTurn | None, str | None]
                 return None, "'actions' must contain non-empty strings"
             actions.append(item.strip())
 
+    schedule_summary_raw = payload.get("schedule_summary")
+    schedule_summary: str | None = None
+    if schedule_summary_raw is not None:
+        if not isinstance(schedule_summary_raw, str):
+            return None, "'schedule_summary' must be a string when provided"
+        schedule_summary = schedule_summary_raw.strip()
+        if not schedule_summary:
+            return None, "'schedule_summary' cannot be empty when provided"
+
     bundle, bundle_error = _parse_toml_bundle_from_payload(payload)
     if bundle_error:
         return None, bundle_error
+
+    if phase == "final" and needs_user_input:
+        return None, "phase=final requires needs_user_input=false"
+
+    if phase in {"discovery", "summary"} and not needs_user_input:
+        return None, "discovery/summary phases require needs_user_input=true"
+
+    if phase == "summary" and not schedule_summary:
+        return None, "phase=summary requires non-empty schedule_summary"
 
     if needs_user_input:
         if bundle is not None:
@@ -862,11 +929,13 @@ def _parse_agent_turn(response_text: str) -> tuple[AgentTurn | None, str | None]
 
     return (
         AgentTurn(
+            phase=phase,
             conversation=conversation.strip(),
             needs_user_input=needs_user_input,
             question_to_user=question_to_user,
             missing_information=missing_information,
             actions=actions,
+            schedule_summary=schedule_summary,
             bundle=bundle,
         ),
         None,
@@ -879,6 +948,7 @@ def _request_agent_turn(
     user_prompt: str,
     *,
     attachment: SourceAttachment | None = None,
+    turn_validator: Callable[[AgentTurn], str | None] | None = None,
 ) -> tuple[AgentTurn | None, str | None]:
     base_prompt = user_prompt
     prompt = user_prompt
@@ -902,7 +972,13 @@ def _request_agent_turn(
 
         turn, parse_error = _parse_agent_turn(response_text)
         if turn is not None:
-            return turn, None
+            if turn_validator is not None:
+                validation_error = turn_validator(turn)
+                if validation_error is None:
+                    return turn, None
+                parse_error = validation_error
+            else:
+                return turn, None
 
         last_error = parse_error
         previous_response = response_text.strip()
@@ -999,6 +1075,19 @@ def _render_missing_information(items: list[str]) -> None:
         CONSOLE.print(f"[yellow]- {item}[/]")
 
 
+def _render_schedule_summary(summary: str) -> None:
+    text = summary.strip()
+    if not text:
+        return
+    CONSOLE.print(
+        Panel.fit(
+            text,
+            title="Schedule Summary",
+            border_style="magenta",
+        )
+    )
+
+
 def _append_conversation_history(
     history: str,
     *,
@@ -1021,6 +1110,43 @@ def _merge_request_with_details(base_text: str, details: list[str]) -> str:
         f"{base_text}\n\n"
         "Additional details provided by the user in follow-up turns:\n"
         f"{detail_lines}"
+    )
+
+
+def _collect_profile_context() -> str:
+    CONSOLE.print(
+        Panel.fit(
+            "Before generating your schedule, I will ask a few quick profile questions.",
+            title="Profile Intake",
+            border_style="bright_blue",
+        )
+    )
+
+    basic_info = _prompt_non_empty(
+        "Basic information (student/worker, timezone, wake/sleep pattern). "
+        "If unsure, type 'unknown': "
+    )
+    goals = _prompt_non_empty(
+        "What are your main goals for this schedule (study/work/health/etc.)? "
+    )
+    habits = _prompt_non_empty(
+        "What recurring habits should be included (exercise, reading, review)? "
+    )
+    preferences = _prompt_non_empty(
+        "What are your scheduling preferences (morning focus, free evenings, break style)? "
+    )
+    constraints = _prompt_non_empty(
+        "What hard constraints must be respected (fixed classes/meetings, commute, unavailable times)? "
+    )
+
+    return "\n".join(
+        [
+            f"- Basic information: {basic_info}",
+            f"- Goals: {goals}",
+            f"- Habits: {habits}",
+            f"- Preferences: {preferences}",
+            f"- Hard constraints: {constraints}",
+        ]
     )
 
 
@@ -1119,6 +1245,7 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
 
     attachment: SourceAttachment | None = None
     description: str | None = None
+    profile_context = _collect_profile_context()
 
     if _ask_yes_no(
         "Can you provide a path to an image/file describing your timetable?",
@@ -1140,6 +1267,9 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
 
     follow_up_details: list[str] = []
     conversation_history = ""
+    summary_presented = False
+    summary_confirmed = False
+    latest_summary: str | None = None
 
     while True:
         merged_description = description.strip() if description else ""
@@ -1160,13 +1290,31 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
             description=merged_description or None,
             attachment_name=attachment.path.name if attachment else None,
             conversation_history=conversation_history,
+            profile_context=profile_context,
+            summary_presented=summary_presented,
+            summary_confirmed=summary_confirmed,
+            latest_summary=latest_summary,
         )
+
+        def _build_turn_validator(turn: AgentTurn) -> str | None:
+            if turn.phase == "final" and not summary_presented:
+                return (
+                    "Build flow violation: final configuration was returned before "
+                    "a summary phase. Provide a pure-text summary first."
+                )
+            if turn.phase == "final" and not summary_confirmed:
+                return (
+                    "Build flow violation: final configuration was returned before "
+                    "the user confirmed the schedule summary."
+                )
+            return None
 
         turn, error = _request_agent_turn(
             client,
             BUILD_SYSTEM_PROMPT,
             user_prompt,
             attachment=attachment,
+            turn_validator=_build_turn_validator,
         )
         if turn is None:
             CONSOLE.print(
@@ -1177,11 +1325,22 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
         _render_conversation_message(turn.conversation)
 
         if turn.needs_user_input:
+            if turn.phase == "summary" and turn.schedule_summary:
+                latest_summary = turn.schedule_summary
+                summary_presented = True
+                _render_schedule_summary(turn.schedule_summary)
+
             _render_missing_information(turn.missing_information)
             follow_up_prompt = (
                 turn.question_to_user or "Please provide the missing information: "
             )
             user_answer = _prompt_non_empty(follow_up_prompt)
+            if turn.phase == "summary":
+                confirmation = _interpret_confirmation(user_answer)
+                if confirmation is True:
+                    summary_confirmed = True
+                elif confirmation is False:
+                    summary_confirmed = False
             follow_up_details.append(user_answer)
             conversation_history = _append_conversation_history(
                 conversation_history,

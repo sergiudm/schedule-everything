@@ -20,7 +20,9 @@ reminder setup
 - Stores model settings in a separate TOML file (`~/.schedule_management/llm.toml`).
 - Checks whether a complete local schedule configuration already exists.
 - Routes to either a build flow (new schedule) or a modify flow (existing schedule).
-- In build flow, asks for an image/file path describing your timetable, creates a first schedule version, then recommends `reminder view` and supports iterative adjustments.
+- In build flow, actively asks for your profile (basic information, goals, habits, preferences, and constraints), asks for an image/file path or description, then produces a pure-text schedule summary first.
+- Only after you confirm the summary does it generate TOML configuration files.
+- Recommends `reminder view` and supports iterative adjustments.
 
 ## update
 

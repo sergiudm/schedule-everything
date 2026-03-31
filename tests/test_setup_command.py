@@ -274,9 +274,11 @@ def test_setup_command_is_registered_in_parser():
 
 def test_prompt_templates_include_required_keys():
     for prompt in (BUILD_SYSTEM_PROMPT, MODIFY_SYSTEM_PROMPT):
+        assert "phase" in prompt
         assert "conversation" in prompt
         assert "needs_user_input" in prompt
         assert "question_to_user" in prompt
+        assert "schedule_summary" in prompt
         assert "settings_toml" in prompt
         assert "odd_weeks_toml" in prompt
         assert "even_weeks_toml" in prompt
@@ -292,6 +294,25 @@ def test_prompt_renderers_include_context_sections(tmp_path):
     assert "Target config directory" in build_prompt
     assert "timetable.png" in build_prompt
     assert "Conversation history" in build_prompt
+
+    summary_gate_prompt = render_build_user_prompt(
+        tmp_path,
+        description="draft",
+        attachment_name=None,
+        summary_presented=False,
+        summary_confirmed=False,
+    )
+    assert "Do NOT output any *_toml fields yet." in summary_gate_prompt
+
+    final_gate_prompt = render_build_user_prompt(
+        tmp_path,
+        description="draft",
+        attachment_name=None,
+        summary_presented=True,
+        summary_confirmed=True,
+        latest_summary="Weekday deep-work mornings.",
+    )
+    assert "Return complete TOML now." in final_gate_prompt
 
     modify_prompt = render_modify_user_prompt(
         "Move gym to evenings",
@@ -352,3 +373,20 @@ def test_parse_agent_turn_supports_missing_information_questions():
     assert turn.bundle is None
     assert turn.question_to_user == "Which days should stay completely free?"
     assert turn.missing_information == ["free days preference"]
+
+
+def test_parse_agent_turn_requires_schedule_summary_in_summary_phase():
+    response = (
+        "{"
+        '"phase": "summary", '
+        '"conversation": "Here is the draft plan overview.", '
+        '"needs_user_input": true, '
+        '"question_to_user": "Do you want me to generate the TOML files now?"'
+        "}"
+    )
+
+    turn, error = setup_cmd_module._parse_agent_turn(response)
+
+    assert turn is None
+    assert error is not None
+    assert "schedule_summary" in error

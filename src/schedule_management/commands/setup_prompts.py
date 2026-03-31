@@ -13,11 +13,13 @@ from pathlib import Path
 
 OUTPUT_SCHEMA_GUIDE = """
 Return exactly one JSON object with tagged top-level sections/keys:
+- phase (required string: "discovery" | "summary" | "final")
 - conversation (required string, user-facing only)
 - actions (optional array of strings, internal-only)
 - needs_user_input (required boolean)
 - question_to_user (required non-empty string when needs_user_input is true)
 - missing_information (optional array of strings)
+- schedule_summary (required non-empty string when phase is "summary")
 - settings_toml (required when needs_user_input is false)
 - odd_weeks_toml (required when needs_user_input is false)
 - even_weeks_toml (required when needs_user_input is false)
@@ -27,11 +29,12 @@ Output constraints:
 1) Return raw JSON only. Do not wrap it in markdown.
 2) `conversation` must summarize the turn naturally and clearly.
 3) `actions` must describe internal operations; do not include user-facing text.
-4) If `needs_user_input` is true, do not return any *_toml keys.
-5) If `needs_user_input` is false, return complete TOML for required files.
-6) Every *_toml value must be a complete TOML document string parseable by tomllib.
-7) Time keys in week schedules must use 24-hour HH:MM format.
-8) Keep event labels short and reusable.
+4) If phase is "discovery", set needs_user_input=true and do not return *_toml keys.
+5) If phase is "summary", set needs_user_input=true, return schedule_summary as pure text, and ask for confirmation.
+6) If phase is "final", set needs_user_input=false and return complete TOML for required files.
+7) Every *_toml value must be a complete TOML document string parseable by tomllib.
+8) Time keys in week schedules must use 24-hour HH:MM format.
+9) Keep event labels short and reusable.
 """.strip()
 
 MULTI_TURN_RULES = """
@@ -39,7 +42,9 @@ This is a multi-turn assistant, not a single-turn generator.
 
 Per turn behavior:
 - Always process the latest user instruction.
-- If information is sufficient, complete the task and return TOML sections.
+- Actively ask for missing user profile details before finalizing: basic information, preferences, habits, goals, and hard constraints.
+- If information is sufficient for planning, provide a pure-text schedule summary first and ask the user to confirm or adjust it.
+- Only after summary confirmation, produce TOML sections.
 - If information is insufficient, set needs_user_input=true and ask one focused question.
 - Always provide a concise `conversation` summary for the user.
 - Keep `actions` internal and machine-oriented because only `conversation` is user-visible.
@@ -54,6 +59,17 @@ Mission:
 - Fill missing details with reasonable defaults while keeping structure simple.
 
 {MULTI_TURN_RULES}
+
+Mandatory build workflow:
+1) discovery phase:
+    - ask targeted questions to collect profile inputs (basic information, goals, habits, preferences, constraints).
+    - do not output TOML in this phase.
+2) summary phase:
+    - output a pure-text schedule summary in `schedule_summary`.
+    - set needs_user_input=true and ask the user to confirm or request adjustments.
+    - do not output TOML in this phase.
+3) final phase:
+    - only after the user confirms the summary, output final TOML files.
 
 Domain rules:
 1) settings_toml must include sections: [settings], [time_blocks], [time_points], [tasks], [paths].
@@ -86,6 +102,7 @@ Editing rules:
 3) Maintain consistency between schedule labels and settings definitions.
 4) Preserve TOML validity and 24-hour HH:MM time keys.
 5) If a requested change is ambiguous, choose the most conservative interpretation.
+6) Use phase="discovery" when asking follow-up questions; use phase="final" when returning TOML.
 
 {OUTPUT_SCHEMA_GUIDE}
 """.strip()
@@ -97,6 +114,10 @@ def render_build_user_prompt(
     description: str | None,
     attachment_name: str | None,
     conversation_history: str | None = None,
+    profile_context: str | None = None,
+    summary_presented: bool = False,
+    summary_confirmed: bool = False,
+    latest_summary: str | None = None,
 ) -> str:
     """Create the build agent user message with full context and requirements."""
     user_description = (
@@ -106,6 +127,24 @@ def render_build_user_prompt(
     history = (
         conversation_history.strip() if conversation_history else "(no prior turns)"
     )
+    profile_text = profile_context.strip() if profile_context else "(not collected)"
+    summary_text = latest_summary.strip() if latest_summary else "(none yet)"
+
+    if not summary_presented:
+        stage_instruction = (
+            "Current required phase: discovery or summary. "
+            "Do NOT output any *_toml fields yet."
+        )
+    elif not summary_confirmed:
+        stage_instruction = (
+            "Current required phase: summary. Provide/adjust pure-text schedule_summary "
+            "and ask the user to confirm. Do NOT output any *_toml fields yet."
+        )
+    else:
+        stage_instruction = (
+            "Current required phase: final. The user confirmed the summary. "
+            "Return complete TOML now."
+        )
 
     return "\n\n".join(
         [
@@ -117,6 +156,9 @@ def render_build_user_prompt(
             ),
             f"User description:\n{user_description}",
             f"Attached source file name: {source_hint}",
+            f"Structured user profile context:\n{profile_text}",
+            f"Latest schedule summary:\n{summary_text}",
+            stage_instruction,
             f"Conversation history:\n{history}",
             (
                 "When uncertain, choose practical defaults and keep the output "
@@ -146,6 +188,7 @@ def render_modify_user_prompt(
             if current_files.strip()
             else "(No current files found)",
             f"Conversation history:\n{history}",
+            "Use phase=discovery when asking follow-up questions, phase=final when returning TOML.",
             "Apply only necessary changes and preserve unrelated content.",
             OUTPUT_SCHEMA_GUIDE,
         ]

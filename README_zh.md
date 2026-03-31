@@ -76,6 +76,7 @@ reminder setup
 ```
 
 该向导会将模型配置保存到 `~/.schedule_management/llm.toml`，检测本机是否已有完整配置，并根据结果引导你创建或调整日程。
+在新建日程模式下，它会先主动询问你的基础信息、目标、习惯、偏好与硬性约束，然后先给出纯文本日程摘要供你确认，最后才生成 TOML 配置文件。
 
 ---
 
@@ -94,7 +95,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | 类别         | 命令                              | 说明                             |
 | ------------ | --------------------------------- | -------------------------------- |
 | **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
-|              | `reminder setup`                  | 交互式 AI 初始化（创建/修改日程） |
+|              | `reminder setup`                  | 交互式 AI 初始化（先采集偏好并输出摘要，再创建/修改日程） |
 |              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
 |              | `reminder view`                   | 生成并查看 PDF 格式日程可视化界面 |
 |              | `reminder edit <file>`            | 直接编辑配置文件                 |
