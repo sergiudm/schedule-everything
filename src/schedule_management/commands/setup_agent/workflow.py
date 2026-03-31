@@ -72,7 +72,43 @@ TEXT_EXTENSIONS = {
     ".log",
 }
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".gif",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".heic",
+    ".heif",
+}
+
+OPENAI_VISION_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+}
+
+ANTHROPIC_VISION_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+}
+
+GEMINI_VISION_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "image/bmp",
+    "image/tiff",
+}
 
 CONSOLE = Console()
 
@@ -776,8 +812,127 @@ def _normalize_openai_base_url(base_url: str) -> str:
     return normalized
 
 
+def _resolve_source_path_input(raw_input: str) -> Path:
+    """Resolve user-provided source path, including common download locations."""
+    raw = raw_input.strip()
+    candidate = Path(raw).expanduser()
+    if candidate.exists():
+        return candidate
+
+    # For explicit absolute/relative paths, respect the user input directly.
+    has_separators = any(separator in raw for separator in ("/", "\\"))
+    if candidate.is_absolute() or has_separators:
+        return candidate
+
+    file_name = candidate.name
+    common_roots: list[Path] = [
+        Path.cwd(),
+        Path.home(),
+        Path.home() / "Downloads",
+        Path.home() / "Desktop",
+        Path.home() / "Documents",
+        Path.home() / "Pictures",
+    ]
+
+    seen: set[Path] = set()
+    for root in common_roots:
+        try:
+            resolved_root = root.expanduser().resolve()
+        except OSError:
+            continue
+        if resolved_root in seen:
+            continue
+        seen.add(resolved_root)
+
+        probe = resolved_root / file_name
+        if probe.exists():
+            return probe
+
+    return candidate
+
+
+def _detect_image_mime_from_bytes(raw: bytes) -> str | None:
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+        return "image/gif"
+    if raw.startswith(b"RIFF") and raw[8:12] == b"WEBP":
+        return "image/webp"
+    if raw.startswith(b"BM"):
+        return "image/bmp"
+    if raw.startswith(b"II*\x00") or raw.startswith(b"MM\x00*"):
+        return "image/tiff"
+    if b"ftypheic" in raw[:64] or b"ftypheif" in raw[:64]:
+        return "image/heic"
+    return None
+
+
+def _normalize_image_mime(path: Path, raw: bytes, guessed: str | None) -> str:
+    if guessed and guessed.startswith("image/"):
+        return guessed
+
+    by_header = _detect_image_mime_from_bytes(raw)
+    if by_header:
+        return by_header
+
+    suffix = path.suffix.lower()
+    suffix_to_mime = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".tif": "image/tiff",
+        ".tiff": "image/tiff",
+        ".heic": "image/heic",
+        ".heif": "image/heif",
+    }
+    return suffix_to_mime.get(suffix, "application/octet-stream")
+
+
+def _resolve_image_mime_for_vendor(vendor: str, attachment: SourceAttachment) -> str:
+    mime = attachment.mime_type.lower()
+
+    if vendor in {"openai", "openai_compatible"}:
+        if mime in OPENAI_VISION_MIME_TYPES:
+            return mime
+        raise RuntimeError(
+            "OpenAI vision input supports PNG/JPEG/WEBP/GIF only. "
+            f"Provided type: {attachment.mime_type}"
+        )
+
+    if vendor == "anthropic":
+        if mime in ANTHROPIC_VISION_MIME_TYPES:
+            return mime
+        raise RuntimeError(
+            "Anthropic vision input supports JPEG/PNG/GIF/WEBP only. "
+            f"Provided type: {attachment.mime_type}"
+        )
+
+    if vendor == "gemini":
+        if mime in GEMINI_VISION_MIME_TYPES:
+            return mime
+        raise RuntimeError(
+            "Gemini vision input received an unsupported image MIME type: "
+            f"{attachment.mime_type}"
+        )
+
+    return mime
+
+
 def _add_text_attachment(user_prompt: str, attachment: SourceAttachment | None) -> str:
     if not attachment or not attachment.text_content:
+        if attachment and attachment.image_base64:
+            return (
+                f"{user_prompt}\n\n"
+                f"An image attachment is included ({attachment.path.name}). "
+                "The runtime already passed this image via native vision input, "
+                "so inspect the image directly and do not ask the user to "
+                "manually transcribe its full content."
+            )
         return user_prompt
 
     return (
@@ -1146,7 +1301,8 @@ class LLMClient:
             {"type": "input_text", "text": user_prompt_with_text}
         ]
         if attachment and attachment.image_base64:
-            image_url = f"data:{attachment.mime_type};base64,{attachment.image_base64}"
+            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
+            image_url = f"data:{vision_mime};base64,{attachment.image_base64}"
             user_content.append({"type": "input_image", "image_url": image_url})
 
         current_input: list[dict[str, Any]] = [
@@ -1244,12 +1400,13 @@ class LLMClient:
         ]
 
         if attachment and attachment.image_base64:
+            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
             content.append(
                 {
                     "type": "image",
                     "source": {
                         "type": "base64",
-                        "media_type": attachment.mime_type,
+                        "media_type": vision_mime,
                         "data": attachment.image_base64,
                     },
                 }
@@ -1368,10 +1525,12 @@ class LLMClient:
                     "Invalid image attachment for Gemini request"
                 ) from exc
 
+            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
+
             parts.append(
                 genai_types.Part.from_bytes(
                     data=image_bytes,
-                    mime_type=attachment.mime_type,
+                    mime_type=vision_mime,
                 )
             )
 
@@ -1652,7 +1811,7 @@ def _request_agent_turn(
                 response_text = client.generate(
                     system_prompt,
                     prompt,
-                    attachment if attempt == 1 else None,
+                    attachment,
                     on_text=None,
                     file_tools=file_tools,
                     on_tool_activity=lambda detail: status.update(
@@ -1690,16 +1849,16 @@ def _load_source_attachment(path: Path) -> tuple[SourceAttachment | None, str | 
         return None, f"Expected a file path, but got directory: {path}"
 
     suffix = path.suffix.lower()
+    raw = path.read_bytes()
     mime_type, _ = mimetypes.guess_type(path.name)
-    mime = mime_type or "application/octet-stream"
+    mime = _normalize_image_mime(path, raw, mime_type)
 
     if suffix in IMAGE_EXTENSIONS or mime.startswith("image/"):
-        raw = path.read_bytes()
         encoded = base64.b64encode(raw).decode("ascii")
         return SourceAttachment(path=path, mime_type=mime, image_base64=encoded), None
 
     if suffix in TEXT_EXTENSIONS or mime.startswith("text/"):
-        content = path.read_text(encoding="utf-8", errors="replace")
+        content = raw.decode("utf-8", errors="replace")
         if len(content) > 15000:
             content = content[:15000] + "\n... [truncated]"
         return SourceAttachment(
@@ -1803,6 +1962,56 @@ def _merge_request_with_details(base_text: str, details: list[str]) -> str:
         "Additional details provided by the user in follow-up turns:\n"
         f"{detail_lines}"
     )
+
+
+def _turn_requests_manual_image_transcription(turn: AgentTurn) -> bool:
+    combined = " ".join(
+        [
+            turn.conversation,
+            turn.question_to_user or "",
+            " ".join(turn.missing_information),
+        ]
+    ).lower()
+
+    if not combined:
+        return False
+
+    blindness_markers = (
+        "cannot see image",
+        "can't see image",
+        "cannot see images",
+        "can't see images",
+        "cannot view image",
+        "can't view image",
+        "unable to see image",
+        "unable to view image",
+    )
+    if any(marker in combined for marker in blindness_markers):
+        return True
+
+    manual_description_markers = (
+        "describe the image",
+        "describe changes from the image",
+        "details from the image",
+        "what is in the image",
+        "transcribe the image",
+        "type out the image",
+    )
+    if "image" not in combined:
+        return False
+    if not any(marker in combined for marker in manual_description_markers):
+        return False
+
+    # Clarifying image quality is acceptable and should not be blocked.
+    quality_markers = (
+        "blurry",
+        "unclear",
+        "low resolution",
+        "cropped",
+        "not legible",
+        "hard to read",
+    )
+    return not any(marker in combined for marker in quality_markers)
 
 
 def _collect_profile_context() -> str:
@@ -1947,13 +2156,19 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
         default=True,
     ):
         source_path = _prompt_non_empty("Enter path: ")
-        loaded, error = _load_source_attachment(Path(source_path).expanduser())
+        resolved_source_path = _resolve_source_path_input(source_path)
+        loaded, error = _load_source_attachment(resolved_source_path)
         if loaded is None:
             CONSOLE.print(f"[bold yellow]{error}[/]")
             description = _prompt_non_empty(
                 "Please provide a short text description instead: "
             )
         else:
+            if resolved_source_path != Path(source_path).expanduser():
+                CONSOLE.print(
+                    "[bold cyan]Detected file in a common folder:[/] "
+                    f"[cyan]{resolved_source_path}[/]"
+                )
             attachment = loaded
     else:
         description = _prompt_non_empty(
@@ -1992,6 +2207,18 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
         )
 
         def _build_turn_validator(turn: AgentTurn) -> str | None:
+            if (
+                attachment is not None
+                and attachment.image_base64 is not None
+                and _turn_requests_manual_image_transcription(turn)
+            ):
+                return (
+                    "Image is already attached through native vision input. "
+                    "Do not claim you cannot see images or ask the user to "
+                    "transcribe image details manually. Analyze the attachment "
+                    "directly and only ask targeted clarifications if content "
+                    "is ambiguous."
+                )
             if turn.phase == "final" and not summary_presented:
                 return (
                     "Build flow violation: final configuration was returned before "

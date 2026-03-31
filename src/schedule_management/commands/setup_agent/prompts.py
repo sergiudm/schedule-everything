@@ -48,6 +48,9 @@ Per turn behavior:
 - If information is insufficient, set needs_user_input=true and ask one focused question.
 - Always provide a concise `conversation` summary for the user.
 - Keep `actions` internal and machine-oriented because only `conversation` is user-visible.
+- If an image attachment is present, you already have direct visual access through native vision input.
+- Never say you cannot see/view images when an image attachment is present.
+- Do not ask the user to manually transcribe the full image content; ask only targeted clarifications if the image is ambiguous.
 """.strip()
 
 FILE_TOOLING_RULES = """
@@ -174,6 +177,12 @@ def render_build_user_prompt(
             ),
             f"User description:\n{user_description}",
             f"Attached source file name: {source_hint}",
+            (
+                "Image vision input status: "
+                "present and already attached to the model runtime"
+                if attachment_name
+                else "Image vision input status: no image attachment"
+            ),
             f"Structured user profile context:\n{profile_text}",
             f"Latest schedule summary:\n{summary_text}",
             stage_instruction,

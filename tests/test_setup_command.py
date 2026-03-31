@@ -255,6 +255,50 @@ def test_openai_generation_supports_function_tools(tmp_path):
     assert second_call_kwargs["input"][0]["type"] == "function_call_output"
 
 
+def test_openai_generation_passes_image_to_vision_input(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
+    )
+
+    class FakeOpenAIStream:
+        def __init__(self):
+            self._final_response = {"id": "resp_vision", "output_text": '{"ok": true}'}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def __iter__(self):
+            return iter([])
+
+        def get_final_response(self):
+            return self._final_response
+
+    fake_client = MagicMock()
+    fake_client.responses.stream.return_value = FakeOpenAIStream()
+
+    attachment = setup_cmd_module.SourceAttachment(
+        path=tmp_path / "plan.png",
+        mime_type="image/png",
+        image_base64="aGVsbG8=",
+    )
+
+    with patch.object(
+        setup_cmd_module.LLMClient,
+        "_get_openai_client",
+        return_value=fake_client,
+    ):
+        result = llm_client.generate("system", "user", attachment=attachment)
+
+    assert result == '{"ok": true}'
+    call_kwargs = fake_client.responses.stream.call_args.kwargs
+    user_parts = call_kwargs["input"][0]["content"]
+    image_part = next(part for part in user_parts if part["type"] == "input_image")
+    assert image_part["image_url"].startswith("data:image/png;base64,")
+
+
 def test_anthropic_generation_supports_tool_use(tmp_path):
     llm_client = setup_cmd_module.LLMClient(
         LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
@@ -307,6 +351,143 @@ def test_anthropic_generation_supports_tool_use(tmp_path):
 
     assert result == '{"ok": true}'
     assert fake_client.messages.stream.call_count == 2
+
+
+def test_anthropic_generation_passes_image_to_vision_input(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
+    )
+
+    class FakeAnthropicStream:
+        def __init__(self):
+            self.text_stream = iter(['{"ok": true}'])
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def get_final_message(self):
+            return {"content": [{"type": "text", "text": '{"ok": true}'}]}
+
+    fake_client = MagicMock()
+    fake_client.messages.stream.return_value = FakeAnthropicStream()
+
+    attachment = setup_cmd_module.SourceAttachment(
+        path=tmp_path / "plan.png",
+        mime_type="image/png",
+        image_base64="aGVsbG8=",
+    )
+
+    with patch.object(
+        setup_cmd_module.LLMClient,
+        "_get_anthropic_client",
+        return_value=fake_client,
+    ):
+        result = llm_client.generate("system", "user", attachment=attachment)
+
+    assert result == '{"ok": true}'
+    call_kwargs = fake_client.messages.stream.call_args.kwargs
+    content_blocks = call_kwargs["messages"][0]["content"]
+    image_block = next(block for block in content_blocks if block["type"] == "image")
+    assert image_block["source"]["media_type"] == "image/png"
+
+
+def test_gemini_generation_passes_image_to_vision_input(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
+    )
+
+    fake_client = MagicMock()
+    fake_client.models.generate_content_stream.return_value = [
+        SimpleNamespace(text='{"ok": true}', function_calls=None)
+    ]
+
+    attachment = setup_cmd_module.SourceAttachment(
+        path=tmp_path / "plan.png",
+        mime_type="image/png",
+        image_base64="aGVsbG8=",
+    )
+
+    from google.genai import types as genai_types
+
+    original_from_bytes = genai_types.Part.from_bytes
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_get_gemini_client",
+            return_value=fake_client,
+        ),
+        patch(
+            "google.genai.types.Part.from_bytes",
+            wraps=original_from_bytes,
+        ) as from_bytes_mock,
+    ):
+        result = llm_client.generate("system", "user", attachment=attachment)
+
+    assert result == '{"ok": true}'
+    from_bytes_mock.assert_called_once()
+    assert from_bytes_mock.call_args.kwargs["mime_type"] == "image/png"
+
+
+def test_load_source_attachment_detects_image_without_image_extension(tmp_path):
+    raw_png = b"\x89PNG\r\n\x1a\n" + b"x" * 16
+    path = tmp_path / "upload.bin"
+    path.write_bytes(raw_png)
+
+    attachment, error = setup_cmd_module._load_source_attachment(path)
+
+    assert error is None
+    assert attachment is not None
+    assert attachment.image_base64 is not None
+    assert attachment.mime_type == "image/png"
+
+
+def test_resolve_source_path_input_finds_common_downloads(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    downloads = home / "Downloads"
+    downloads.mkdir(parents=True)
+
+    target = downloads / "50499A1ABA0EFC793F82A8F910B3FC3C.png"
+    target.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 16)
+
+    workdir = tmp_path / "workspace"
+    workdir.mkdir(parents=True)
+    monkeypatch.chdir(workdir)
+
+    with patch("pathlib.Path.home", return_value=home):
+        resolved = setup_cmd_module._resolve_source_path_input(target.name)
+
+    assert resolved == target
+
+
+def test_turn_requests_manual_image_transcription_detection():
+    turn = setup_cmd_module.AgentTurn(
+        phase="discovery",
+        conversation="I'm sorry, but I cannot see images.",
+        needs_user_input=True,
+        question_to_user=(
+            "Could you describe the changes you'd like to make based on the image?"
+        ),
+        missing_information=["Details of the schedule changes from the image"],
+    )
+
+    assert setup_cmd_module._turn_requests_manual_image_transcription(turn) is True
+
+    quality_turn = setup_cmd_module.AgentTurn(
+        phase="discovery",
+        conversation="I can see the image but the text is blurry in two cells.",
+        needs_user_input=True,
+        question_to_user="Could you confirm the Tuesday 14:00 course name?",
+        missing_information=["Tuesday 14:00 course label"],
+    )
+
+    assert (
+        setup_cmd_module._turn_requests_manual_image_transcription(quality_turn)
+        is False
+    )
 
 
 def test_gemini_generation_supports_function_calls(tmp_path):
@@ -483,6 +664,8 @@ def test_prompt_templates_include_required_keys():
         assert "read_file" in prompt
         assert "write_file" in prompt
 
+    assert "Never say you cannot see/view images" in BUILD_SYSTEM_PROMPT
+
 
 def test_prompt_renderers_include_context_sections(tmp_path):
     build_prompt = render_build_user_prompt(
@@ -493,6 +676,7 @@ def test_prompt_renderers_include_context_sections(tmp_path):
     )
     assert "Target config directory" in build_prompt
     assert "timetable.png" in build_prompt
+    assert "Image vision input status" in build_prompt
     assert "Conversation history" in build_prompt
 
     summary_gate_prompt = render_build_user_prompt(
@@ -552,6 +736,46 @@ def test_parse_agent_turn_requires_conversation_and_toml_when_ready():
     assert turn.needs_user_input is False
     assert turn.bundle is not None
     assert "settings.toml" in turn.bundle
+
+
+def test_request_agent_turn_keeps_image_attachment_on_retry(tmp_path):
+    attachment = setup_cmd_module.SourceAttachment(
+        path=tmp_path / "plan.png",
+        mime_type="image/png",
+        image_base64="aGVsbG8=",
+    )
+
+    class FakeClient:
+        def __init__(self):
+            self.calls = 0
+            self.attachments: list[setup_cmd_module.SourceAttachment | None] = []
+
+        def generate(self, _sys, _usr, attachment=None, **_kwargs):
+            self.calls += 1
+            self.attachments.append(attachment)
+            if self.calls == 1:
+                return "not json"
+            return (
+                "{"
+                '"phase": "discovery", '
+                '"conversation": "Need one more detail.", '
+                '"needs_user_input": true, '
+                '"question_to_user": "What is your commute time?"'
+                "}"
+            )
+
+    fake_client = FakeClient()
+    turn, error = setup_cmd_module._request_agent_turn(
+        fake_client,
+        "system",
+        "user",
+        attachment=attachment,
+    )
+
+    assert error is None
+    assert turn is not None
+    assert fake_client.calls == 2
+    assert fake_client.attachments == [attachment, attachment]
 
 
 def test_parse_agent_turn_supports_missing_information_questions():
