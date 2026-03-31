@@ -95,7 +95,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | 类别         | 命令                              | 说明                             |
 | ------------ | --------------------------------- | -------------------------------- |
 | **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
-|              | `reminder setup`                  | 交互式 AI 初始化（先采集偏好并输出摘要，再创建/修改日程） |
+|              | `reminder setup`                  | 交互式 AI 初始化（先采集偏好并输出摘要，再创建/修改日程，并可按需通过模型工具调用读取/编辑本地文件） |
 |              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
 |              | `reminder view`                   | 生成并查看 PDF 格式日程可视化界面 |
 |              | `reminder edit <file>`            | 直接编辑配置文件                 |

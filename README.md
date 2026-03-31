@@ -100,6 +100,7 @@ reminder setup
 
 The wizard stores model settings in `~/.schedule_management/llm.toml`, checks whether a complete local schedule config already exists, and then guides you to build or modify schedules.
 In build mode, it proactively asks profile questions (basic info, goals, habits, preferences, constraints), generates a pure-text schedule summary for confirmation, and only then writes TOML configuration files.
+During build/modify turns, the agent can use vendor-native tool calling to read or edit local files when needed.
 
 ---
 
@@ -118,7 +119,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | Category      | Command                           | Description                                  |
 | ------------- | --------------------------------- | -------------------------------------------- |
 | **System**    | `reminder update`                 | Reload config and restart background service |
-|               | `reminder setup`                  | Interactive AI setup with profile intake, summary-first planning, and build/modify flows |
+|               | `reminder setup`                  | Interactive AI setup with profile intake, summary-first planning, build/modify flows, and optional file-aware tool use |
 |               | `reminder status [-v]`            | Show upcoming events (or full schedule)      |
 |               | `reminder view`                   | Generate and view a PDF schedule visualization |
 |               | `reminder edit <file>`            | Edit a config file directly                  |

@@ -149,6 +149,204 @@ def test_openai_generation_streams_responses_api():
     fake_client.chat.completions.create.assert_not_called()
 
 
+def test_local_file_tools_can_read_and_edit(tmp_path):
+    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
+    source = tmp_path / "notes.txt"
+    source.write_text("alpha\nbeta\n", encoding="utf-8")
+
+    read_result = tools.execute(
+        "read_file",
+        {
+            "path": str(source),
+            "start_line": 2,
+            "end_line": 2,
+        },
+    )
+    assert read_result["ok"] is True
+    assert read_result["content"] == "beta"
+
+    replace_result = tools.execute(
+        "replace_in_file",
+        {
+            "path": str(source),
+            "old_text": "beta",
+            "new_text": "gamma",
+        },
+    )
+    assert replace_result["ok"] is True
+    assert "gamma" in source.read_text(encoding="utf-8")
+
+    write_result = tools.execute(
+        "write_file",
+        {
+            "path": str(tmp_path / "created.txt"),
+            "content": "hello",
+        },
+    )
+    assert write_result["ok"] is True
+    assert (tmp_path / "created.txt").read_text(encoding="utf-8") == "hello"
+
+    blocked = tools.execute("read_file", {"path": "/etc/hosts"})
+    assert blocked["ok"] is False
+
+
+def test_openai_generation_supports_function_tools(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
+    )
+    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
+    target = tmp_path / "plan.txt"
+    target.write_text("line-1\nline-2\n", encoding="utf-8")
+
+    class FakeOpenAIStream:
+        def __init__(self, events, final_response):
+            self._events = events
+            self._final_response = final_response
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def __iter__(self):
+            return iter(self._events)
+
+        def get_final_response(self):
+            return self._final_response
+
+    first_response = {
+        "id": "resp_1",
+        "output": [
+            {
+                "type": "function_call",
+                "call_id": "call_1",
+                "name": "read_file",
+                "arguments": '{"path": "' + str(target) + '"}',
+            }
+        ],
+    }
+    second_response = {"id": "resp_2", "output_text": '{"ok": true}'}
+
+    fake_client = MagicMock()
+    fake_client.responses.stream.side_effect = [
+        FakeOpenAIStream([], first_response),
+        FakeOpenAIStream(
+            [SimpleNamespace(type="response.output_text.delta", delta='{"ok": true}')],
+            second_response,
+        ),
+    ]
+
+    with patch.object(
+        setup_cmd_module.LLMClient,
+        "_get_openai_client",
+        return_value=fake_client,
+    ):
+        result = llm_client.generate("system", "user", file_tools=tools)
+
+    assert result == '{"ok": true}'
+    assert fake_client.responses.stream.call_count == 2
+
+    first_call_kwargs = fake_client.responses.stream.call_args_list[0].kwargs
+    assert "tools" in first_call_kwargs
+
+    second_call_kwargs = fake_client.responses.stream.call_args_list[1].kwargs
+    assert second_call_kwargs["previous_response_id"] == "resp_1"
+    assert second_call_kwargs["input"][0]["type"] == "function_call_output"
+
+
+def test_anthropic_generation_supports_tool_use(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
+    )
+    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
+    target = tmp_path / "guide.txt"
+    target.write_text("sample", encoding="utf-8")
+
+    class FakeAnthropicStream:
+        def __init__(self, text_chunks, final_message):
+            self.text_stream = iter(text_chunks)
+            self._final_message = final_message
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def get_final_message(self):
+            return self._final_message
+
+    fake_client = MagicMock()
+    fake_client.messages.stream.side_effect = [
+        FakeAnthropicStream(
+            [],
+            {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "tool_1",
+                        "name": "read_file",
+                        "input": {"path": str(target)},
+                    }
+                ]
+            },
+        ),
+        FakeAnthropicStream(
+            ['{"ok": true}'],
+            {"content": [{"type": "text", "text": '{"ok": true}'}]},
+        ),
+    ]
+
+    with patch.object(
+        setup_cmd_module.LLMClient,
+        "_get_anthropic_client",
+        return_value=fake_client,
+    ):
+        result = llm_client.generate("system", "user", file_tools=tools)
+
+    assert result == '{"ok": true}'
+    assert fake_client.messages.stream.call_count == 2
+
+
+def test_gemini_generation_supports_function_calls(tmp_path):
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
+    )
+    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
+    target = tmp_path / "prefs.txt"
+    target.write_text("hello", encoding="utf-8")
+
+    fake_client = MagicMock()
+    fake_client.models.generate_content_stream.side_effect = [
+        iter(
+            [
+                SimpleNamespace(
+                    text=None,
+                    function_calls=[
+                        SimpleNamespace(
+                            id="call_1",
+                            name="read_file",
+                            args={"path": str(target)},
+                        )
+                    ],
+                )
+            ]
+        ),
+        iter([SimpleNamespace(text='{"ok": true}', function_calls=None)]),
+    ]
+
+    with patch.object(
+        setup_cmd_module.LLMClient,
+        "_get_gemini_client",
+        return_value=fake_client,
+    ):
+        result = llm_client.generate("system", "user", file_tools=tools)
+
+    assert result == '{"ok": true}'
+    assert fake_client.models.generate_content_stream.call_count == 2
+
+
 def test_anthropic_generation_streams_text_chunks():
     llm_client = setup_cmd_module.LLMClient(
         LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
@@ -282,6 +480,8 @@ def test_prompt_templates_include_required_keys():
         assert "settings_toml" in prompt
         assert "odd_weeks_toml" in prompt
         assert "even_weeks_toml" in prompt
+        assert "read_file" in prompt
+        assert "write_file" in prompt
 
 
 def test_prompt_renderers_include_context_sections(tmp_path):

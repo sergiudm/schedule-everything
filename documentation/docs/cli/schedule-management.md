@@ -22,6 +22,7 @@ reminder setup
 - Routes to either a build flow (new schedule) or a modify flow (existing schedule).
 - In build flow, actively asks for your profile (basic information, goals, habits, preferences, and constraints), asks for an image/file path or description, then produces a pure-text schedule summary first.
 - Only after you confirm the summary does it generate TOML configuration files.
+- During build/modify turns, the agent can use vendor-native tool calling to read/edit local files when needed.
 - Recommends `reminder view` and supports iterative adjustments.
 
 ## update
