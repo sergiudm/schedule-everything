@@ -1,8 +1,8 @@
 """
-Interactive setup command with LLM-assisted schedule generation/modification.
+Interactive setup command with OpenCode-powered schedule generation/modification.
 
 This module adds the `reminder setup` workflow:
-- Ensure LLM provider credentials exist in a dedicated TOML file.
+- Ensure model provider credentials exist in a dedicated TOML file.
 - Detect whether a complete schedule configuration already exists.
 - Route to build or modify schedule agents.
 
@@ -19,7 +19,9 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import stat
+import subprocess
 import sys
 import termios
 import tty
@@ -1185,12 +1187,170 @@ def _build_local_file_tools(config_dir: Path) -> LocalFileTools:
     return LocalFileTools(allowed_roots=roots)
 
 
+def _resolve_opencode_submodule_dir() -> Path:
+    return (Path(__file__).resolve().parents[4] / "third_party" / "opencode").resolve()
+
+
 class LLMClient:
+    """OpenCode-backed runtime adapter for setup-agent turns."""
+
     def __init__(self, config: LLMConfig):
         self.config = config
-        self._openai_client: Any | None = None
-        self._anthropic_client: Any | None = None
-        self._gemini_client: Any | None = None
+
+    @staticmethod
+    def _resolve_opencode_bin() -> str:
+        explicit = os.getenv("REMINDER_OPENCODE_BIN", "").strip()
+        if explicit:
+            return explicit
+
+        discovered = shutil.which("opencode")
+        if discovered:
+            return discovered
+
+        submodule_dir = _resolve_opencode_submodule_dir()
+        if submodule_dir.exists():
+            install_script = submodule_dir / "install"
+            raise RuntimeError(
+                "OpenCode CLI not found in PATH. Install it with "
+                f"'{install_script}' or set REMINDER_OPENCODE_BIN."
+            )
+
+        raise RuntimeError(
+            "OpenCode CLI not found in PATH and opencode submodule is missing. "
+            "Run 'git submodule update --init --recursive third_party/opencode' "
+            "or set REMINDER_OPENCODE_BIN."
+        )
+
+    def _resolve_model(self) -> str:
+        model = self.config.model.strip()
+        if not model:
+            raise RuntimeError("Model is empty in llm.toml")
+
+        if "/" in model:
+            return model
+
+        provider_prefix = {
+            "openai": "openai",
+            "openai_compatible": "openai",
+            "anthropic": "anthropic",
+            "gemini": "google",
+        }.get(self.config.vendor)
+
+        if provider_prefix is None:
+            raise RuntimeError(f"Unsupported vendor: {self.config.vendor}")
+
+        return f"{provider_prefix}/{model}"
+
+    def _build_provider_environment(self) -> dict[str, str]:
+        api_key = self.config.api_key.strip()
+        if not api_key:
+            raise RuntimeError("Missing API key in llm.toml")
+
+        vendor = self.config.vendor
+        env: dict[str, str] = {}
+
+        if vendor in {"openai", "openai_compatible"}:
+            env["OPENAI_API_KEY"] = api_key
+            if vendor == "openai_compatible":
+                if not self.config.base_url:
+                    raise RuntimeError(
+                        "Missing base_url for openai_compatible vendor in llm.toml"
+                    )
+                env["OPENAI_BASE_URL"] = _normalize_openai_base_url(
+                    self.config.base_url
+                )
+            return env
+
+        if vendor == "anthropic":
+            env["ANTHROPIC_API_KEY"] = api_key
+            return env
+
+        if vendor == "gemini":
+            # Different provider adapters may look for either variable.
+            env["GOOGLE_API_KEY"] = api_key
+            env["GEMINI_API_KEY"] = api_key
+            env["GOOGLE_GENERATIVE_AI_API_KEY"] = api_key
+            return env
+
+        raise RuntimeError(f"Unsupported vendor: {vendor}")
+
+    @staticmethod
+    def _compose_prompt(
+        system_prompt: str,
+        user_prompt: str,
+        attachment: SourceAttachment | None,
+    ) -> str:
+        enriched_user = _add_text_attachment(user_prompt, attachment)
+        return (
+            "Follow the system instructions strictly for this single turn.\n"
+            "<system>\n"
+            f"{system_prompt.strip()}\n"
+            "</system>\n\n"
+            "<user>\n"
+            f"{enriched_user.strip()}\n"
+            "</user>\n\n"
+            "Return only the final assistant response for this turn."
+        )
+
+    @staticmethod
+    def _extract_opencode_error_message(error_payload: Any) -> str:
+        if isinstance(error_payload, str):
+            return error_payload.strip()
+
+        if isinstance(error_payload, dict):
+            data = error_payload.get("data")
+            if isinstance(data, dict):
+                message = data.get("message")
+                if isinstance(message, str) and message.strip():
+                    return message.strip()
+
+            message = error_payload.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+
+            name = error_payload.get("name")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+
+        text = str(error_payload).strip()
+        return text
+
+    @classmethod
+    def _parse_opencode_json_events(cls, stdout: str) -> tuple[str, str | None]:
+        texts: list[str] = []
+        errors: list[str] = []
+
+        for raw_line in stdout.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if not isinstance(event, dict):
+                continue
+
+            event_type = event.get("type")
+            if event_type == "text":
+                part = event.get("part")
+                if not isinstance(part, dict):
+                    continue
+                text = part.get("text")
+                if isinstance(text, str) and text.strip():
+                    texts.append(text.strip())
+                continue
+
+            if event_type == "error":
+                message = cls._extract_opencode_error_message(event.get("error"))
+                if message:
+                    errors.append(message)
+
+        rendered_text = "\n\n".join(texts).strip()
+        rendered_error = "\n".join(errors).strip() or None
+        return rendered_text, rendered_error
 
     def generate(
         self,
@@ -1201,420 +1361,70 @@ class LLMClient:
         file_tools: LocalFileTools | None = None,
         on_tool_activity: Callable[[str], None] | None = None,
     ) -> str:
-        if self.config.vendor in {"openai", "openai_compatible"}:
-            return self._openai_response(
-                system_prompt,
-                user_prompt,
-                attachment,
-                on_text=on_text,
-                file_tools=file_tools,
-                on_tool_activity=on_tool_activity,
-            )
-
-        if self.config.vendor == "anthropic":
-            return self._anthropic_chat(
-                system_prompt,
-                user_prompt,
-                attachment,
-                on_text=on_text,
-                file_tools=file_tools,
-                on_tool_activity=on_tool_activity,
-            )
-
-        if self.config.vendor == "gemini":
-            return self._gemini_chat(
-                system_prompt,
-                user_prompt,
-                attachment,
-                on_text=on_text,
-                file_tools=file_tools,
-                on_tool_activity=on_tool_activity,
-            )
-
-        raise RuntimeError(f"Unsupported vendor: {self.config.vendor}")
-
-    def _get_openai_client(self) -> Any:
-        if self._openai_client is not None:
-            return self._openai_client
-
-        try:
-            from openai import OpenAI
-        except ImportError as exc:
-            raise RuntimeError(
-                "OpenAI SDK is not installed. Run 'uv sync' to install dependencies."
-            ) from exc
-
-        kwargs: dict[str, Any] = {"api_key": self.config.api_key}
-
-        if self.config.vendor == "openai_compatible":
-            if not self.config.base_url:
-                raise RuntimeError(
-                    "Missing base_url for openai_compatible vendor in llm.toml"
-                )
-            kwargs["base_url"] = _normalize_openai_base_url(self.config.base_url)
-
-        self._openai_client = OpenAI(**kwargs)
-        return self._openai_client
-
-    def _get_anthropic_client(self) -> Any:
-        if self._anthropic_client is not None:
-            return self._anthropic_client
-
-        try:
-            from anthropic import Anthropic
-        except ImportError as exc:
-            raise RuntimeError(
-                "Anthropic SDK is not installed. Run 'uv sync' to install dependencies."
-            ) from exc
-
-        self._anthropic_client = Anthropic(api_key=self.config.api_key)
-        return self._anthropic_client
-
-    def _get_gemini_client(self) -> Any:
-        if self._gemini_client is not None:
-            return self._gemini_client
-
-        try:
-            from google import genai
-        except ImportError as exc:
-            raise RuntimeError(
-                "Gemini SDK is not installed. Run 'uv sync' to install dependencies."
-            ) from exc
-
-        self._gemini_client = genai.Client(api_key=self.config.api_key)
-        return self._gemini_client
-
-    def _openai_response(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        attachment: SourceAttachment | None,
-        *,
-        on_text: Callable[[str], None] | None,
-        file_tools: LocalFileTools | None,
-        on_tool_activity: Callable[[str], None] | None,
-    ) -> str:
-        client = self._get_openai_client()
-        user_prompt_with_text = _add_text_attachment(user_prompt, attachment)
-
-        user_content: list[dict[str, Any]] = [
-            {"type": "input_text", "text": user_prompt_with_text}
+        command = [
+            self._resolve_opencode_bin(),
+            "run",
+            "--model",
+            self._resolve_model(),
+            "--format",
+            "json",
         ]
-        if attachment and attachment.image_base64:
-            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
-            image_url = f"data:{vision_mime};base64,{attachment.image_base64}"
-            user_content.append({"type": "input_image", "image_url": image_url})
+        if attachment is not None:
+            command.extend(["--file", str(attachment.path)])
 
-        current_input: list[dict[str, Any]] = [
-            {
-                "role": "user",
-                "content": user_content,
-            }
-        ]
-        previous_response_id: str | None = None
-        tool_specs = file_tools.openai_tool_specs() if file_tools else None
+        command.append(self._compose_prompt(system_prompt, user_prompt, attachment))
 
-        for _ in range(MAX_TOOL_ROUNDS):
-            request_kwargs: dict[str, Any] = {
-                "model": self.config.model,
-                "temperature": 0.2,
-                "instructions": system_prompt,
-                "input": current_input,
-            }
-            if previous_response_id:
-                request_kwargs["previous_response_id"] = previous_response_id
-            if tool_specs:
-                request_kwargs["tools"] = tool_specs
+        env = os.environ.copy()
+        env.update(self._build_provider_environment())
+        env.setdefault("OPENCODE_CLIENT", "schedule-management-setup")
 
-            streamed_chunks: list[str] = []
-            with client.responses.stream(**request_kwargs) as stream:
-                for event in stream:
-                    if isinstance(event, dict):
-                        event_type = event.get("type")
-                        delta = event.get("delta")
-                    else:
-                        event_type = getattr(event, "type", None)
-                        delta = getattr(event, "delta", None)
-
-                    if event_type == "response.output_text.delta" and isinstance(
-                        delta, str
-                    ):
-                        streamed_chunks.append(delta)
-                        if on_text is not None:
-                            on_text(delta)
-
-                response = stream.get_final_response()
-
-            tool_calls = _extract_openai_tool_calls(response) if file_tools else []
-            if tool_calls and file_tools:
-                tool_outputs: list[dict[str, str]] = []
-                for call in tool_calls:
-                    if on_tool_activity is not None:
-                        on_tool_activity(f"Agent is operating files via {call.name}...")
-                    result = file_tools.execute(call.name, call.arguments)
-                    tool_outputs.append(
-                        {
-                            "type": "function_call_output",
-                            "call_id": call.call_id,
-                            "output": json.dumps(result, ensure_ascii=False),
-                        }
-                    )
-
-                response_id = getattr(response, "id", None)
-                if response_id is None and isinstance(response, dict):
-                    response_id = response.get("id")
-                if not isinstance(response_id, str) or not response_id.strip():
-                    raise RuntimeError(
-                        "OpenAI response for tool calls did not include response id"
-                    )
-
-                previous_response_id = response_id
-                current_input = tool_outputs
-                continue
-
-            content = _extract_openai_response_text(response)
-            if not content:
-                content = "".join(streamed_chunks).strip()
-            if content:
-                return content
-
-            raise RuntimeError(
-                f"OpenAI response did not contain text content: {response}"
-            )
-
-        raise RuntimeError("OpenAI tool loop exceeded maximum rounds")
-
-    def _anthropic_chat(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        attachment: SourceAttachment | None,
-        *,
-        on_text: Callable[[str], None] | None,
-        file_tools: LocalFileTools | None,
-        on_tool_activity: Callable[[str], None] | None,
-    ) -> str:
-        client = self._get_anthropic_client()
-        content: list[dict[str, Any]] = [
-            {"type": "text", "text": _add_text_attachment(user_prompt, attachment)}
-        ]
-
-        if attachment and attachment.image_base64:
-            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
-            content.append(
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": vision_mime,
-                        "data": attachment.image_base64,
-                    },
-                }
-            )
-
-        messages: list[dict[str, Any]] = [{"role": "user", "content": content}]
-        tool_specs = file_tools.anthropic_tool_specs() if file_tools else None
-
-        for _ in range(MAX_TOOL_ROUNDS):
-            request_kwargs: dict[str, Any] = {
-                "model": self.config.model,
-                "max_tokens": 1800,
-                "temperature": 0.2,
-                "system": system_prompt,
-                "messages": messages,
-            }
-            if tool_specs:
-                request_kwargs["tools"] = tool_specs
-
-            streamed_chunks: list[str] = []
-            with client.messages.stream(**request_kwargs) as stream:
-                for delta in stream.text_stream:
-                    if isinstance(delta, str) and delta:
-                        streamed_chunks.append(delta)
-                        if on_text is not None:
-                            on_text(delta)
-
-                final_message = stream.get_final_message()
-
-            blocks = getattr(final_message, "content", None)
-            if blocks is None and isinstance(final_message, dict):
-                blocks = final_message.get("content")
-            if not isinstance(blocks, list):
-                raise RuntimeError(
-                    f"Unexpected Anthropic response payload: {final_message}"
+        if on_tool_activity is not None:
+            if file_tools is None:
+                on_tool_activity("OpenCode agent is running...")
+            else:
+                on_tool_activity(
+                    "OpenCode agent is running with built-in tooling support..."
                 )
 
-            tool_calls = _extract_anthropic_tool_calls(blocks) if file_tools else []
-            if tool_calls and file_tools:
-                assistant_content = [
-                    _anthropic_block_to_dict(block) for block in blocks
-                ]
-                tool_results: list[dict[str, Any]] = []
-
-                for call in tool_calls:
-                    if on_tool_activity is not None:
-                        on_tool_activity(f"Agent is operating files via {call.name}...")
-                    result = file_tools.execute(call.name, call.arguments)
-                    tool_results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": call.call_id,
-                            "content": json.dumps(result, ensure_ascii=False),
-                        }
-                    )
-
-                messages.append({"role": "assistant", "content": assistant_content})
-                messages.append({"role": "user", "content": tool_results})
-                continue
-
-            combined = "".join(streamed_chunks).strip()
-            if combined:
-                return combined
-
-            texts: list[str] = []
-            for block in blocks:
-                if isinstance(block, dict):
-                    block_type = block.get("type")
-                    text_value = block.get("text")
-                else:
-                    block_type = getattr(block, "type", None)
-                    text_value = getattr(block, "text", None)
-
-                if block_type == "text" and isinstance(text_value, str):
-                    texts.append(text_value)
-
-            if texts:
-                return "\n".join(texts)
-
-            raise RuntimeError(
-                f"Anthropic response did not contain text: {final_message}"
-            )
-
-        raise RuntimeError("Anthropic tool loop exceeded maximum rounds")
-
-    def _gemini_chat(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        attachment: SourceAttachment | None,
-        *,
-        on_text: Callable[[str], None] | None,
-        file_tools: LocalFileTools | None,
-        on_tool_activity: Callable[[str], None] | None,
-    ) -> str:
-        try:
-            from google.genai import types as genai_types
-        except ImportError as exc:
-            raise RuntimeError(
-                "Gemini SDK is not installed. Run 'uv sync' to install dependencies."
-            ) from exc
-
-        client = self._get_gemini_client()
-
-        parts: list[Any] = [
-            genai_types.Part.from_text(
-                text=_add_text_attachment(user_prompt, attachment)
-            )
-        ]
-
-        if attachment and attachment.image_base64:
-            try:
-                image_bytes = base64.b64decode(attachment.image_base64.encode("ascii"))
-            except Exception as exc:
-                raise RuntimeError(
-                    "Invalid image attachment for Gemini request"
-                ) from exc
-
-            vision_mime = _resolve_image_mime_for_vendor(self.config.vendor, attachment)
-
-            parts.append(
-                genai_types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type=vision_mime,
-                )
-            )
-
-        tool_declarations = (
-            file_tools.gemini_function_declarations(genai_types) if file_tools else []
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
         )
-        contents: list[Any] = [genai_types.Content(role="user", parts=parts)]
 
-        for _ in range(MAX_TOOL_ROUNDS):
-            generate_config = genai_types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.2,
-                tools=[genai_types.Tool(function_declarations=tool_declarations)]
-                if tool_declarations
-                else None,
+        stdout = completed.stdout.strip()
+        stderr = completed.stderr.strip()
+        parsed_text, parsed_error = self._parse_opencode_json_events(stdout)
+
+        if completed.returncode != 0:
+            detail = (
+                parsed_error
+                or stderr
+                or parsed_text
+                or stdout
+                or f"exit code {completed.returncode}"
             )
+            raise RuntimeError(f"OpenCode CLI execution failed: {detail}")
 
-            response_stream = client.models.generate_content_stream(
-                model=self.config.model,
-                contents=contents,
-                config=generate_config,
-            )
+        response_text = parsed_text
+        if not response_text and parsed_error:
+            raise RuntimeError(f"OpenCode CLI reported an error: {parsed_error}")
 
-            streamed_chunks: list[str] = []
-            final_chunk: Any | None = None
-            collected_calls: list[ToolCall] = []
-            for chunk in response_stream:
-                final_chunk = chunk
-                chunk_text = getattr(chunk, "text", None)
-                if chunk_text is None and isinstance(chunk, dict):
-                    chunk_text = chunk.get("text")
-                if isinstance(chunk_text, str) and chunk_text:
-                    streamed_chunks.append(chunk_text)
-                    if on_text is not None:
-                        on_text(chunk_text)
+        if not response_text and stdout:
+            response_text = stdout
 
-                if file_tools:
-                    for call in _extract_gemini_function_calls(chunk):
-                        if all(
-                            existing.call_id != call.call_id
-                            for existing in collected_calls
-                        ):
-                            collected_calls.append(call)
+        if not response_text and stderr:
+            raise RuntimeError(f"OpenCode CLI stderr: {stderr}")
 
-            function_calls = collected_calls
-            if not function_calls and file_tools and final_chunk is not None:
-                function_calls = _extract_gemini_function_calls(final_chunk)
-            if function_calls and file_tools:
-                model_parts = [
-                    genai_types.Part.from_function_call(
-                        name=call.name,
-                        args=call.arguments,
-                    )
-                    for call in function_calls
-                ]
-                contents.append(genai_types.Content(role="model", parts=model_parts))
+        if not response_text:
+            raise RuntimeError("OpenCode CLI returned an empty response")
 
-                response_parts: list[Any] = []
-                for call in function_calls:
-                    if on_tool_activity is not None:
-                        on_tool_activity(f"Agent is operating files via {call.name}...")
-                    tool_result = file_tools.execute(call.name, call.arguments)
-                    response_parts.append(
-                        genai_types.Part.from_function_response(
-                            name=call.name,
-                            response=tool_result,
-                        )
-                    )
+        if on_text is not None:
+            on_text(response_text)
 
-                contents.append(genai_types.Content(role="user", parts=response_parts))
-                continue
-
-            text = "".join(streamed_chunks).strip()
-            if text:
-                return text
-
-            if final_chunk is not None:
-                fallback = _extract_gemini_text(final_chunk)
-                if fallback:
-                    return fallback
-
-            raise RuntimeError("Gemini response did not contain text")
-
-        raise RuntimeError("Gemini tool loop exceeded maximum rounds")
+        return response_text
 
 
 def _extract_json_object(response_text: str) -> dict[str, Any] | None:

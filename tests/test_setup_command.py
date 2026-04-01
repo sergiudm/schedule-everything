@@ -1,8 +1,11 @@
 """Tests for the `reminder setup` command flow and helpers."""
 
+import json
+import subprocess
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import schedule_management.commands.setup as setup_cmd_module
 from schedule_management.commands.setup import (
@@ -107,46 +110,45 @@ def test_llm_config_round_trip(tmp_path):
     assert loaded == expected
 
 
-def test_openai_generation_streams_responses_api():
+def test_llm_client_uses_opencode_cli_and_streams_stdout():
     llm_client = setup_cmd_module.LLMClient(
         LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
     )
 
-    class FakeOpenAIStream:
-        def __init__(self):
-            self._events = [
-                SimpleNamespace(type="response.output_text.delta", delta='{"ok": '),
-                SimpleNamespace(type="response.output_text.delta", delta="true}"),
-            ]
-            self._final_response = SimpleNamespace(output_text='{"ok": true}')
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def __iter__(self):
-            return iter(self._events)
-
-        def get_final_response(self):
-            return self._final_response
-
-    fake_client = MagicMock()
-    fake_client.responses.stream.return_value = FakeOpenAIStream()
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_openai_client",
-        return_value=fake_client,
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
     ):
+        event = {
+            "type": "text",
+            "part": {"type": "text", "text": '{"ok": true}'},
+        }
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout=json.dumps(event) + "\n",
+            stderr="",
+        )
+
         streamed_chunks: list[str] = []
         result = llm_client.generate("system", "user", on_text=streamed_chunks.append)
 
     assert result == '{"ok": true}'
-    assert "".join(streamed_chunks) == '{"ok": true}'
-    fake_client.responses.stream.assert_called_once()
-    fake_client.chat.completions.create.assert_not_called()
+    assert streamed_chunks == ['{"ok": true}']
+
+    command = run_mock.call_args.args[0]
+    assert command[0] == "/usr/local/bin/opencode"
+    assert command[1] == "run"
+    assert command[2:4] == ["--model", "openai/gpt-4.1-mini"]
+    assert "--format" in command
+    assert "json" in command
+
+    env = run_mock.call_args.kwargs["env"]
+    assert env["OPENAI_API_KEY"] == "secret"
 
 
 def test_local_file_tools_can_read_and_edit(tmp_path):
@@ -190,246 +192,245 @@ def test_local_file_tools_can_read_and_edit(tmp_path):
     assert blocked["ok"] is False
 
 
-def test_openai_generation_supports_function_tools(tmp_path):
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
-    )
-    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
-    target = tmp_path / "plan.txt"
-    target.write_text("line-1\nline-2\n", encoding="utf-8")
-
-    class FakeOpenAIStream:
-        def __init__(self, events, final_response):
-            self._events = events
-            self._final_response = final_response
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def __iter__(self):
-            return iter(self._events)
-
-        def get_final_response(self):
-            return self._final_response
-
-    first_response = {
-        "id": "resp_1",
-        "output": [
-            {
-                "type": "function_call",
-                "call_id": "call_1",
-                "name": "read_file",
-                "arguments": '{"path": "' + str(target) + '"}',
-            }
-        ],
-    }
-    second_response = {"id": "resp_2", "output_text": '{"ok": true}'}
-
-    fake_client = MagicMock()
-    fake_client.responses.stream.side_effect = [
-        FakeOpenAIStream([], first_response),
-        FakeOpenAIStream(
-            [SimpleNamespace(type="response.output_text.delta", delta='{"ok": true}')],
-            second_response,
-        ),
-    ]
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_openai_client",
-        return_value=fake_client,
-    ):
-        result = llm_client.generate("system", "user", file_tools=tools)
-
-    assert result == '{"ok": true}'
-    assert fake_client.responses.stream.call_count == 2
-
-    first_call_kwargs = fake_client.responses.stream.call_args_list[0].kwargs
-    assert "tools" in first_call_kwargs
-
-    second_call_kwargs = fake_client.responses.stream.call_args_list[1].kwargs
-    assert second_call_kwargs["previous_response_id"] == "resp_1"
-    assert second_call_kwargs["input"][0]["type"] == "function_call_output"
-
-
-def test_openai_generation_passes_image_to_vision_input(tmp_path):
+def test_llm_client_passes_attachment_via_file_flag(tmp_path):
     llm_client = setup_cmd_module.LLMClient(
         LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
     )
 
-    class FakeOpenAIStream:
-        def __init__(self):
-            self._final_response = {"id": "resp_vision", "output_text": '{"ok": true}'}
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def __iter__(self):
-            return iter([])
-
-        def get_final_response(self):
-            return self._final_response
-
-    fake_client = MagicMock()
-    fake_client.responses.stream.return_value = FakeOpenAIStream()
-
     attachment = setup_cmd_module.SourceAttachment(
         path=tmp_path / "plan.png",
         mime_type="image/png",
         image_base64="aGVsbG8=",
     )
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_openai_client",
-        return_value=fake_client,
-    ):
-        result = llm_client.generate("system", "user", attachment=attachment)
-
-    assert result == '{"ok": true}'
-    call_kwargs = fake_client.responses.stream.call_args.kwargs
-    user_parts = call_kwargs["input"][0]["content"]
-    image_part = next(part for part in user_parts if part["type"] == "input_image")
-    assert image_part["image_url"].startswith("data:image/png;base64,")
-
-
-def test_anthropic_generation_supports_tool_use(tmp_path):
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
-    )
-    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
-    target = tmp_path / "guide.txt"
-    target.write_text("sample", encoding="utf-8")
-
-    class FakeAnthropicStream:
-        def __init__(self, text_chunks, final_message):
-            self.text_stream = iter(text_chunks)
-            self._final_message = final_message
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def get_final_message(self):
-            return self._final_message
-
-    fake_client = MagicMock()
-    fake_client.messages.stream.side_effect = [
-        FakeAnthropicStream(
-            [],
-            {
-                "content": [
-                    {
-                        "type": "tool_use",
-                        "id": "tool_1",
-                        "name": "read_file",
-                        "input": {"path": str(target)},
-                    }
-                ]
-            },
-        ),
-        FakeAnthropicStream(
-            ['{"ok": true}'],
-            {"content": [{"type": "text", "text": '{"ok": true}'}]},
-        ),
-    ]
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_anthropic_client",
-        return_value=fake_client,
-    ):
-        result = llm_client.generate("system", "user", file_tools=tools)
-
-    assert result == '{"ok": true}'
-    assert fake_client.messages.stream.call_count == 2
-
-
-def test_anthropic_generation_passes_image_to_vision_input(tmp_path):
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
-    )
-
-    class FakeAnthropicStream:
-        def __init__(self):
-            self.text_stream = iter(['{"ok": true}'])
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def get_final_message(self):
-            return {"content": [{"type": "text", "text": '{"ok": true}'}]}
-
-    fake_client = MagicMock()
-    fake_client.messages.stream.return_value = FakeAnthropicStream()
-
-    attachment = setup_cmd_module.SourceAttachment(
-        path=tmp_path / "plan.png",
-        mime_type="image/png",
-        image_base64="aGVsbG8=",
-    )
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_anthropic_client",
-        return_value=fake_client,
-    ):
-        result = llm_client.generate("system", "user", attachment=attachment)
-
-    assert result == '{"ok": true}'
-    call_kwargs = fake_client.messages.stream.call_args.kwargs
-    content_blocks = call_kwargs["messages"][0]["content"]
-    image_block = next(block for block in content_blocks if block["type"] == "image")
-    assert image_block["source"]["media_type"] == "image/png"
-
-
-def test_gemini_generation_passes_image_to_vision_input(tmp_path):
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
-    )
-
-    fake_client = MagicMock()
-    fake_client.models.generate_content_stream.return_value = [
-        SimpleNamespace(text='{"ok": true}', function_calls=None)
-    ]
-
-    attachment = setup_cmd_module.SourceAttachment(
-        path=tmp_path / "plan.png",
-        mime_type="image/png",
-        image_base64="aGVsbG8=",
-    )
-
-    from google.genai import types as genai_types
-
-    original_from_bytes = genai_types.Part.from_bytes
 
     with (
         patch.object(
             setup_cmd_module.LLMClient,
-            "_get_gemini_client",
-            return_value=fake_client,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
         ),
-        patch(
-            "google.genai.types.Part.from_bytes",
-            wraps=original_from_bytes,
-        ) as from_bytes_mock,
+        patch("subprocess.run") as run_mock,
     ):
+        event = {
+            "type": "text",
+            "part": {"type": "text", "text": '{"ok": true}'},
+        }
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout=json.dumps(event) + "\n",
+            stderr="",
+        )
+
         result = llm_client.generate("system", "user", attachment=attachment)
 
     assert result == '{"ok": true}'
-    from_bytes_mock.assert_called_once()
-    assert from_bytes_mock.call_args.kwargs["mime_type"] == "image/png"
+    command = run_mock.call_args.args[0]
+    assert "--file" in command
+    assert str(attachment.path) in command
+
+
+def test_llm_client_maps_openai_compatible_base_url():
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(
+            vendor="openai_compatible",
+            model="gpt-4.1-mini",
+            api_key="secret",
+            base_url="https://example.test/v1/chat/completions",
+        )
+    )
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
+    ):
+        event = {
+            "type": "text",
+            "part": {"type": "text", "text": '{"ok": true}'},
+        }
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout=json.dumps(event) + "\n",
+            stderr="",
+        )
+
+        llm_client.generate("system", "user")
+
+    env = run_mock.call_args.kwargs["env"]
+    assert env["OPENAI_API_KEY"] == "secret"
+    assert env["OPENAI_BASE_URL"] == "https://example.test/v1"
+
+
+def test_llm_client_maps_anthropic_and_gemini_models():
+    anthropic_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
+    )
+    gemini_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
+    )
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
+    ):
+        event = {
+            "type": "text",
+            "part": {"type": "text", "text": '{"ok": true}'},
+        }
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout=json.dumps(event) + "\n",
+            stderr="",
+        )
+
+        anthropic_client.generate("system", "user")
+        first_call = run_mock.call_args
+
+        gemini_client.generate("system", "user")
+        second_call = run_mock.call_args
+
+    first_command = first_call.args[0]
+    assert first_command[2:4] == ["--model", "anthropic/claude-sonnet"]
+    first_env = first_call.kwargs["env"]
+    assert first_env["ANTHROPIC_API_KEY"] == "secret"
+
+    second_command = second_call.args[0]
+    assert second_command[2:4] == ["--model", "google/gemini-2.5-flash"]
+    second_env = second_call.kwargs["env"]
+    assert second_env["GOOGLE_API_KEY"] == "secret"
+    assert second_env["GOOGLE_GENERATIVE_AI_API_KEY"] == "secret"
+
+
+def test_llm_client_raises_when_opencode_fails():
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
+    )
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
+    ):
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=1,
+            stdout="",
+            stderr="provider auth failed",
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            llm_client.generate("system", "user")
+
+    assert "OpenCode CLI execution failed" in str(exc.value)
+
+
+def test_llm_client_raises_when_opencode_reports_error_event():
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
+    )
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
+    ):
+        event = {
+            "type": "error",
+            "error": {
+                "name": "ProviderAuthError",
+                "data": {"message": "Invalid provider API key"},
+            },
+        }
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout=json.dumps(event) + "\n",
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            llm_client.generate("system", "user")
+
+    assert "OpenCode CLI reported an error" in str(exc.value)
+    assert "Invalid provider API key" in str(exc.value)
+
+
+def test_llm_client_raises_when_stdout_empty_but_stderr_present():
+    llm_client = setup_cmd_module.LLMClient(
+        LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
+    )
+
+    with (
+        patch.object(
+            setup_cmd_module.LLMClient,
+            "_resolve_opencode_bin",
+            return_value="/usr/local/bin/opencode",
+        ),
+        patch("subprocess.run") as run_mock,
+    ):
+        run_mock.return_value = subprocess.CompletedProcess(
+            args=["opencode"],
+            returncode=0,
+            stdout="",
+            stderr="rate limit exceeded",
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            llm_client.generate("system", "user")
+
+    assert "OpenCode CLI stderr" in str(exc.value)
+    assert "rate limit exceeded" in str(exc.value)
+
+
+def test_resolve_opencode_bin_prefers_env_override(monkeypatch):
+    monkeypatch.setenv("REMINDER_OPENCODE_BIN", "/custom/opencode")
+
+    with patch("shutil.which") as which_mock:
+        resolved = setup_cmd_module.LLMClient._resolve_opencode_bin()
+
+    assert resolved == "/custom/opencode"
+    which_mock.assert_not_called()
+
+
+def test_resolve_opencode_bin_uses_path_lookup(monkeypatch):
+    monkeypatch.delenv("REMINDER_OPENCODE_BIN", raising=False)
+
+    with patch("shutil.which", return_value="/usr/local/bin/opencode"):
+        resolved = setup_cmd_module.LLMClient._resolve_opencode_bin()
+
+    assert resolved == "/usr/local/bin/opencode"
+
+
+def test_resolve_opencode_bin_errors_with_submodule_install_hint(tmp_path, monkeypatch):
+    monkeypatch.delenv("REMINDER_OPENCODE_BIN", raising=False)
+
+    with (
+        patch("shutil.which", return_value=None),
+        patch(
+            "schedule_management.commands.setup_agent.workflow._resolve_opencode_submodule_dir",
+            return_value=tmp_path,
+        ),
+    ):
+        with pytest.raises(RuntimeError) as exc:
+            setup_cmd_module.LLMClient._resolve_opencode_bin()
+
+    assert "Install it with" in str(exc.value)
 
 
 def test_load_source_attachment_detects_image_without_image_extension(tmp_path):
@@ -488,102 +489,6 @@ def test_turn_requests_manual_image_transcription_detection():
         setup_cmd_module._turn_requests_manual_image_transcription(quality_turn)
         is False
     )
-
-
-def test_gemini_generation_supports_function_calls(tmp_path):
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
-    )
-    tools = setup_cmd_module.LocalFileTools(allowed_roots=[tmp_path])
-    target = tmp_path / "prefs.txt"
-    target.write_text("hello", encoding="utf-8")
-
-    fake_client = MagicMock()
-    fake_client.models.generate_content_stream.side_effect = [
-        iter(
-            [
-                SimpleNamespace(
-                    text=None,
-                    function_calls=[
-                        SimpleNamespace(
-                            id="call_1",
-                            name="read_file",
-                            args={"path": str(target)},
-                        )
-                    ],
-                )
-            ]
-        ),
-        iter([SimpleNamespace(text='{"ok": true}', function_calls=None)]),
-    ]
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_gemini_client",
-        return_value=fake_client,
-    ):
-        result = llm_client.generate("system", "user", file_tools=tools)
-
-    assert result == '{"ok": true}'
-    assert fake_client.models.generate_content_stream.call_count == 2
-
-
-def test_anthropic_generation_streams_text_chunks():
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="anthropic", model="claude-sonnet", api_key="secret")
-    )
-
-    class FakeAnthropicStream:
-        def __init__(self):
-            self.text_stream = iter(['{"ok": ', "true}"])
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-        def get_final_message(self):
-            return {"content": [{"type": "text", "text": '{"ok": true}'}]}
-
-    fake_client = MagicMock()
-    fake_client.messages.stream.return_value = FakeAnthropicStream()
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_anthropic_client",
-        return_value=fake_client,
-    ):
-        streamed_chunks: list[str] = []
-        result = llm_client.generate("system", "user", on_text=streamed_chunks.append)
-
-    assert result == '{"ok": true}'
-    assert "".join(streamed_chunks) == '{"ok": true}'
-    fake_client.messages.stream.assert_called_once()
-
-
-def test_gemini_generation_streams_text_chunks():
-    llm_client = setup_cmd_module.LLMClient(
-        LLMConfig(vendor="gemini", model="gemini-2.5-flash", api_key="secret")
-    )
-
-    fake_client = MagicMock()
-    fake_client.models.generate_content_stream.return_value = [
-        SimpleNamespace(text='{"ok": '),
-        SimpleNamespace(text="true}"),
-    ]
-
-    with patch.object(
-        setup_cmd_module.LLMClient,
-        "_get_gemini_client",
-        return_value=fake_client,
-    ):
-        streamed_chunks: list[str] = []
-        result = llm_client.generate("system", "user", on_text=streamed_chunks.append)
-
-    assert result == '{"ok": true}'
-    assert "".join(streamed_chunks) == '{"ok": true}'
-    fake_client.models.generate_content_stream.assert_called_once()
 
 
 def test_setup_command_routes_to_modify_when_config_exists(tmp_path):

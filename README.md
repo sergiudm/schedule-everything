@@ -42,9 +42,15 @@ A simple, persistent way to manage your daily schedule.
 
 ### 1. Install
 ```bash
-git clone https://github.com/sergiudm/schedule-everything.git
+git clone --recurse-submodules https://github.com/sergiudm/schedule-everything.git
 cd schedule-everything
 ./install.sh
+```
+
+Install OpenCode CLI from the bundled submodule (required by `reminder setup`):
+
+```bash
+./third_party/opencode/install --no-modify-path
 ```
 
 ### 2. Build Your Schedule with AI Assistance
@@ -52,6 +58,7 @@ cd schedule-everything
 reminder setup
 ```
 This command will guide you through configuring model credentials and interactively building or modifying your schedules.
+The setup agent is powered by OpenCode (`opencode run`) and can attach your timetable files directly.
 
 ---
 
@@ -98,9 +105,9 @@ Use the new setup wizard to configure model credentials and build/modify schedul
 reminder setup
 ```
 
-The wizard stores model settings in `~/.schedule_management/llm.toml`, checks whether a complete local schedule config already exists, and then guides you to build or modify schedules.
+The wizard stores model settings in `~/.schedule_management/llm.toml`, checks whether a complete local schedule config already exists, and then guides you to build or modify schedules through OpenCode.
 In build mode, it proactively asks profile questions (basic info, goals, habits, preferences, constraints), generates a pure-text schedule summary for confirmation, and only then writes TOML configuration files.
-During build/modify turns, the agent can use vendor-native tool calling to read or edit local files when needed.
+During build/modify turns, the OpenCode-backed agent can attach local files/images and use built-in tooling to reason over project/context files when needed.
 
 ---
 
@@ -119,7 +126,7 @@ alias reminder="$HOME/schedule_management/reminder"
 | Category      | Command                           | Description                                  |
 | ------------- | --------------------------------- | -------------------------------------------- |
 | **System**    | `reminder update`                 | Reload config and restart background service |
-|               | `reminder setup`                  | Interactive AI setup with profile intake, summary-first planning, build/modify flows, and optional file-aware tool use |
+|               | `reminder setup`                  | Interactive AI setup powered by OpenCode with profile intake, summary-first planning, build/modify flows, and optional file-aware reasoning |
 |               | `reminder status [-v]`            | Show upcoming events (or full schedule)      |
 |               | `reminder view`                   | Generate and view a PDF schedule visualization |
 |               | `reminder edit <file>`            | Edit a config file directly                  |
