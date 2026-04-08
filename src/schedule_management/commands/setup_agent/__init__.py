@@ -1,12 +1,14 @@
 """LLM setup agent package for the `reminder setup` command."""
 
-from schedule_management.commands.setup_agent.workflow import (
+from schedule_management.commands.setup_agent.models import (
     AgentTurn,
-    LLMClient,
     LLMConfig,
-    LocalFileTools,
     SourceAttachment,
     ToolCall,
+)
+from schedule_management.commands.setup_agent.tools import LocalFileTools
+from schedule_management.commands.setup_agent.workflow import (
+    LLMClient,
     build_schedule_agent,
     modify_schedule_agent,
 )

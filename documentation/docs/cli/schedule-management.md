@@ -21,7 +21,10 @@ reminder setup
 - Uses OpenCode (`opencode run`) as the setup-agent runtime.
 - Checks whether a complete local schedule configuration already exists.
 - Routes to either a build flow (new schedule) or a modify flow (existing schedule).
-- In build flow, actively asks for your profile (basic information, goals, habits, preferences, and constraints), asks for an image/file path or description, then produces a pure-text schedule summary first.
+- Reads or writes `profile.md` in the same config directory as `settings.toml`.
+- In build flow, iteratively refines the profile first, asks for timetable context when available, then produces a pure-text schedule summary before generating TOML.
+- In modify flow, reads `profile.md` first so edits stay aligned with the user's long-term context.
+- Uses evidence-informed defaults around sleep regularity, physical activity, movement breaks, and daytime light exposure when the user leaves details open.
 - Only after you confirm the summary does it generate TOML configuration files.
 - During build/modify turns, the OpenCode-backed agent can attach local files/images and reason over local context files when needed.
 - Recommends `reminder view` and supports iterative adjustments.
@@ -44,6 +47,8 @@ reminder update
 ## status
 
 Show upcoming events and current service status.
+When `reminder sync` has produced an accepted overlay for today, pomodoro and
+potato blocks show both the block type and the assigned task title.
 
 ### Syntax
 ```bash
@@ -62,6 +67,30 @@ reminder status
 
 # Show detailed today's schedule
 reminder status -v
+```
+
+## sync
+
+Generate today's pomodoro/potato task assignments from `tasks/tasks.json` with
+an LLM, show a preview, and only save the overlay after you approve it.
+
+### Syntax
+```bash
+reminder sync
+```
+
+### What it does
+- Loads today's untitled pomodoro/potato blocks from the active schedule.
+- Reads tasks from `tasks/tasks.json` and sorts them by priority.
+- Uses the same OpenCode-backed model configuration flow as `reminder setup`.
+- Shows a preview table before writing `synced_schedule.toml`.
+- If you reject the preview, asks for a reason and regenerates using that feedback.
+- Applies the accepted overlay only to the matching day, so base odd/even templates stay unchanged.
+
+### Examples
+```bash
+# Generate and review today's focus-block assignments
+reminder sync
 ```
 
 ## view

@@ -110,6 +110,17 @@ def test_llm_config_round_trip(tmp_path):
     assert loaded == expected
 
 
+def test_profile_markdown_round_trip(tmp_path):
+    setup_cmd_module._write_profile_markdown(
+        tmp_path,
+        "# Basic Information\n- Role: CS PhD student",
+    )
+
+    loaded = setup_cmd_module._load_profile_markdown(tmp_path)
+
+    assert loaded == "# Basic Information\n- Role: CS PhD student"
+
+
 def test_llm_client_uses_opencode_cli_and_streams_stdout():
     llm_client = setup_cmd_module.LLMClient(
         LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="secret")
@@ -561,6 +572,7 @@ def test_prompt_templates_include_required_keys():
         assert "phase" in prompt
         assert "conversation" in prompt
         assert "needs_user_input" in prompt
+        assert "profile_markdown" in prompt
         assert "question_to_user" in prompt
         assert "schedule_summary" in prompt
         assert "settings_toml" in prompt
@@ -570,6 +582,8 @@ def test_prompt_templates_include_required_keys():
         assert "write_file" in prompt
 
     assert "Never say you cannot see/view images" in BUILD_SYSTEM_PROMPT
+    assert "at least 7 hours" in BUILD_SYSTEM_PROMPT
+    assert "150-300 minutes of moderate activity" in BUILD_SYSTEM_PROMPT
 
 
 def test_prompt_renderers_include_context_sections(tmp_path):
@@ -578,10 +592,13 @@ def test_prompt_renderers_include_context_sections(tmp_path):
         description="Classes on monday and wednesday mornings.",
         attachment_name="timetable.png",
         conversation_history="Assistant: Got it\nUser: Please keep evenings free.",
+        profile_context="# Basic Information\n- Role: Student",
     )
     assert "Target config directory" in build_prompt
+    assert "Profile file path" in build_prompt
     assert "timetable.png" in build_prompt
     assert "Image vision input status" in build_prompt
+    assert "Current profile draft" in build_prompt
     assert "Conversation history" in build_prompt
 
     summary_gate_prompt = render_build_user_prompt(
@@ -606,9 +623,11 @@ def test_prompt_renderers_include_context_sections(tmp_path):
     modify_prompt = render_modify_user_prompt(
         "Move gym to evenings",
         "[settings.toml]\n[settings]\n",
+        profile_context="# Preferences\n- Keep mornings for research.",
         conversation_history="Assistant: Do you prefer weekdays?\nUser: Tuesday/Thursday.",
     )
     assert "Change request" in modify_prompt
+    assert "Current profile draft" in modify_prompt
     assert "Current configuration files" in modify_prompt
     assert "Conversation history" in modify_prompt
 
@@ -688,6 +707,7 @@ def test_parse_agent_turn_supports_missing_information_questions():
         "{"
         '"conversation": "I need one more detail before I can finish.", '
         '"needs_user_input": true, '
+        '"profile_markdown": "# Goals\\n- Finish dissertation", '
         '"question_to_user": "Which days should stay completely free?", '
         '"missing_information": ["free days preference"], '
         '"actions": ["validated constraints"]'
@@ -700,6 +720,7 @@ def test_parse_agent_turn_supports_missing_information_questions():
     assert turn is not None
     assert turn.needs_user_input is True
     assert turn.bundle is None
+    assert turn.profile_markdown == "# Goals\n- Finish dissertation"
     assert turn.question_to_user == "Which days should stay completely free?"
     assert turn.missing_information == ["free days preference"]
 

@@ -11,6 +11,7 @@ Architecture:
     ├── commands/deadlines.py - ddl add, rm, show commands
     ├── commands/habits.py    - track command
     ├── commands/status.py    - status, view commands
+    ├── commands/sync.py      - sync command
     ├── commands/service.py   - update, stop, report commands
     └── commands/setup.py     - setup command
 
@@ -52,6 +53,7 @@ from schedule_management.commands.deadlines import (
 )
 from schedule_management.commands.habits import track_habits
 from schedule_management.commands.status import status_command, view_command
+from schedule_management.commands.sync import sync_command
 from schedule_management.commands.service import (
     update_command,
     stop_command,
@@ -83,6 +85,7 @@ def create_parser() -> argparse.ArgumentParser:
         │   └── rm <events...>          - Remove deadlines
         ├── track [habit_ids...]        - Track habits
         ├── status [-v]                 - Show current status
+        ├── sync                        - Assign today's work blocks to tasks
         ├── view                        - Generate PDF visualization
         ├── update                      - Update config from git
         ├── stop                        - Stop reminder service
@@ -254,6 +257,17 @@ def create_parser() -> argparse.ArgumentParser:
         description="Create a multi-page PDF visualization of your schedules.",
     )
     view_parser.set_defaults(func=view_command)
+
+    # sync - Generate task assignments for today's work blocks
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="Assign today's pomodoro/potato blocks to tasks with an LLM",
+        description=(
+            "Generate a preview of today's task-to-block assignments and save "
+            "them only after approval."
+        ),
+    )
+    sync_parser.set_defaults(func=sync_command)
 
     # -------------------------------------------------------------------------
     # Service Management Commands

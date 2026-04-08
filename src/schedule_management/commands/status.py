@@ -32,6 +32,11 @@ except ImportError:
 
 from schedule_management import SETTINGS_PATH, ODD_PATH, EVEN_PATH
 from schedule_management.config import ScheduleConfig, WeeklySchedule
+from schedule_management.synced_schedule import (
+    apply_synced_schedule,
+    format_event_label,
+    get_event_block_name,
+)
 from schedule_management.time_utils import get_week_parity, parse_time
 from schedule_management.visualizer import ScheduleVisualizer
 
@@ -41,7 +46,9 @@ from schedule_management.visualizer import ScheduleVisualizer
 # =============================================================================
 
 
-def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool, ScheduleConfig]:
+def get_today_schedule_for_status(
+    apply_sync: bool = True,
+) -> tuple[dict[str, Any], str, bool, ScheduleConfig]:
     """
     Get today's schedule with metadata for the status command.
 
@@ -57,6 +64,14 @@ def get_today_schedule_for_status() -> tuple[dict[str, Any], str, bool, Schedule
     is_skipped = config.should_skip_today()
     parity = get_week_parity()
     schedule = {} if is_skipped else weekly.get_today_schedule(config)
+    if apply_sync and schedule:
+        weekday = date.today().strftime("%A").lower()
+        schedule = apply_synced_schedule(
+            schedule,
+            target_date=date.today(),
+            parity=parity,
+            weekday=weekday,
+        )
 
     return schedule, parity, is_skipped, config
 
@@ -94,14 +109,6 @@ def get_current_and_next_events(
     today = date.today()
     now_dt = datetime.combine(today, current_time)
 
-    def get_event_display_name(event: Any) -> str:
-        """Extract display name from event definition."""
-        if isinstance(event, str):
-            return event
-        if isinstance(event, dict) and "block" in event:
-            return event.get("title", event["block"])
-        return str(event)
-
     def get_event_duration_minutes(event: Any) -> int:
         """Get event duration in minutes."""
         if config is None:
@@ -138,7 +145,7 @@ def get_current_and_next_events(
     for time_str, start_dt in scheduled_times:
         event = schedule[time_str]
 
-        event_name = get_event_display_name(event)
+        event_name = format_event_label(event)
         duration_minutes = get_event_duration_minutes(event)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -266,15 +273,12 @@ def status_command(args) -> int:
 
             for time_str in sorted_times:
                 event = schedule[time_str]
-                name = (
-                    event.get("title", event["block"])
-                    if isinstance(event, dict)
-                    else str(event)
-                )
+                name = format_event_label(event)
+                block_name = get_event_block_name(event) or name
 
                 try:
                     hour = int(time_str.split(":")[0])
-                    item = (time_str, name)
+                    item = (time_str, name, block_name)
                     if 5 <= hour < 12:
                         morning_events.append(item)
                     elif 12 <= hour < 18:
@@ -282,7 +286,7 @@ def status_command(args) -> int:
                     else:
                         evening_events.append(item)
                 except ValueError:
-                    evening_events.append((time_str, name))
+                    evening_events.append((time_str, name, block_name))
 
             # Build schedule table
             table = Table(
@@ -306,21 +310,26 @@ def status_command(args) -> int:
                         f"[bold {color}]{title}[/bold {color}]",
                     )
 
-                    for time_str, name in events:
+                    for time_str, name, block_name in events:
                         # Style based on activity type
-                        if "break" in name.lower() or "napping" in name.lower():
+                        block_name_lower = block_name.lower()
+                        if (
+                            "break" in block_name_lower
+                            or "break" in name.lower()
+                            or "napping" in block_name_lower
+                        ):
                             name_styled = f"[italic dim]{name}[/italic dim]"
                             icon_type = "☕"
-                        elif "pomodoro" in name.lower():
+                        elif "pomodoro" in block_name_lower:
                             name_styled = f"[bold red]{name}[/bold red]"
                             icon_type = "🍅"
-                        elif "potato" in name.lower():
+                        elif "potato" in block_name_lower:
                             name_styled = f"[bold yellow]{name}[/bold yellow]"
                             icon_type = "🥔"
-                        elif "go_to_bed" in name.lower():
+                        elif "go_to_bed" in block_name_lower:
                             name_styled = f"[bold blue]{name}[/bold blue]"
                             icon_type = "🌙"
-                        elif "summary_time" in name.lower():
+                        elif "summary_time" in block_name_lower:
                             name_styled = f"[bold magenta]{name}[/bold magenta]"
                             icon_type = "📝"
                         else:

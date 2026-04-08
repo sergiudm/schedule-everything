@@ -17,6 +17,7 @@ Return exactly one JSON object with tagged top-level sections/keys:
 - conversation (required string, user-facing only)
 - actions (optional array of strings, internal-only)
 - needs_user_input (required boolean)
+- profile_markdown (optional non-empty string containing the latest full `profile.md` draft)
 - question_to_user (required non-empty string when needs_user_input is true)
 - missing_information (optional array of strings)
 - schedule_summary (required non-empty string when phase is "summary")
@@ -42,15 +43,56 @@ This is a multi-turn assistant, not a single-turn generator.
 
 Per turn behavior:
 - Always process the latest user instruction.
-- Actively ask for missing user profile details before finalizing: basic information, preferences, habits, goals, and hard constraints.
+- Actively ask for missing user profile details before finalizing: basic information, preferences, habits, goals, energy patterns, and hard constraints.
 - If information is sufficient for planning, provide a pure-text schedule summary first and ask the user to confirm or adjust it.
 - Only after summary confirmation, produce TOML sections.
 - If information is insufficient, set needs_user_input=true and ask one focused question.
+- When you have enough information to improve the profile draft, return the full updated `profile_markdown`.
 - Always provide a concise `conversation` summary for the user.
 - Keep `actions` internal and machine-oriented because only `conversation` is user-visible.
 - If an image attachment is present, you already have direct visual access through native vision input.
 - Never say you cannot see/view images when an image attachment is present.
 - Do not ask the user to manually transcribe the full image content; ask only targeted clarifications if the image is ambiguous.
+""".strip()
+
+PROFILE_COMPLETION_RULES = """
+The profile must be specific enough to drive scheduling decisions. Before moving
+to schedule summary, make sure the profile captures as many of these as the
+user can realistically provide:
+- role / life context / timezone
+- target wake and sleep windows
+- fixed obligations and no-go windows
+- commute / transitions / location constraints
+- major goals and priorities
+- recurring habits, recovery needs, and exercise preferences
+- energy pattern / best-focus windows / low-energy windows
+- scheduling preferences and disliked patterns
+- upcoming deadlines or workload peaks when relevant
+- any supporting files or timetable references the user mentions
+
+If a current profile draft already exists, treat it as a draft to refine rather
+than something to discard.
+""".strip()
+
+EVIDENCE_INFORMED_SCHEDULING_RULES = """
+Use population-level, evidence-informed healthy scheduling defaults unless the
+user gives more specific instructions:
+- Protect regular sleep opportunity. Default to at least 7 hours of nightly
+  sleep opportunity and prefer consistent sleep/wake times.
+- Do not routinely trade away sleep for more work when other schedule options
+  exist.
+- When the user wants general health or fitness support, spread physical
+  activity across the week in line with common adult guidelines: about
+  150-300 minutes of moderate activity (or 75-150 minutes vigorous) weekly,
+  with muscle-strengthening on 2 or more days when feasible.
+- Break up long sedentary work with short recovery or movement breaks.
+- Prefer harder cognitive work during the user's best-focus windows and lighter
+  admin work during low-energy windows.
+- When the user has flexibility, prefer daylight exposure earlier in the day
+  and avoid scheduling stimulating late-night work by default.
+- These are general scheduling heuristics, not medical advice. If the user
+  states clinical instructions, disability needs, shift-work realities,
+  caregiving demands, or other real-world constraints, follow those first.
 """.strip()
 
 FILE_TOOLING_RULES = """
@@ -71,24 +113,33 @@ BUILD_SYSTEM_PROMPT = f"""
 You are build_schedule_agent for a local CLI scheduling tool.
 
 Mission:
-- Build an initial, practical, and editable schedule configuration.
-- Use user-provided timetable context (text and/or image) as primary input.
+- First build or refine a complete `profile.md` for the user.
+- Then build an initial, practical, and editable schedule configuration.
+- Use user-provided timetable context, existing profile draft, and follow-up
+  answers as primary input.
 - Fill missing details with reasonable defaults while keeping structure simple.
 
 {MULTI_TURN_RULES}
 
 {FILE_TOOLING_RULES}
 
+{PROFILE_COMPLETION_RULES}
+
+{EVIDENCE_INFORMED_SCHEDULING_RULES}
+
 Mandatory build workflow:
 1) discovery phase:
-    - ask targeted questions to collect profile inputs (basic information, goals, habits, preferences, constraints).
+    - ask targeted questions until the user profile is complete enough to drive scheduling.
+    - return updated `profile_markdown` whenever the draft materially improves.
     - do not output TOML in this phase.
 2) summary phase:
+    - return a complete `profile_markdown`.
     - output a pure-text schedule summary in `schedule_summary`.
     - set needs_user_input=true and ask the user to confirm or request adjustments.
     - do not output TOML in this phase.
 3) final phase:
     - only after the user confirms the summary, output final TOML files.
+    - include the final `profile_markdown` together with the schedule files.
 
 Domain rules:
 1) settings_toml must include sections: [settings], [time_blocks], [time_points], [tasks], [paths].
@@ -112,10 +163,13 @@ Mission:
 - Apply the user's requested changes to existing schedule TOML files.
 - Keep unrelated content stable to minimize unnecessary diffs.
 - Preserve the user's established naming and structure unless a change requires updates.
+- Read and respect the current `profile.md` before planning edits.
 
 {MULTI_TURN_RULES}
 
 {FILE_TOOLING_RULES}
+
+{EVIDENCE_INFORMED_SCHEDULING_RULES}
 
 Editing rules:
 1) Make the smallest effective edit set that satisfies the request.
@@ -123,7 +177,8 @@ Editing rules:
 3) Maintain consistency between schedule labels and settings definitions.
 4) Preserve TOML validity and 24-hour HH:MM time keys.
 5) If a requested change is ambiguous, choose the most conservative interpretation.
-6) Use phase="discovery" when asking follow-up questions; use phase="final" when returning TOML.
+6) If the current profile is missing, stale, or contradicted by the request, ask clarifying questions and optionally return an updated `profile_markdown`.
+7) Use phase="discovery" when asking follow-up questions; use phase="final" when returning TOML.
 
 {OUTPUT_SCHEMA_GUIDE}
 """.strip()
@@ -148,7 +203,9 @@ def render_build_user_prompt(
     history = (
         conversation_history.strip() if conversation_history else "(no prior turns)"
     )
-    profile_text = profile_context.strip() if profile_context else "(not collected)"
+    profile_text = (
+        profile_context.strip() if profile_context else "(no saved profile draft yet)"
+    )
     summary_text = latest_summary.strip() if latest_summary else "(none yet)"
 
     if not summary_presented:
@@ -171,6 +228,7 @@ def render_build_user_prompt(
         [
             "Task: Create a first version of the local schedule configuration.",
             f"Target config directory: {config_dir}",
+            f"Profile file path: {config_dir / 'profile.md'}",
             (
                 "Schedule file expectations: settings.toml, odd_weeks.toml, "
                 "even_weeks.toml, optional habits.toml."
@@ -183,10 +241,14 @@ def render_build_user_prompt(
                 if attachment_name
                 else "Image vision input status: no image attachment"
             ),
-            f"Structured user profile context:\n{profile_text}",
+            f"Current profile draft:\n{profile_text}",
             f"Latest schedule summary:\n{summary_text}",
             stage_instruction,
             f"Conversation history:\n{history}",
+            (
+                "Profile-first requirement: finish or refine `profile.md` before "
+                "you finalize the schedule."
+            ),
             (
                 "When uncertain, choose practical defaults and keep the output "
                 "easy to modify in future iterations."
@@ -200,16 +262,21 @@ def render_modify_user_prompt(
     change_request: str,
     current_files: str,
     *,
+    profile_context: str | None = None,
     conversation_history: str | None = None,
 ) -> str:
     """Create the modify agent user message with current TOML context."""
     history = (
         conversation_history.strip() if conversation_history else "(no prior turns)"
     )
+    profile_text = (
+        profile_context.strip() if profile_context else "(no saved profile draft yet)"
+    )
     return "\n\n".join(
         [
             "Task: Update existing schedule TOML files according to the user's request.",
             f"Change request:\n{change_request.strip()}",
+            f"Current profile draft:\n{profile_text}",
             "Current configuration files:",
             current_files.strip()
             if current_files.strip()

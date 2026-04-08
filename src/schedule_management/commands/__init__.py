@@ -6,6 +6,7 @@ This package contains all CLI command implementations, organized by domain:
 - deadlines: Deadline management (add, delete, show)
 - habits: Habit tracking commands
 - status: Status and schedule viewing commands
+- sync: LLM-assisted task assignment for today's work blocks
 - service: Service management (update, stop, report)
 - setup: Interactive AI-assisted schedule setup
 """
@@ -18,6 +19,7 @@ from schedule_management.commands.deadlines import (
 )
 from schedule_management.commands.habits import track_habits
 from schedule_management.commands.status import status_command, view_command
+from schedule_management.commands.sync import sync_command
 from schedule_management.commands.service import (
     update_command,
     stop_command,
@@ -40,6 +42,7 @@ __all__ = [
     # Status commands
     "status_command",
     "view_command",
+    "sync_command",
     # Service commands
     "update_command",
     "stop_command",

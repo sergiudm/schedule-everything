@@ -6,6 +6,8 @@ sidebar_position: 1
 
 **Schedule Everything** (晨钟暮鼓) 是一个功能强大的基于 TOML 的日程管理工具，提供持久化提醒功能，帮助您保持健康习惯、专注工作和规律休息。
 
+AI 初始化流程现在采用“先画像、后排程”的模式：它会先在日程配置同目录读取或生成 `profile.md`，持续追问直到画像足够用于排程，然后才生成日程文件。
+
 ## 演示
 
 <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
@@ -18,6 +20,26 @@ sidebar_position: 1
 本项目提供了一种简单而强大的方式，帮助您在 **本地** 上管理每日日程，并通过**持久化提醒**确保您按时执行健康习惯、专注工作和规律休息。该工具使用 Python 编写，让您时刻保持节奏，J人福利！
 
 > **注意**：当前版本专为 **macOS 和 Linux** 优化。未来计划支持 Windows。
+
+## 基于研究的默认排程原则
+
+当 `reminder setup` 需要补全用户没有明确给出的信息时，它会使用一些基于研究的一般性默认原则：
+
+- 尽量保护足够的睡眠机会，而不是长期靠压缩睡眠换工作时长
+- 尽量保持稳定的睡眠时点，而不是工作日与周末大起大落
+- 把运动和活动量稳定分布到整周
+- 对长时间坐着的工作插入短暂活动或恢复性休息
+- 在用户有弹性时，把高强度认知工作和白天光照尽量安排在更早的时段
+
+这些原则是启发式默认值，不是医疗建议。真实生活约束、医生建议、残障需求或轮班现实应当优先。
+
+参考来源：
+
+- Watson et al., *Recommended Amount of Sleep for a Healthy Adult* ([AASM PDF](https://aasm.org/resources/pdf/pressroom/adult-sleep-duration-consensus.pdf))
+- Sletten et al., *The importance of sleep regularity* ([DOI](https://doi.org/10.1016/j.sleh.2023.07.016))
+- WHO, *Physical activity recommendations for adults* ([WHO](https://www.who.int/initiatives/behealthy/physical-activity))
+- Albulescu et al., *"Give me a break!"* ([PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0272460))
+- Figueiro et al., *The impact of daytime light exposures on sleep and mood in office workers* ([DOI](https://doi.org/10.1016/j.sleh.2017.03.005))
 
 ## 主要功能
 

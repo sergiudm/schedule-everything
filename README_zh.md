@@ -9,6 +9,9 @@
 
 一种简单而强大的方式，帮助你在 **本地** 管理每日日程，并通过**持久化提醒**确保你按时执行健康习惯、专注工作和规律休息。
 
+`reminder setup` 现在采用“先画像、后排程”的流程：它会先在与 `settings.toml`
+同目录的位置读取或生成 `profile.md`，持续追问直到用户画像足够完整，再据此生成日程。
+
 <table>
   <tr>
     <td>
@@ -31,6 +34,26 @@
 - **CLI 工具套件**：集成了任务管理、习惯追踪和截止日期监控的命令行工具。
 - **AI 驱动**：支持使用 LLM 从任意文本描述轻松生成配置。
 
+## 基于研究的健康排程原则
+
+当用户没有明确给出偏好时，初始化助手会使用一些基于研究的通用默认原则：
+
+- 优先保护充足睡眠，而不是长期靠压缩睡眠换更多工作时间
+- 优先保持相对规律的睡眠时点，而不是工作日和周末大幅波动
+- 在一周内稳定安排运动和活动量
+- 对长时间久坐的工作安排短暂活动或恢复性休息
+- 在有弹性时，尽量把高强度认知工作和白天光照放在更早的时间段
+
+这些原则是面向一般人群的排程启发，不构成医疗建议。如果用户有医生建议、残障需求、轮班现实、照护责任或其他硬性约束，应以这些现实约束为准。
+
+相关论文与指南：
+
+- Watson NF, Badr MS, Belenky G, et al. Recommended Amount of Sleep for a Healthy Adult: A Joint Consensus Statement of the American Academy of Sleep Medicine and Sleep Research Society. [AASM 共识 PDF](https://aasm.org/resources/pdf/pressroom/adult-sleep-duration-consensus.pdf) / [AASM advisory](https://aasm.org/advocacy/position-statements/adult-sleep-duration-health-advisory/)
+- Sletten TL, Weaver MD, Foster RG, et al. The importance of sleep regularity: a consensus statement of the National Sleep Foundation sleep timing and variability panel. [Sleep Health, 2023](https://doi.org/10.1016/j.sleh.2023.07.016)
+- World Health Organization. Physical activity recommendations for adults. [WHO 指南](https://www.who.int/initiatives/behealthy/physical-activity)
+- Albulescu P, Macsinga I, Rusu A, et al. "Give me a break!" A systematic review and meta-analysis on the efficacy of micro-breaks for increasing well-being and performance. [PLOS ONE, 2022](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0272460)
+- Figueiro MG, Steverson B, Heerwagen J, et al. The impact of daytime light exposures on sleep and mood in office workers. [Sleep Health, 2017](https://doi.org/10.1016/j.sleh.2017.03.005)
+
 ---
 
 ## 🚀 快速开始
@@ -48,6 +71,7 @@ cp config/week_schedule_template.toml config/even_weeks.toml
 在 `config/` 目录中定义你的日常安排。
 - **`settings.toml`**：全局设置和可复用的时间块（例如 `pomodoro = 25`）。
 - **`odd_weeks.toml` / `even_weeks.toml`**：你的每日日程表。
+- **`synced_schedule.toml`**：由 `reminder sync` 生成并确认后的当日 overlay，用来给今天的 pomodoro/potato 自动写入具体任务标题。
 
 **日程条目示例：**
 ```toml
@@ -82,7 +106,15 @@ reminder setup
 ```
 
 该向导会将模型配置保存到 `~/.schedule_management/llm.toml`，检测本机是否已有完整配置，并通过 OpenCode 根据结果引导你创建或调整日程。
-在新建日程模式下，它会先主动询问你的基础信息、目标、习惯、偏好与硬性约束，然后先给出纯文本日程摘要供你确认，最后才生成 TOML 配置文件。
+在新建日程模式下，它会先读取或创建与 `settings.toml` 同目录的 `profile.md`，持续追问并完善用户画像；当画像足够完整后，先给出纯文本日程摘要供你确认，最后才生成 TOML 配置文件。
+在修改模式下，它也会优先读取 `profile.md`，让后续改动与用户长期画像保持一致。
+当用户没有说清楚细节时，排程器会回退到基于研究的默认原则，例如睡眠规律、活动量、久坐休息和白天光照。
+
+当你已经有任务列表时，也可以运行下面的命令，让 LLM 为今天的 pomodoro/potato 自动分配具体任务，并先给你预览：
+
+```bash
+reminder sync
+```
 
 ---
 
@@ -101,8 +133,9 @@ alias reminder="$HOME/schedule_management/reminder"
 | 类别         | 命令                              | 说明                             |
 | ------------ | --------------------------------- | -------------------------------- |
 | **系统**     | `reminder update`                 | 重新加载配置并重启后台服务       |
-|              | `reminder setup`                  | 基于 OpenCode 的交互式 AI 初始化（先采集偏好并输出摘要，再创建/修改日程，并可按需结合本地文件进行推理） |
-|              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程） |
+|              | `reminder setup`                  | 基于 OpenCode 的交互式 AI 初始化（先构建/完善 profile.md，再基于研究启发生成摘要与日程，并可按需结合本地文件进行推理） |
+|              | `reminder sync`                   | 用 LLM 生成并确认今天的 pomodoro/potato 任务分配 |
+|              | `reminder status [-v]`            | 显示即将到来的事件（或完整日程），有同步结果时也会显示具体任务标题 |
 |              | `reminder view`                   | 生成并查看 PDF 格式日程可视化界面 |
 |              | `reminder edit <file>`            | 直接编辑配置文件                 |
 |              | `reminder stop`                   | 停止提醒服务                     |
@@ -120,6 +153,9 @@ alias reminder="$HOME/schedule_management/reminder"
 ```bash
 # 添加高优先级任务
 reminder add "完成报告" 9
+
+# 为今天的专注时间块生成具体任务分配
+reminder sync
 
 # 记录习惯（不需要输入 ID，会弹出窗口）
 reminder track

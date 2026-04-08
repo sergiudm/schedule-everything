@@ -38,7 +38,8 @@ from schedule_management import (
     DDL_PATH,
 )
 from schedule_management.config import ScheduleConfig, WeeklySchedule
-from schedule_management.time_utils import add_minutes_to_time, alarm
+from schedule_management.synced_schedule import apply_synced_schedule
+from schedule_management.time_utils import add_minutes_to_time, alarm, get_week_parity
 from schedule_management.platform import ask_yes_no
 from schedule_management.data import (
     load_tasks,
@@ -423,6 +424,13 @@ class ScheduleRunner:
             now = datetime.now()
             now_str = now.strftime("%H:%M")
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
+            if today_schedule:
+                today_schedule = apply_synced_schedule(
+                    today_schedule,
+                    target_date=now.date(),
+                    parity=get_week_parity(),
+                    weekday=now.strftime("%A").lower(),
+                )
 
             # -----------------------------------------------------------------
             # Daily Summary Time

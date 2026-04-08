@@ -55,6 +55,7 @@ def configure_test_environment(monkeypatch):
     import schedule_management.commands.deadlines as deadlines_commands
     import schedule_management.commands.service as service_commands
     import schedule_management.commands.status as status_commands
+    import schedule_management.commands.sync as sync_commands
     import schedule_management.popups as popups_module
     import schedule_management.runner as runner_module
 
@@ -66,6 +67,7 @@ def configure_test_environment(monkeypatch):
     _apply_test_paths(deadlines_commands)
     _apply_test_paths(service_commands)
     _apply_test_paths(status_commands)
+    _apply_test_paths(sync_commands)
     _apply_test_paths(popups_module)
     _apply_test_paths(runner_module)
 

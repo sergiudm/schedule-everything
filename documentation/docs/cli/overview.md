@@ -28,9 +28,10 @@ The CLI commands are organized into these main categories:
 ### Schedule Management
 Commands for managing your schedule and service:
 - [`reminder update`](schedule-management.md#update) - Reload config and restart service
-- [`reminder setup`](schedule-management.md#setup) - Interactive AI-assisted setup powered by OpenCode with profile intake, summary-first schedule planning, and optional file-aware reasoning
+- [`reminder setup`](schedule-management.md#setup) - Interactive AI-assisted setup powered by OpenCode with profile-first intake, evidence-informed schedule planning, and optional file-aware reasoning
+- [`reminder sync`](schedule-management.md#sync) - Generate and confirm today's pomodoro/potato task assignments
 - [`reminder view`](schedule-management.md#view) - Generate schedule visualization
-- [`reminder status`](schedule-management.md#status) - Show upcoming events
+- [`reminder status`](schedule-management.md#status) - Show upcoming events, including synced task titles when present
 - [`reminder stop`](schedule-management.md#stop) - Stop the alarm service
 
 ### Task Management
@@ -96,6 +97,9 @@ reminder status
 
 # Add a high-priority task
 reminder add "Complete project proposal" 9
+
+# Generate today's synced focus-block plan
+reminder sync
 
 # View your schedule
 reminder view

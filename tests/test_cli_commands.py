@@ -3,6 +3,7 @@ Test suite for CLI commands in the reminder module.
 Tests the update, view, and status commands using the new OOP architecture.
 """
 
+import json
 import sys
 from unittest.mock import patch, MagicMock
 from pathlib import Path
@@ -10,6 +11,11 @@ from datetime import datetime, time, date
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import schedule_management.reminder as reminder
+from schedule_management.synced_schedule import (
+    SyncedDaySchedule,
+    apply_synced_schedule,
+    save_synced_schedule,
+)
 
 # Import test configuration paths
 from conftest import TEST_CONFIG_DIR
@@ -223,6 +229,70 @@ class TestStatusCommand:
         assert len(panel_calls) > 0, "Expected a Panel to be printed for status message"
 
 
+class TestSyncedScheduleHelpers:
+    """Test date-scoped synced schedule helpers."""
+
+    def test_apply_synced_schedule_uses_matching_overlay(self, tmp_path, monkeypatch):
+        synced_path = tmp_path / "synced_schedule.toml"
+        monkeypatch.setenv("REMINDER_SYNCED_SCHEDULE_PATH", str(synced_path))
+
+        today = date.today()
+        weekday = today.strftime("%A").lower()
+        save_synced_schedule(
+            SyncedDaySchedule(
+                target_date=today.isoformat(),
+                parity="odd",
+                weekday=weekday,
+                assignments={
+                    "09:00": {"block": "pomodoro", "title": "Write release notes"}
+                },
+            ),
+            synced_path,
+        )
+
+        merged = apply_synced_schedule(
+            {"09:00": "pomodoro", "12:00": "lunch"},
+            target_date=today,
+            parity="odd",
+            weekday=weekday,
+        )
+
+        assert merged["09:00"] == {
+            "block": "pomodoro",
+            "title": "Write release notes",
+        }
+        assert merged["12:00"] == "lunch"
+
+    @patch("schedule_management.commands.status.apply_synced_schedule")
+    @patch("schedule_management.commands.status.ScheduleConfig")
+    @patch("schedule_management.commands.status.WeeklySchedule")
+    @patch("schedule_management.commands.status.get_week_parity")
+    def test_get_today_schedule_for_status_can_skip_overlay(
+        self,
+        mock_parity,
+        mock_weekly,
+        mock_config,
+        mock_apply_synced,
+    ):
+        mock_config_instance = MagicMock()
+        mock_config_instance.should_skip_today.return_value = False
+        mock_config.return_value = mock_config_instance
+
+        mock_weekly_instance = MagicMock()
+        mock_weekly_instance.get_today_schedule.return_value = {"09:00": "pomodoro"}
+        mock_weekly.return_value = mock_weekly_instance
+        mock_parity.return_value = "odd"
+
+        schedule, parity, is_skipped, _ = reminder.get_today_schedule_for_status(
+            apply_sync=False
+        )
+
+        assert schedule == {"09:00": "pomodoro"}
+        assert parity == "odd"
+        assert is_skipped is False
+        mock_apply_synced.assert_not_called()
+
+
 class TestHelperFunctions:
     """Test helper functions used by the CLI commands."""
 
@@ -325,6 +395,33 @@ class TestHelperFunctions:
 
         assert current is None
         assert next_event == "block_b at 10:00"
+        assert time_to_next == "30m"
+
+    @patch("schedule_management.commands.status.parse_time")
+    @patch("schedule_management.commands.status.datetime")
+    def test_get_current_and_next_events_formats_block_titles(
+        self, mock_datetime, mock_parse_time
+    ):
+        """Test status labels include block type and task title."""
+        mock_now = MagicMock()
+        mock_now.time.return_value = time(9, 30)
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.combine = datetime.combine
+
+        def mock_parse(time_str):
+            if time_str == "10:00":
+                return time(10, 0)
+            return time(0, 0)
+
+        mock_parse_time.side_effect = mock_parse
+
+        current, next_event, time_to_next = reminder.get_current_and_next_events(
+            {"10:00": {"block": "pomodoro", "title": "Finish proposal draft"}},
+            MagicMock(time_blocks={"pomodoro": 25}, time_points={}),
+        )
+
+        assert current is None
+        assert next_event == "pomodoro: Finish proposal draft at 10:00"
         assert time_to_next == "30m"
 
     @patch("schedule_management.commands.status.ScheduleConfig")
@@ -480,6 +577,158 @@ class TestMainFunction:
 
         assert result == 0
         mock_view_command.assert_called_once_with(mock_args)
+
+    @patch("schedule_management.reminder.sync_command")
+    @patch("argparse.ArgumentParser.parse_args")
+    def test_main_with_sync_command(self, mock_parse_args, mock_sync_command):
+        """Test main function with sync command."""
+        mock_args = MagicMock()
+        mock_args.command = "sync"
+        mock_args.func = mock_sync_command
+        mock_parse_args.return_value = mock_args
+        mock_sync_command.return_value = 0
+
+        result = reminder.main()
+
+        assert result == 0
+        mock_sync_command.assert_called_once_with(mock_args)
+
+
+class TestSyncCommand:
+    """Test the LLM-backed sync command."""
+
+    @patch("schedule_management.commands.sync._prompt_acceptance", return_value=True)
+    @patch("schedule_management.commands.sync.CONSOLE")
+    @patch("schedule_management.commands.sync.LLMClient")
+    @patch("schedule_management.commands.sync.ensure_llm_config")
+    @patch("schedule_management.commands.sync._load_ranked_tasks")
+    @patch("schedule_management.commands.sync._get_base_today_schedule")
+    def test_sync_command_accepts_preview_and_writes_overlay(
+        self,
+        mock_get_schedule,
+        mock_load_ranked_tasks,
+        mock_ensure_llm_config,
+        mock_llm_client_class,
+        mock_console,
+        _mock_prompt_acceptance,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.setenv(
+            "REMINDER_SYNCED_SCHEDULE_PATH", str(tmp_path / "synced_schedule.toml")
+        )
+
+        mock_console.status.return_value.__enter__.return_value = None
+        mock_console.status.return_value.__exit__.return_value = False
+        mock_get_schedule.return_value = (
+            {
+                "09:00": "pomodoro",
+                "10:00": "potato",
+                "12:00": "lunch",
+            },
+            "odd",
+            False,
+            MagicMock(time_blocks={"pomodoro": 25, "potato": 50}),
+        )
+        mock_load_ranked_tasks.return_value = [
+            {"description": "Finish release notes", "priority": 9},
+            {"description": "Review pull request", "priority": 7},
+        ]
+        mock_ensure_llm_config.return_value = MagicMock()
+        mock_llm_client = MagicMock()
+        mock_llm_client.generate.return_value = json.dumps(
+            {
+                "summary": "Urgent writing work goes first.",
+                "assignments": {
+                    "09:00": "Finish release notes",
+                    "10:00": "Review pull request",
+                },
+            }
+        )
+        mock_llm_client_class.return_value = mock_llm_client
+
+        result = reminder.sync_command(MagicMock())
+
+        assert result == 0
+        saved_text = (tmp_path / "synced_schedule.toml").read_text(encoding="utf-8")
+        assert 'title = "Finish release notes"' in saved_text
+        assert 'title = "Review pull request"' in saved_text
+
+    @patch("schedule_management.commands.sync._prompt_rejection_reason")
+    @patch("schedule_management.commands.sync._prompt_acceptance")
+    @patch("schedule_management.commands.sync.CONSOLE")
+    @patch("schedule_management.commands.sync.LLMClient")
+    @patch("schedule_management.commands.sync.ensure_llm_config")
+    @patch("schedule_management.commands.sync._load_ranked_tasks")
+    @patch("schedule_management.commands.sync._get_base_today_schedule")
+    def test_sync_command_retries_with_rejection_feedback(
+        self,
+        mock_get_schedule,
+        mock_load_ranked_tasks,
+        mock_ensure_llm_config,
+        mock_llm_client_class,
+        mock_console,
+        mock_prompt_acceptance,
+        mock_prompt_reason,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.setenv(
+            "REMINDER_SYNCED_SCHEDULE_PATH", str(tmp_path / "synced_schedule.toml")
+        )
+
+        mock_console.status.return_value.__enter__.return_value = None
+        mock_console.status.return_value.__exit__.return_value = False
+        mock_get_schedule.return_value = (
+            {
+                "09:00": "pomodoro",
+                "10:00": "pomodoro",
+            },
+            "odd",
+            False,
+            MagicMock(time_blocks={"pomodoro": 25}),
+        )
+        mock_load_ranked_tasks.return_value = [
+            {"description": "Ship urgent bug fix", "priority": 10},
+            {"description": "Clean backlog", "priority": 4},
+        ]
+        mock_ensure_llm_config.return_value = MagicMock()
+        mock_prompt_acceptance.side_effect = [False, True]
+        mock_prompt_reason.return_value = "Put the urgent bug fix first."
+
+        mock_llm_client = MagicMock()
+        mock_llm_client.generate.side_effect = [
+            json.dumps(
+                {
+                    "summary": "First draft.",
+                    "assignments": {
+                        "09:00": "Clean backlog",
+                        "10:00": "Ship urgent bug fix",
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "summary": "Adjusted to prioritize the urgent work.",
+                    "assignments": {
+                        "09:00": "Ship urgent bug fix",
+                        "10:00": "Clean backlog",
+                    },
+                }
+            ),
+        ]
+        mock_llm_client_class.return_value = mock_llm_client
+
+        result = reminder.sync_command(MagicMock())
+
+        assert result == 0
+        assert mock_llm_client.generate.call_count == 2
+        second_user_prompt = mock_llm_client.generate.call_args_list[1].args[1]
+        assert "Put the urgent bug fix first." in second_user_prompt
+
+        saved_text = (tmp_path / "synced_schedule.toml").read_text(encoding="utf-8")
+        assert 'title = "Ship urgent bug fix"' in saved_text
+        assert 'title = "Clean backlog"' in saved_text
 
 
 class TestTaskManagement:

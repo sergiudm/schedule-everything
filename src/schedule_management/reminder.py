@@ -35,6 +35,7 @@ from schedule_management.commands import (
     # Status commands
     status_command,
     view_command,
+    sync_command,
     # Service commands
     update_command,
     stop_command,
@@ -81,6 +82,7 @@ __all__ = [
     # Status commands
     "status_command",
     "view_command",
+    "sync_command",
     "get_today_schedule_for_status",
     "get_current_and_next_events",
     # Service commands

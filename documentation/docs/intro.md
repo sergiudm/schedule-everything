@@ -6,6 +6,11 @@ sidebar_position: 1
 
 **Schedule Everything** (晨钟暮鼓) is a robust, developer-centric scheduling tool designed to foster healthy habits, deep work sessions, and consistent routines through persistent local reminders.
 
+The AI setup flow is profile-first: it reads or builds `profile.md` alongside
+your schedule files, asks follow-up questions until that profile is usable for
+planning, and then generates a schedule that defaults toward healthier timing
+patterns when the user has not specified something explicitly.
+
 ## Demo
 
 <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
@@ -22,6 +27,29 @@ We believe that your schedule should be:
 *   **Versioned**: Treated like code, with history and diffs.
 *   **Distraction-free**: Running silently in the background, alerting you only when necessary.
 *   **Programmable**: Configured via simple text files, amenable to automation and scripting.
+
+## Evidence-Informed Defaults
+
+When `reminder setup` has to fill gaps, it uses general, population-level
+defaults informed by sleep, movement, sedentary-behavior, and light-exposure
+research:
+
+*   protect enough sleep opportunity and avoid systematically compressing sleep
+*   prefer regular sleep timing over large weekday/weekend swings
+*   distribute weekly physical activity instead of clustering it into rare bursts
+*   insert movement or recovery breaks during long desk-based work stretches
+*   when the user has flexibility, place harder cognitive work and daylight exposure earlier in the day
+
+These are heuristics rather than medical advice. Real user constraints, medical
+instructions, disability needs, or shift-work realities should take priority.
+
+Selected sources:
+
+*   Watson et al., *Recommended Amount of Sleep for a Healthy Adult* ([AASM PDF](https://aasm.org/resources/pdf/pressroom/adult-sleep-duration-consensus.pdf))
+*   Sletten et al., *The importance of sleep regularity* ([DOI](https://doi.org/10.1016/j.sleh.2023.07.016))
+*   WHO, *Physical activity recommendations for adults* ([WHO](https://www.who.int/initiatives/behealthy/physical-activity))
+*   Albulescu et al., *"Give me a break!"* ([PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0272460))
+*   Figueiro et al., *The impact of daytime light exposures on sleep and mood in office workers* ([DOI](https://doi.org/10.1016/j.sleh.2017.03.005))
 
 ## Core Capabilities
 
