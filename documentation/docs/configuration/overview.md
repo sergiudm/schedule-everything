@@ -20,7 +20,7 @@ config/
     ├── tasks.json         # Auto-generated task database (do not edit manually)
     ├── tasks.log          # Task history log
     ├── record.json        # Habit completion records
-    └── procrastinate.json # Deferred urgent tasks
+    └── procrastinate.json # Deferred urgent tasks with first defer date
 ```
 
 ## The Core Files

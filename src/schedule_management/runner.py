@@ -45,7 +45,9 @@ from schedule_management.data import (
     load_tasks,
     save_tasks,
     load_procrastinate_list,
+    load_procrastinate_records,
     save_procrastinate_list,
+    get_procrastinate_age_days,
     log_task_action,
 )
 from schedule_management.popups import (
@@ -244,6 +246,17 @@ class ScheduleRunner:
                 urgent_tasks.append(task)
         return urgent_tasks
 
+    @staticmethod
+    def _format_procrastination_age(age_days: int | None) -> str | None:
+        """Format a procrastination age label for prompts and task displays."""
+        if age_days is None:
+            return None
+        if age_days == 0:
+            return "Deferred today"
+        if age_days == 1:
+            return "Procrastinated for 1 day"
+        return f"Procrastinated for {age_days} days"
+
     def _prompt_urgent_tasks(self) -> None:
         """Ask for completion of urgent tasks one-by-one and sync procrastinate list."""
         if not hasattr(self, "_urgent_task_prompt_lock"):
@@ -271,21 +284,32 @@ class ScheduleRunner:
             )
 
             procrastinate_list = load_procrastinate_list()
+            procrastinate_records = load_procrastinate_records()
             tasks_changed = False
             procrastinate_changed = False
             total_tasks = len(urgent_tasks)
+            today = datetime.now().date()
 
             for index, task in enumerate(urgent_tasks, 1):
                 description = str(task.get("description", "未知任务")).strip()
                 if not description:
                     description = "未知任务"
                 priority = self._task_priority(task)
-
-                question = (
-                    "Did you complete this task?\n\n"
-                    f"{description}\n"
-                    f"Priority: {priority}"
+                age_days = get_procrastinate_age_days(
+                    procrastinate_records.get(description, {}).get("since"),
+                    today=today,
                 )
+                age_label = self._format_procrastination_age(age_days)
+
+                question_lines = [
+                    "Did you complete this task?",
+                    "",
+                    description,
+                    f"Priority: {priority}",
+                ]
+                if age_label:
+                    question_lines.append(age_label)
+                question = "\n".join(question_lines)
                 title = f"Urgent Task ({index}/{total_tasks})"
 
                 result = ask_yes_no(question, title)

@@ -17,6 +17,7 @@ Example Usage (via CLI):
 """
 
 import sys
+from datetime import datetime
 
 try:
     from rich import box
@@ -31,7 +32,9 @@ from schedule_management.data import (
     load_tasks,
     save_tasks,
     load_procrastinate_list,
+    load_procrastinate_records,
     save_procrastinate_list,
+    get_procrastinate_age_days,
     log_task_action,
 )
 
@@ -246,6 +249,17 @@ def delete_task(args) -> int:
 # =============================================================================
 
 
+def _format_procrastination_suffix(age_days: int | None) -> str:
+    """Format procrastination age for the task list."""
+    if age_days is None:
+        return ""
+    if age_days == 0:
+        return " (deferred today)"
+    if age_days == 1:
+        return " (1 day)"
+    return f" ({age_days} days)"
+
+
 def show_tasks(args) -> int:
     """
     Handle the 'ls' command - display all tasks in a formatted table.
@@ -272,7 +286,9 @@ def show_tasks(args) -> int:
         ╰────┴──────────────────┴──────────────╯
     """
     tasks = load_tasks()
-    procrastinate_list = load_procrastinate_list()
+    procrastinate_records = load_procrastinate_records()
+    procrastinate_list = set(procrastinate_records)
+    today = datetime.now().date()
 
     console = Console()
 
@@ -313,7 +329,14 @@ def show_tasks(args) -> int:
 
         prio_visual = f"[{color}]{filled}[dim]{empty}[/dim] ({priority})[/{color}]"
         if description in procrastinate_list:
-            description_text = Text(f"⏳ {description}", style="italic dim")
+            age_days = get_procrastinate_age_days(
+                procrastinate_records.get(description, {}).get("since"),
+                today=today,
+            )
+            description_text = Text(
+                f"⏳ {description}{_format_procrastination_suffix(age_days)}",
+                style="italic dim",
+            )
         else:
             description_text = Text(description)
 

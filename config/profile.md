@@ -3,8 +3,8 @@
 - Timezone: Asia/Shanghai
 - Wake time: 08:30
 - Sleep time: 0:30
-- Typical lunch/dinner: 12:00 / 18:30
-- Work style: research-focused, with coursework, reading, coding, meetings, and TA/admin tasks
+- Typical lunch/dinner: 12:20 / 18:30
+- Work style: research-focused, with coursework, reading, coding, meetings
 
 # Main Goals
 - Protect uninterrupted research time on weekdays

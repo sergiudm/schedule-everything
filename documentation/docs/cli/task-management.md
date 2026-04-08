@@ -87,15 +87,24 @@ rmd ls
 
 ### Procrastinate Tag
 
-When urgent reminders ask about high-priority tasks (priority 8-10) during a time point reminder, tasks you mark as **not completed** are recorded in a procrastinate list file:
+At each configured `daily_urgent` / `daily_urgency` time, the reminder service opens a task-by-task popup for high-priority tasks (priority 8-10). For each task:
+
+- Click `Yes` to mark it complete and remove it from `tasks.json`
+- Click `No` to keep it and mark it as procrastinated
+- Click `Stop` to leave the remaining urgent tasks unchanged
+
+Tasks you mark as **not completed** are recorded in a procrastinate list file:
 
 - `tasks/procrastinate.json` under your `REMINDER_CONFIG_DIR`
-- Entries are stored as task descriptions
+- Each entry stores the task description and the first day it was deferred
 
 In `rmd ls`, procrastinated tasks are shown with:
 
 - A `⏳` prefix
+- A procrastination age label such as `(deferred today)` or `(3 days)`
 - A dim/italic text style
+
+In later urgent-task popups, the reminder also shows how many days the task has already been procrastinated.
 
 When a procrastinated task is complete (`rmd rm`), it is automatically removed from `tasks/procrastinate.json`.
 

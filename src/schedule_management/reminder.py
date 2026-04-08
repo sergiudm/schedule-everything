@@ -33,6 +33,8 @@ from schedule_management.commands import (
     show_deadlines,
     # Habit commands
     track_habits,
+    # Completion command
+    completion_command,
     # Status commands
     status_command,
     view_command,
@@ -80,6 +82,8 @@ __all__ = [
     "show_deadlines",
     # Habit commands
     "track_habits",
+    # Completion command
+    "completion_command",
     # Status commands
     "status_command",
     "view_command",

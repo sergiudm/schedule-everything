@@ -20,7 +20,7 @@ Example Usage:
 
 import json
 import tomllib
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -88,16 +88,57 @@ def load_procrastinate_list() -> set[str]:
         Set of task descriptions currently marked as procrastinated.
         Returns an empty set if file is missing/invalid.
     """
+    return set(load_procrastinate_records())
+
+
+def load_procrastinate_records() -> dict[str, dict[str, str]]:
+    """
+    Load procrastinated task metadata from JSON.
+
+    Supports both the legacy list-of-strings format and the newer
+    record format that stores the first procrastination date.
+
+    Returns:
+        Mapping of task description to normalized record metadata.
+    """
     try:
         with open(PROCRASTINATE_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        return set()
+        return {}
 
     if not isinstance(data, list):
-        return set()
+        return {}
 
-    return {item for item in data if isinstance(item, str) and item.strip()}
+    records: dict[str, dict[str, str]] = {}
+    for item in data:
+        description = ""
+        since = None
+
+        if isinstance(item, str):
+            description = item.strip()
+        elif isinstance(item, dict):
+            raw_description = item.get("description")
+            if isinstance(raw_description, str):
+                description = raw_description.strip()
+
+            raw_since = item.get("since")
+            if isinstance(raw_since, str) and raw_since.strip():
+                try:
+                    date.fromisoformat(raw_since.strip())
+                    since = raw_since.strip()
+                except ValueError:
+                    since = None
+
+        if not description:
+            continue
+
+        record = {"description": description}
+        if since:
+            record["since"] = since
+        records[description] = record
+
+    return records
 
 
 def save_procrastinate_list(descriptions: set[str] | list[str]) -> None:
@@ -110,7 +151,9 @@ def save_procrastinate_list(descriptions: set[str] | list[str]) -> None:
     procrastinate_path = Path(PROCRASTINATE_PATH)
     procrastinate_path.parent.mkdir(parents=True, exist_ok=True)
 
-    normalized = sorted(
+    existing_records = load_procrastinate_records()
+    today_str = datetime.now().date().isoformat()
+    normalized_descriptions = sorted(
         {
             item.strip()
             for item in descriptions
@@ -118,8 +161,41 @@ def save_procrastinate_list(descriptions: set[str] | list[str]) -> None:
         }
     )
 
+    serialized_records = []
+    for description in normalized_descriptions:
+        record = {"description": description}
+        since = existing_records.get(description, {}).get("since", today_str)
+        if since:
+            record["since"] = since
+        serialized_records.append(record)
+
     with open(procrastinate_path, "w", encoding="utf-8") as f:
-        json.dump(normalized, f, indent=2, ensure_ascii=False)
+        json.dump(serialized_records, f, indent=2, ensure_ascii=False)
+
+
+def get_procrastinate_age_days(
+    since: str | None, today: date | None = None
+) -> int | None:
+    """
+    Compute how many full days have passed since a task was first deferred.
+
+    Args:
+        since: ISO date string representing the first procrastination date.
+        today: Optional override for deterministic tests.
+
+    Returns:
+        Number of days elapsed, or None when the date is unavailable/invalid.
+    """
+    if not since:
+        return None
+
+    try:
+        since_date = date.fromisoformat(since)
+    except ValueError:
+        return None
+
+    current_date = today or datetime.now().date()
+    return max((current_date - since_date).days, 0)
 
 
 # =============================================================================

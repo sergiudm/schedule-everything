@@ -370,6 +370,7 @@ class TestUrgentTasksProcrastinate:
         self, tmp_path, monkeypatch
     ):
         import json
+        from datetime import datetime
         import threading
 
         import schedule_management.runner as runner_module
@@ -389,16 +390,32 @@ class TestUrgentTasksProcrastinate:
             ),
             encoding="utf-8",
         )
-        procrastinate_path.write_text(json.dumps(["Task B"]), encoding="utf-8")
+        procrastinate_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "description": "Task B",
+                        "since": "2026-04-06",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
 
         monkeypatch.setattr(data_loaders, "TASKS_PATH", str(tasks_path))
         monkeypatch.setattr(data_loaders, "PROCRASTINATE_PATH", str(procrastinate_path))
 
         answers = iter([False, True])
+        prompted_questions = []
+
+        def mock_ask_yes_no(question, title):
+            prompted_questions.append((question, title))
+            return next(answers)
+
         monkeypatch.setattr(
             runner_module,
             "ask_yes_no",
-            lambda question, title: next(answers),
+            mock_ask_yes_no,
         )
 
         logged_actions = []
@@ -411,7 +428,9 @@ class TestUrgentTasksProcrastinate:
         runner = runner_module.ScheduleRunner.__new__(runner_module.ScheduleRunner)
         runner._urgent_task_prompt_lock = threading.Lock()
 
-        runner._prompt_urgent_tasks()
+        with patch.object(runner_module, "datetime") as mock_datetime:
+            mock_datetime.now.return_value = datetime(2026, 4, 8, 9, 0)
+            runner._prompt_urgent_tasks()
 
         updated_tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
         assert [task["description"] for task in updated_tasks] == [
@@ -423,7 +442,11 @@ class TestUrgentTasksProcrastinate:
         procrastinate_entries = json.loads(
             procrastinate_path.read_text(encoding="utf-8")
         )
-        assert procrastinate_entries == ["Task A"]
+        assert procrastinate_entries == [
+            {"description": "Task A", "since": "2026-04-08"}
+        ]
+        assert len(prompted_questions) == 2
+        assert prompted_questions[1][0].endswith("Procrastinated for 2 days")
         assert logged_actions == [("deleted", "Task B")]
 
     def test_prompt_urgent_tasks_stops_on_cancel(self, tmp_path, monkeypatch):
@@ -473,6 +496,43 @@ class TestUrgentTasksProcrastinate:
         assert updated_tasks == initial_tasks
         assert updated_procrastinate == []
         assert logged_actions == []
+
+    def test_load_procrastinate_records_supports_legacy_and_record_entries(
+        self, tmp_path, monkeypatch
+    ):
+        import json
+
+        import schedule_management.data.loaders as data_loaders
+
+        procrastinate_path = tmp_path / "procrastinate.json"
+        procrastinate_path.write_text(
+            json.dumps(
+                [
+                    "Legacy Task",
+                    {"description": "Tracked Task", "since": "2026-04-05"},
+                    {"description": "Broken Date", "since": "not-a-date"},
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(data_loaders, "PROCRASTINATE_PATH", str(procrastinate_path))
+
+        records = data_loaders.load_procrastinate_records()
+
+        assert records == {
+            "Legacy Task": {"description": "Legacy Task"},
+            "Tracked Task": {
+                "description": "Tracked Task",
+                "since": "2026-04-05",
+            },
+            "Broken Date": {"description": "Broken Date"},
+        }
+        assert data_loaders.load_procrastinate_list() == {
+            "Legacy Task",
+            "Tracked Task",
+            "Broken Date",
+        }
 
 
 class TestUrgentDeadlines:

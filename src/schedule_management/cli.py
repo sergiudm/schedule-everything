@@ -10,6 +10,7 @@ Architecture:
     ├── commands/tasks.py     - add, rm, ls commands
     ├── commands/deadlines.py - ddl add, rm, show commands
     ├── commands/habits.py    - track command
+    ├── commands/completion.py - shell completion script generation
     ├── commands/status.py    - status, view commands
     ├── commands/sync.py      - sync command
     ├── commands/service.py   - update, stop, report commands
@@ -27,6 +28,7 @@ Example Usage:
     $ rmd ddl add hw 12.15 # Add deadline for Dec 15
     $ rmd status           # Show current status
     $ rmd status -v        # Show verbose schedule
+    $ rmd completion zsh   # Print zsh completion script
 
 Module Dependencies:
     - schedule_management.commands.tasks
@@ -53,6 +55,10 @@ from schedule_management.commands.deadlines import (
     show_deadlines,
 )
 from schedule_management.commands.habits import track_habits
+from schedule_management.commands.completion import (
+    SUPPORTED_COMPLETION_SHELLS,
+    completion_command,
+)
 from schedule_management.commands.status import status_command, view_command
 from schedule_management.commands.sync import sync_command
 from schedule_management.commands.service import (
@@ -92,6 +98,7 @@ def create_parser() -> argparse.ArgumentParser:
         ├── stop                        - Stop reminder service
         ├── report <type>               - Generate report
         ├── edit <file>                 - Edit config file
+        ├── completion [shell]          - Print shell completion script
         └── setup                       - Interactive schedule setup
     """
     # Resolve config directory at runtime so test fixtures and env overrides apply.
@@ -339,6 +346,24 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     setup_parser.set_defaults(func=setup_command)
+
+    # completion - Print shell completion script
+    completion_parser = subparsers.add_parser(
+        "completion",
+        help="Print a shell completion script for bash, zsh, or tcsh",
+        description="Generate a shell completion script for the rmd CLI.",
+    )
+    completion_parser.add_argument(
+        "shell",
+        choices=SUPPORTED_COMPLETION_SHELLS,
+        nargs="?",
+        default="bash",
+        help="Shell type to target (default: bash)",
+    )
+    completion_parser.set_defaults(
+        func=completion_command,
+        parser_factory=create_parser,
+    )
 
     return parser
 
