@@ -129,7 +129,7 @@ class ScheduleRunner:
     # ALARM HANDLING
     # =========================================================================
 
-    def _trigger_alarm(self, title: str, message: str, sound: str = None) -> None:
+    def _trigger_alarm(self, title: str, message: str, sound: str | None = None) -> None:
         """
         Trigger an alarm notification in a background thread.
 

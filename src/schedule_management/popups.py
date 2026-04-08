@@ -19,7 +19,7 @@ Example Usage:
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from schedule_management import (
     SETTINGS_PATH,
@@ -242,7 +242,7 @@ def _save_habit_records(records: list[dict[str, Any]]) -> None:
         json.dump(records, fp, indent=2, ensure_ascii=False)
 
 
-def show_habit_tracking_popup(now: Optional[datetime] = None) -> bool:
+def show_habit_tracking_popup(now: datetime | None = None) -> bool:
     """
     Prompt for today's habits one by one and save the record.
 

@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 import re
 import tomllib
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from schedule_management.commands.setup_agent.console import CONSOLE
 from schedule_management.commands.setup_agent.models import AgentTurn, SourceAttachment

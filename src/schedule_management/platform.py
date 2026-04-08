@@ -21,7 +21,6 @@ Example Usage:
 
 import subprocess
 import platform as platform_module
-from typing import Optional
 
 
 # =============================================================================
@@ -215,7 +214,7 @@ def show_dialog(message: str) -> str:
 # =============================================================================
 
 
-def choose_multiple(options: list[str], title: str, prompt: str) -> Optional[list[str]]:
+def choose_multiple(options: list[str], title: str, prompt: str) -> list[str] | None:
     """
     Prompt the user with a GUI multi-select list.
 
@@ -320,7 +319,7 @@ return choice as text
 # =============================================================================
 
 
-def ask_yes_no_macos(question: str, title: str) -> Optional[bool]:
+def ask_yes_no_macos(question: str, title: str) -> bool | None:
     """
     Show a Yes/No dialog on macOS using AppleScript.
 
@@ -361,7 +360,7 @@ display dialog questionText with title titleText buttons {{"Stop", "No", "Yes"}}
     return None
 
 
-def ask_yes_no(question: str, title: str = "Confirmation") -> Optional[bool]:
+def ask_yes_no(question: str, title: str = "Confirmation") -> bool | None:
     """
     Ask a Yes/No question using a platform-specific dialog.
 

@@ -1,5 +1,9 @@
 # Schedule Everything
 
+<p align="center">
+  <img src="assets/logo.png" alt="Schedule Everything logo" width="520">
+</p>
+
 [![Logic Tests](https://github.com/sergiudm/schedule-everything/actions/workflows/logic-tests.yml/badge.svg)](https://github.com/sergiudm/schedule-everything/actions/workflows/logic-tests.yml)
 [![CLI Tests](https://github.com/sergiudm/schedule-everything/actions/workflows/cli-tests.yml/badge.svg)](https://github.com/sergiudm/schedule-everything/actions/workflows/cli-tests.yml)
 [![PyPI version](https://badge.fury.io/py/schedule-management.svg)](https://pypi.org/project/schedule-management)
@@ -8,14 +12,27 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule-everything)
 [中文版本](README_zh.md)
 
-AI-assisted time management for people who want a schedule that is easy to use,
-local-first, and grounded in healthier defaults instead of pure calendar spam.
+AI-assisted time management for people who want a schedule that is easy to
+adopt, local-first, and grounded in healthier defaults instead of pure
+calendar spam.
 
-`rmd setup` is profile-first: it creates or refines `profile.md`, asks
-follow-up questions, summarizes the plan, and only then writes the schedule.
-`rmd sync` takes your current tasks and turns today's pomodoro/potato
-blocks into concrete work items with a preview-before-save loop.
-`rmd` is now the primary CLI name; `reminder` is still shipped as a legacy alias.
+`rmd setup` is profile-first: it creates or refines `profile.md` in your
+config directory, asks follow-up questions, summarizes the plan, and only then
+writes the schedule. `rmd sync` takes your current tasks and turns today's
+`pomodoro` and `potato` blocks into concrete work items with a
+preview-before-save loop. `rmd` is the primary CLI name; `reminder` remains as
+a compatibility alias.
+
+## Workflow
+
+<p align="center">
+  <img
+    src="assets/workflow.png"
+    alt="Workflow for building a schedule with rmd setup, then assigning daily tasks with rmd sync"
+    width="860"
+  >
+</p>
+
 
 ## Why This Exists
 
@@ -33,8 +50,9 @@ defaults that try to protect:
 - short recovery breaks during long desk-bound stretches
 - earlier placement of demanding work when daylight and flexibility allow
 
-These are heuristics, not medical advice. Real constraints, clinician guidance,
-shift work, disability needs, and caregiving realities should override them.
+These are heuristics, not medical advice. Real constraints, clinician
+guidance, shift work, disability needs, and caregiving realities should
+override them.
 
 Selected sources:
 
@@ -48,7 +66,7 @@ Selected sources:
 
 - `profile.md` stores durable context about how you work, not just what time blocks exist.
 - `rmd setup` asks normal-language questions instead of forcing you to hand-author a calendar first.
-- `rmd sync` converts `tasks.json` into titled focus blocks and asks for approval before writing anything.
+- `rmd sync` converts `tasks/tasks.json` into titled focus blocks and asks for approval before writing anything.
 - The system stays local: TOML files, JSON task data, and a small CLI instead of a cloud dashboard.
 - You can still inspect and edit everything manually because the generated files are plain text.
 
@@ -63,17 +81,24 @@ cd schedule-everything
 ./third_party/opencode/install --no-modify-path
 ```
 
-### 2. Build Your Schedule with AI
+`./install.sh` sets up the local environment and config scaffold. OpenCode is
+required for the AI-assisted commands such as `rmd setup` and `rmd sync`.
+
+### 2. Build Your Schedule with One Command!
 
 ```bash
 rmd setup
 ```
 
-This stores model settings in `~/.schedule_management/llm.toml`, builds or
-updates `profile.md`, and generates your schedule only after showing you a
-summary first.
+After a short conversation about your workday, habits, and constraints, the
+tool stores model settings in `~/.schedule_management/llm.toml`, builds or
+updates `profile.md`, shows a summary for confirmation, and only then writes
+your schedule files.
 
 ### 3. Add Tasks and Sync Today
+
+Plans drift. When that happens, add tasks and sync the current day instead of
+rewriting the whole weekly schedule.
 
 ```bash
 rmd add "Finish proposal draft" 9
@@ -96,6 +121,8 @@ rmd update
 
 When a sync overlay exists for today, `rmd status` shows the block type and
 the specific assigned event, for example `pomodoro: Finish proposal draft`.
+If your config directory is also a git repo, `rmd update` pulls the latest
+schedule changes from that remote.
 
 ## Core Commands
 

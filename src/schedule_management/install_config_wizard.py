@@ -7,10 +7,11 @@ import json
 import shutil
 import sys
 import tomllib
+from collections.abc import Callable
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 InputFunc = Callable[[str], str]

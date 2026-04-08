@@ -4,7 +4,6 @@ import tomllib
 import calendar
 from datetime import datetime, timedelta, date, time
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
 
 try:
     import matplotlib.pyplot as plt
@@ -67,8 +66,8 @@ class ReportGenerator:
         return start, end
 
     def _filter_tasks(
-        self, task_log: List[Dict], start_date: date, end_date: date
-    ) -> List[Dict]:
+        self, task_log: list[dict], start_date: date, end_date: date
+    ) -> list[dict]:
         """Filter completed (deleted) tasks within the date range."""
         completed_tasks = []
         # Convert dates to datetime for comparison (start of day to end of day)
@@ -97,8 +96,8 @@ class ReportGenerator:
         return completed_tasks
 
     def _filter_habits(
-        self, habit_records: List[Dict], start_date: date, end_date: date
-    ) -> Dict[str, Dict]:
+        self, habit_records: list[dict], start_date: date, end_date: date
+    ) -> dict[str, dict]:
         """
         Filter habit records within the date range.
         Returns a dict mapping date string (YYYY-MM-DD) to the record for that day.
@@ -123,7 +122,7 @@ class ReportGenerator:
         return self.reports_path / f"monthly_report_{month_start:%Y%m}.pdf"
 
     @staticmethod
-    def _parse_weekly_schedule(schedule_value: str) -> Tuple[int, time]:
+    def _parse_weekly_schedule(schedule_value: str) -> tuple[int, time]:
         if not schedule_value:
             raise ValueError("Weekly schedule value is empty")
 
@@ -146,7 +145,7 @@ class ReportGenerator:
         return weekday_idx, schedule_time
 
     @staticmethod
-    def _parse_monthly_schedule(schedule_value: str) -> Tuple[int, time]:
+    def _parse_monthly_schedule(schedule_value: str) -> tuple[int, time]:
         if not schedule_value:
             raise ValueError("Monthly schedule value is empty")
 
@@ -204,12 +203,12 @@ class ReportGenerator:
 
     def generate_due_reports(
         self,
-        task_schedule_config: Dict,
-        task_log: List[Dict],
-        habit_records: List[Dict],
-        habits_config: Dict,
-        now: Optional[datetime] = None,
-    ) -> Dict[str, Path]:
+        task_schedule_config: dict,
+        task_log: list[dict],
+        habit_records: list[dict],
+        habits_config: dict,
+        now: datetime | None = None,
+    ) -> dict[str, Path]:
         """Generate weekly/monthly reports that are due per settings.toml."""
 
         if not MATPLOTLIB_AVAILABLE:
@@ -219,7 +218,7 @@ class ReportGenerator:
             return {}
 
         now = now or datetime.now()
-        generated: Dict[str, Path] = {}
+        generated: dict[str, Path] = {}
         schedule = task_schedule_config or {}
 
         weekly_value = schedule.get("weekly_review")
@@ -267,10 +266,10 @@ class ReportGenerator:
 
     def generate_weekly_report(
         self,
-        task_log: List[Dict],
-        habit_records: List[Dict],
-        habits_config: Dict,
-        target_date: date = None,
+        task_log: list[dict],
+        habit_records: list[dict],
+        habits_config: dict,
+        target_date: date | None = None,
     ):
         if not MATPLOTLIB_AVAILABLE:
             print(
@@ -309,10 +308,10 @@ class ReportGenerator:
 
     def generate_monthly_report(
         self,
-        task_log: List[Dict],
-        habit_records: List[Dict],
-        habits_config: Dict,
-        target_date: date = None,
+        task_log: list[dict],
+        habit_records: list[dict],
+        habits_config: dict,
+        target_date: date | None = None,
     ):
         if not MATPLOTLIB_AVAILABLE:
             print(
@@ -627,12 +626,12 @@ def _expand_path(raw_value: str, base_dir: Path) -> Path:
     return (base_dir / expanded).resolve()
 
 
-def _load_settings(settings_file: Path) -> Dict:
+def _load_settings(settings_file: Path) -> dict:
     with open(settings_file, "rb") as fp:
         return tomllib.load(fp)
 
 
-def _load_json_file(path: Path) -> List[Dict]:
+def _load_json_file(path: Path) -> list[dict]:
     if not path.exists():
         print(f"⚠️  Data file not found: {path}")
         return []
@@ -645,7 +644,7 @@ def _load_json_file(path: Path) -> List[Dict]:
         return []
 
 
-def _load_habits_config(habits_path: Path) -> Dict[str, str]:
+def _load_habits_config(habits_path: Path) -> dict[str, str]:
     if not habits_path.exists():
         print(f"⚠️  Habits configuration not found: {habits_path}")
         return {}
@@ -657,7 +656,7 @@ def _load_habits_config(habits_path: Path) -> Dict[str, str]:
         return {}
 
     habits_section = data.get("habits", data)
-    habits: Dict[str, str] = {}
+    habits: dict[str, str] = {}
     for key, value in habits_section.items():
         if isinstance(value, int):
             habits[str(value)] = str(key)
@@ -667,8 +666,8 @@ def _load_habits_config(habits_path: Path) -> Dict[str, str]:
 
 
 def auto_generate_reports(
-    settings_path: Optional[str] = SETTINGS_PATH, now: Optional[datetime] = None
-) -> Dict[str, Path]:
+    settings_path: str | None = SETTINGS_PATH, now: datetime | None = None
+) -> dict[str, Path]:
     """Auto-generate weekly/monthly reports using paths and schedule from settings.toml."""
 
     settings_data = _load_settings(settings_path)
