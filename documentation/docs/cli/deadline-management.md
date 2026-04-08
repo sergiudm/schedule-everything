@@ -12,7 +12,7 @@ Add a new deadline or update an existing one.
 
 ### Syntax
 ```bash
-reminder ddl add "EVENT_NAME" "M.D"
+rmd ddl add "EVENT_NAME" "M.D"
 ```
 
 ### Parameters
@@ -24,16 +24,16 @@ reminder ddl add "EVENT_NAME" "M.D"
 ### Examples
 ```bash
 # Add basic deadline
-reminder ddl add "homework2" "7.4"
+rmd ddl add "homework2" "7.4"
 
 # Add deadline with full date
-reminder ddl add "project submission" "12.25"
+rmd ddl add "project submission" "12.25"
 
 # Add deadline for next year (if date already passed this year)
-reminder ddl add "exam" "3.15"
+rmd ddl add "exam" "3.15"
 
 # Update existing deadline
-reminder ddl add "homework2" "7.10"
+rmd ddl add "homework2" "7.10"
 ```
 
 ### Smart Date Handling
@@ -44,10 +44,10 @@ The system automatically determines the correct year:
 Example on November 22, 2025:
 ```bash
 # These use 2025 (not yet passed)
-reminder ddl add "final exam" "12.15"
+rmd ddl add "final exam" "12.15"
 
 # These use 2026 (already passed)
-reminder ddl add "spring project" "3.20"
+rmd ddl add "spring project" "3.20"
 ```
 
 ### Duplicate Handling
@@ -55,10 +55,10 @@ If you add a deadline with the same event name as an existing one, it updates th
 
 ```bash
 # Initial deadline
-reminder ddl add "homework2" "7.4"
+rmd ddl add "homework2" "7.4"
 
 # Update date (no duplicate created)
-reminder ddl add "homework2" "7.10"
+rmd ddl add "homework2" "7.10"
 ```
 
 ### Output
@@ -77,7 +77,7 @@ Remove one or more deadline events.
 
 ### Syntax
 ```bash
-reminder ddl rm "EVENT_NAME" [EVENT_NAME...]
+rmd ddl rm "EVENT_NAME" [EVENT_NAME...]
 ```
 
 ### Parameters
@@ -88,13 +88,13 @@ reminder ddl rm "EVENT_NAME" [EVENT_NAME...]
 ### Examples
 ```bash
 # Remove single deadline
-reminder ddl rm "homework2"
+rmd ddl rm "homework2"
 
 # Remove multiple deadlines at once
-reminder ddl rm "homework2" "project submission" "exam"
+rmd ddl rm "homework2" "project submission" "exam"
 
 # Remove deadline with spaces in name
-reminder ddl rm "final project presentation"
+rmd ddl rm "final project presentation"
 ```
 
 ### Output
@@ -108,13 +108,13 @@ List all deadlines sorted by date with urgency indicators.
 
 ### Syntax
 ```bash
-reminder ddl
+rmd ddl
 ```
 
 ### Examples
 ```bash
 # Basic deadline list
-reminder ddl
+rmd ddl
 ```
 
 ### Urgency Status Legend

@@ -22,15 +22,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-test.txt
-        pip install -e .
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
 
     - name: Run logic tests with pytest
       run: |
-        pytest tests/test_reminder_logic.py tests/test_report_generation.py -v --cov=schedule_management --cov-report=xml --cov-report=term-missing
+        uv run --with pytest-cov pytest tests/test_reminder_logic.py tests/test_report_generation.py -v --cov=schedule_management --cov-report=xml --cov-report=term-missing
 
     - name: Upload coverage reports
       if: matrix.python-version == '3.12'

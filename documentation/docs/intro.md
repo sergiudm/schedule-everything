@@ -30,7 +30,7 @@ We believe that your schedule should be:
 
 ## Evidence-Informed Defaults
 
-When `reminder setup` has to fill gaps, it uses general, population-level
+When `rmd setup` has to fill gaps, it uses general, population-level
 defaults informed by sleep, movement, sedentary-behavior, and light-exposure
 research:
 

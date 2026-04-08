@@ -1,4 +1,4 @@
-"""Compatibility facade for the `reminder setup` command.
+"""Compatibility facade for the `rmd setup` command.
 
 The implementation lives in the `setup_agent` subpackage. This module keeps
 existing import paths stable for CLI wiring and tests.
@@ -34,7 +34,7 @@ CONSOLE = _workflow.CONSOLE
 
 
 def setup_command(args) -> int:
-    """Entry point for the `reminder setup` command."""
+    """Entry point for the `rmd setup` command."""
     del args  # command has no CLI flags yet
 
     try:

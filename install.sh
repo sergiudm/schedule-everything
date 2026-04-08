@@ -288,10 +288,10 @@ install_dependencies() {
 
     # Install editable package (supports src layout)
     uv pip install -e .
-    if ! command -v reminder &> /dev/null; then
-        log_warning "CLI 'reminder' not in PATH, but should work via venv"
+    if ! command -v rmd &> /dev/null; then
+        log_warning "CLI 'rmd' not in PATH, but should work via venv"
     else
-        log_success "CLI tool 'reminder' is available"
+        log_success "CLI tool 'rmd' is available"
     fi
 
     cd - > /dev/null
@@ -464,15 +464,23 @@ cd "$INSTALL_DIR/src/schedule_management"
 exec python reminder_macos.py --visualize
 EOF
 
-    # CLI wrapper (common)
+    # Primary CLI wrapper (common)
+    cat > "$INSTALL_DIR/rmd" << EOF
+#!/bin/bash
+export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
+source "$INSTALL_DIR/.venv/bin/activate"
+exec rmd "\$@"
+EOF
+
+    # Legacy compatibility wrapper
     cat > "$INSTALL_DIR/reminder" << EOF
 #!/bin/bash
 export REMINDER_CONFIG_DIR="$INSTALL_CONFIG_DIR"
 source "$INSTALL_DIR/.venv/bin/activate"
-exec reminder "\$@"
+exec rmd "\$@"
 EOF
 
-    chmod +x "$INSTALL_DIR"/*.sh "$INSTALL_DIR/reminder"
+    chmod +x "$INSTALL_DIR"/*.sh "$INSTALL_DIR/rmd" "$INSTALL_DIR/reminder"
     log_success "Convenience scripts created"
 }
 
@@ -490,10 +498,10 @@ test_installation() {
         exit 1
     fi
 
-    if reminder --help &>/dev/null; then
-        log_success "CLI 'reminder' works correctly"
+    if rmd --help &>/dev/null; then
+        log_success "CLI 'rmd' works correctly"
     else
-        log_error "CLI 'reminder' failed"
+        log_error "CLI 'rmd' failed"
         exit 1
     fi
 

@@ -8,12 +8,12 @@ Schedule Everything provides a comprehensive command-line interface (CLI) for ma
 
 ## Accessing the CLI
 
-After installation, the `reminder` command should be available in your terminal. If not, ensure you've added the following to your shell profile:
+After installation, the `rmd` command should be available in your terminal. `reminder` still works as a compatibility alias. If `rmd` is not on your PATH, ensure you've added the following to your shell profile:
 
 ```bash
 export PATH="$HOME/schedule_management:$PATH"
 export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-alias reminder="$HOME/schedule_management/reminder"
+alias rmd="$HOME/schedule_management/rmd"
 ```
 
 Then reload your shell:
@@ -27,36 +27,36 @@ The CLI commands are organized into these main categories:
 
 ### Schedule Management
 Commands for managing your schedule and service:
-- [`reminder update`](schedule-management.md#update) - Reload config and restart service
-- [`reminder setup`](schedule-management.md#setup) - Interactive AI-assisted setup powered by OpenCode with profile-first intake, evidence-informed schedule planning, and optional file-aware reasoning
-- [`reminder sync`](schedule-management.md#sync) - Generate and confirm today's pomodoro/potato task assignments
-- [`reminder view`](schedule-management.md#view) - Generate schedule visualization
-- [`reminder status`](schedule-management.md#status) - Show upcoming events, including synced task titles when present
-- [`reminder stop`](schedule-management.md#stop) - Stop the alarm service
+- [`rmd update`](schedule-management.md#update) - Reload config and restart service
+- [`rmd setup`](schedule-management.md#setup) - Interactive AI-assisted setup powered by OpenCode with profile-first intake, evidence-informed schedule planning, and optional file-aware reasoning
+- [`rmd sync`](schedule-management.md#sync) - Generate and confirm today's pomodoro/potato task assignments
+- [`rmd view`](schedule-management.md#view) - Generate schedule visualization
+- [`rmd status`](schedule-management.md#status) - Show upcoming events, including synced task titles when present
+- [`rmd stop`](schedule-management.md#stop) - Stop the alarm service
 
 ### Task Management
 Commands for managing your task list:
-- [`reminder add`](task-management.md#add) - Add or update tasks
-- [`reminder rm`](task-management.md#remove) - Remove tasks
-- [`reminder ls`](task-management.md#list) - List all tasks
+- [`rmd add`](task-management.md#add) - Add or update tasks
+- [`rmd rm`](task-management.md#remove) - Remove tasks
+- [`rmd ls`](task-management.md#list) - List all tasks
 
 ### Deadline Management
 Commands for managing event deadlines:
-- [`reminder ddl add`](deadline-management.md#add) - Add or update deadlines
-- [`reminder ddl rm`](deadline-management.md#remove) - Remove deadlines
-- [`reminder ddl`](deadline-management.md#list) - List all deadlines with urgency status
+- [`rmd ddl add`](deadline-management.md#add) - Add or update deadlines
+- [`rmd ddl rm`](deadline-management.md#remove) - Remove deadlines
+- [`rmd ddl`](deadline-management.md#list) - List all deadlines with urgency status
 
 ### Habits
 Commands for tracking daily habits:
-- [`reminder track [ids...]`](task-management.md#habits) - Log completed habits for today (opens a prompt if no IDs given)
+- [`rmd track [ids...]`](task-management.md#habits) - Log completed habits for today (opens a prompt if no IDs given)
 
 ### Reports
 Commands for generating productivity reports:
-- [`reminder report <type>`](schedule-management.md#report) - Generate weekly or monthly PDF reports
+- [`rmd report <type>`](schedule-management.md#report) - Generate weekly or monthly PDF reports
 
 ### System Commands
-- [`reminder edit <file>`](schedule-management.md#edit) - Open configuration files (`settings`, `odd`, `even`, `deadlines`, `habits`) in your default editor
-- `reminder --help` - Show help information
+- [`rmd edit <file>`](schedule-management.md#edit) - Open configuration files (`settings`, `odd`, `even`, `deadlines`, `habits`) in your default editor
+- `rmd --help` - Show help information
 
 ## Configuration Directory
 
@@ -77,7 +77,7 @@ Error: settings.toml not found in /Users/username/schedule_management/config/
 Error: Invalid TOML syntax in odd_weeks.toml: Expected '=' at line 5
 
 # Service not running
-Warning: Schedule management service is not running. Run 'reminder update' to start it.
+Warning: Schedule management service is not running. Run 'rmd update' to start it.
 ```
 
 ## Exit Codes
@@ -93,31 +93,31 @@ The CLI returns standard exit codes:
 ### Basic Usage
 ```bash
 # Check service status
-reminder status
+rmd status
 
 # Add a high-priority task
-reminder add "Complete project proposal" 9
+rmd add "Complete project proposal" 9
 
 # Generate today's synced focus-block plan
-reminder sync
+rmd sync
 
 # View your schedule
-reminder view
+rmd view
 
 # Stop the service
-reminder stop
+rmd stop
 ```
 
 ### Advanced Usage
 ```bash
 # Update with custom config directory
-REMINDER_CONFIG_DIR=/custom/path/config reminder update
+REMINDER_CONFIG_DIR=/custom/path/config rmd update
 
 # List tasks with verbose output (if supported)
-reminder status -v
+rmd status -v
 
 # Remove multiple tasks
-reminder rm "Task 1" "Task 2" "Task 3"
+rmd rm "Task 1" "Task 2" "Task 3"
 ```
 
 ## Integration with Other Tools
@@ -127,21 +127,21 @@ The CLI can be integrated with other tools and scripts:
 ```bash
 # Use in shell scripts
 #!/bin/bash
-if reminder status | grep -q "No upcoming events"; then
+if rmd status | grep -q "No upcoming events"; then
     echo "Schedule is clear"
 fi
 
 # Pipe to other commands
-reminder ls | grep "urgent" | wc -l
+rmd ls | grep "urgent" | wc -l
 
 # Use with cron for automated tasks
-0 9 * * * /Users/username/schedule_management/reminder status >> ~/schedule.log
+0 9 * * * /Users/username/schedule_management/rmd status >> ~/schedule.log
 ```
 
 ## Troubleshooting CLI Issues
 
 ### Command Not Found
-If you get `command not found: reminder`:
+If you get `command not found: rmd`:
 1. Check that the installation completed successfully
 2. Verify the PATH includes the installation directory
 3. Ensure your shell profile is sourced
@@ -149,7 +149,7 @@ If you get `command not found: reminder`:
 ### Permission Denied
 If you get `Permission denied` errors:
 ```bash
-chmod +x ~/schedule_management/reminder
+chmod +x ~/schedule_management/rmd
 ```
 
 ### Configuration Errors

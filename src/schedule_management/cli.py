@@ -16,16 +16,17 @@ Architecture:
     └── commands/setup.py     - setup command
 
 Entry Points:
-    - `reminder`: The main CLI command (defined in pyproject.toml)
+    - `rmd`: The main CLI command (defined in pyproject.toml)
+    - `reminder`: Legacy compatibility alias
     - `reminder-runner`: The background service (in runner.py)
 
 Example Usage:
-    $ reminder                  # Show help
-    $ reminder add "task" 5     # Add task with priority 5
-    $ reminder ls               # List all tasks
-    $ reminder ddl add hw 12.15 # Add deadline for Dec 15
-    $ reminder status           # Show current status
-    $ reminder status -v        # Show verbose schedule
+    $ rmd                       # Show help
+    $ rmd add "task" 5     # Add task with priority 5
+    $ rmd ls               # List all tasks
+    $ rmd ddl add hw 12.15 # Add deadline for Dec 15
+    $ rmd status           # Show current status
+    $ rmd status -v        # Show verbose schedule
 
 Module Dependencies:
     - schedule_management.commands.tasks
@@ -76,7 +77,7 @@ def create_parser() -> argparse.ArgumentParser:
         Configured ArgumentParser with all subcommands registered.
 
     Structure:
-        reminder
+        rmd
         ├── add <task> <priority>       - Add new task
         ├── rm <tasks...>               - Remove tasks
         ├── ls                          - List tasks
@@ -101,7 +102,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Build colored help text
     colored_description = (
-        f"{COLORS['BOLD']}{COLORS['CYAN']}Reminder CLI{COLORS['RESET']} - "
+        f"{COLORS['BOLD']}{COLORS['CYAN']}rmd CLI{COLORS['RESET']} - "
         f"{COLORS['GREEN']}Manage your schedule management system{COLORS['RESET']}"
     )
 
@@ -111,7 +112,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Create main parser
     parser = argparse.ArgumentParser(
-        prog="reminder",
+        prog="rmd",
         description=colored_description,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=colored_epilog,
@@ -156,7 +157,7 @@ def create_parser() -> argparse.ArgumentParser:
     delete_parser.add_argument(
         "tasks",
         nargs="+",
-        help="Task descriptions or ID numbers from 'reminder ls'",
+        help="Task descriptions or ID numbers from 'rmd ls'",
     )
     delete_parser.set_defaults(func=delete_task)
 
@@ -349,7 +350,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     """
-    Main entry point for the reminder CLI.
+    Main entry point for the rmd CLI.
 
     Parses command-line arguments and dispatches to the appropriate
     command handler. Shows help if no command is provided.
@@ -362,11 +363,11 @@ def main() -> int:
         1 - Error or no command provided
 
     Examples:
-        >>> main()  # With sys.argv = ['reminder', 'ls']
+        >>> main()  # With sys.argv = ['rmd', 'ls']
         # Displays task list
         0
 
-        >>> main()  # With sys.argv = ['reminder']
+        >>> main()  # With sys.argv = ['rmd']
         # Displays help text
         1
     """

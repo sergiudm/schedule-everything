@@ -6,8 +6,9 @@ structure for backward compatibility. New code should import from:
 - schedule_management.cli (main, create_parser)
 - schedule_management.commands.* (individual command handlers)
 
-The 'reminder' entry point in pyproject.toml should point to:
+The primary 'rmd' entry point in pyproject.toml should point to:
     schedule_management.cli:main
+The legacy 'reminder' alias may point to the same target for compatibility.
 
 DEPRECATED: Direct imports from reminder.py are deprecated.
 Migrate to schedule_management.cli for the main entry point.

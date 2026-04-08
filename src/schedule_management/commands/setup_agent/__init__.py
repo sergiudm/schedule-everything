@@ -1,4 +1,4 @@
-"""LLM setup agent package for the `reminder setup` command."""
+"""LLM setup agent package for the `rmd setup` command."""
 
 from schedule_management.commands.setup_agent.models import (
     AgentTurn,

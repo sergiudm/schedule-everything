@@ -1,4 +1,4 @@
-"""Tests for the `reminder setup` command flow and helpers."""
+"""Tests for the `rmd setup` command flow and helpers."""
 
 import json
 import subprocess
@@ -560,6 +560,8 @@ def test_setup_command_routes_to_build_when_config_missing(tmp_path):
 
 def test_setup_command_is_registered_in_parser():
     parser = create_parser()
+
+    assert parser.prog == "rmd"
 
     args = parser.parse_args(["setup"])
 

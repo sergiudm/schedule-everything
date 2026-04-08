@@ -10,10 +10,10 @@ Tasks are stored in a JSON file with 'description' and 'priority' fields.
 All actions are logged to the task log for history tracking.
 
 Example Usage (via CLI):
-    $ reminder add "Study math" 8        # Add task with priority 8
-    $ reminder ls                         # List all tasks
-    $ reminder rm 1                       # Delete task by ID
-    $ reminder rm "Study math"            # Delete task by description
+    $ rmd add "Study math" 8        # Add task with priority 8
+    $ rmd ls                         # List all tasks
+    $ rmd rm 1                       # Delete task by ID
+    $ rmd rm "Study math"            # Delete task by description
 """
 
 import sys
@@ -43,7 +43,7 @@ from schedule_management.data import (
 
 def add_task(args) -> int:
     """
-    Handle the 'add' command - add a new task to reminder.
+    Handle the 'add' command - add a new task to the CLI-managed task list.
 
     If a task with the same description already exists, updates
     its priority instead of creating a duplicate.
@@ -55,7 +55,7 @@ def add_task(args) -> int:
         0 on success, 1 on error
 
     Example:
-        $ reminder add "Complete homework" 7
+        $ rmd add "Complete homework" 7
         ✅ Task 'Complete homework' added successfully with priority 7!
     """
     task_description = args.task
@@ -125,7 +125,7 @@ def delete_task(args) -> int:
     Handle the 'rm' command - delete one or more tasks.
 
     Tasks can be identified by:
-    - ID number (from 'reminder ls' output)
+    - ID number (from 'rmd ls' output)
     - Exact description text
 
     Args:
@@ -135,10 +135,10 @@ def delete_task(args) -> int:
         0 on success, 1 if any deletions failed
 
     Example:
-        $ reminder rm 1 2 3
+        $ rmd rm 1 2 3
         ✅ 3 sets of tasks deleted successfully
 
-        $ reminder rm "Study math"
+        $ rmd rm "Study math"
         ✅ Task 'Study math' deleted successfully!
     """
     task_identifiers = args.tasks

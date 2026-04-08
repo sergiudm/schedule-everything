@@ -53,7 +53,7 @@ cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.to
 # Set up shell profile
 echo 'export PATH="$HOME/schedule_management:$PATH"' >> ~/.zshrc
 echo 'export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"' >> ~/.zshrc
-echo 'alias reminder="$HOME/schedule_management/reminder"' >> ~/.zshrc
+echo 'alias rmd="$HOME/schedule_management/rmd"' >> ~/.zshrc
 
 # Reload shell
 source ~/.zshrc

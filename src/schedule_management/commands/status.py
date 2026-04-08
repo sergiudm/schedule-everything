@@ -9,9 +9,9 @@ These commands help users understand their current schedule state
 without modifying any data.
 
 Example Usage (via CLI):
-    $ reminder status          # Show current event and next upcoming
-    $ reminder status -v       # Show full day schedule
-    $ reminder view            # Generate schedule PDF
+    $ rmd status          # Show current event and next upcoming
+    $ rmd status -v       # Show full day schedule
+    $ rmd view            # Generate schedule PDF
 """
 
 import subprocess
@@ -378,7 +378,7 @@ def view_command(args) -> int:
         0 on success, 1 on error
 
     Example:
-        $ reminder view
+        $ rmd view
         📊 Generating schedule visualizations...
         📁 Visualization file generated:
         🖼️  Opening visualization...

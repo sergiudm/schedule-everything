@@ -6,7 +6,7 @@ sidebar_position: 3
 
 This guide focuses on the fastest path to a useful schedule.
 
-If you want the AI-assisted flow, start with `reminder setup`.
+If you want the AI-assisted flow, start with `rmd setup`.
 If you prefer hand-editing TOML, the manual path is included later on this page.
 
 ## Fastest Path: AI-Assisted Setup
@@ -23,7 +23,7 @@ cd schedule-everything
 ### 2. Run the profile-first planner
 
 ```bash
-reminder setup
+rmd setup
 ```
 
 What happens:
@@ -36,22 +36,22 @@ What happens:
 ### 3. Add tasks and sync today
 
 ```bash
-reminder add "Finish proposal draft" 9
-reminder add "Review pull request" 7
-reminder sync
+rmd add "Finish proposal draft" 9
+rmd add "Review pull request" 7
+rmd sync
 ```
 
-`reminder sync` reads `tasks/tasks.json`, assigns today's untitled
+`rmd sync` reads `tasks/tasks.json`, assigns today's untitled
 `pomodoro`/`potato` blocks to specific tasks, shows a preview, and only writes
 `synced_schedule.toml` after approval.
 
 ### 4. Verify and launch
 
 ```bash
-reminder status
-reminder status -v
-reminder view
-reminder update
+rmd status
+rmd status -v
+rmd view
+rmd update
 ```
 
 ## Manual Path: Hand-Editing the Schedule
@@ -105,7 +105,7 @@ For a simple weekly schedule, copy the same structure to `even_weeks.toml`.
 
 ### 4. Optional: add a synced overlay later
 
-Once you start using tasks, `reminder sync` can generate a daily overlay file:
+Once you start using tasks, `rmd sync` can generate a daily overlay file:
 
 ```toml
 [schedule]

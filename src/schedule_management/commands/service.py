@@ -10,9 +10,9 @@ These commands manage the lifecycle and configuration of the schedule
 reminder system.
 
 Example Usage (via CLI):
-    $ reminder update          # Pull latest schedule files from git
-    $ reminder stop            # Stop the reminder service
-    $ reminder report          # Generate manual report
+    $ rmd update          # Pull latest schedule files from git
+    $ rmd stop            # Stop the reminder service
+    $ rmd report          # Generate manual report
 """
 
 import os
@@ -53,7 +53,7 @@ def update_command(args) -> int:
         - May modify local schedule files
 
     Example:
-        $ reminder update
+        $ rmd update
         📥 Updating schedule files...
         Successfully pulled latest changes
     """
@@ -128,7 +128,7 @@ def stop_command(args) -> int:
         - Stops all scheduled notifications until restarted
 
     Example:
-        $ reminder stop
+        $ rmd stop
         Stopping reminder service...
         ✅ Reminder service stopped (PID: 12345)
     """
@@ -211,9 +211,9 @@ def report_command(args) -> int:
         - May open generated report in browser
 
     Example:
-        $ reminder report                 # Last 7 days
-        $ reminder report -d 2024-01-15   # Week ending on specific date
-        $ reminder report --days 30       # Last 30 days
+        $ rmd report                 # Last 7 days
+        $ rmd report -d 2024-01-15   # Week ending on specific date
+        $ rmd report --days 30       # Last 30 days
     """
     print("📊 Generating report...")
 
@@ -293,8 +293,8 @@ def edit_schedule_command(args) -> int:
         0 on success, 1 on error
 
     Example:
-        $ reminder edit settings    # Edit settings.toml
-        $ reminder edit odd         # Edit odd week schedule
+        $ rmd edit settings    # Edit settings.toml
+        $ rmd edit odd         # Edit odd week schedule
     """
     file_map = {
         "settings": SETTINGS_PATH,

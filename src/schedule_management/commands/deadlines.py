@@ -10,9 +10,9 @@ Deadlines are stored in a JSON file with 'event', 'deadline',
 and 'added' fields.
 
 Example Usage (via CLI):
-    $ reminder ddl add "project1" 7.15    # Add deadline for July 15th
-    $ reminder ddl                         # List all deadlines
-    $ reminder ddl rm "project1"           # Delete a deadline
+    $ rmd ddl add "project1" 7.15    # Add deadline for July 15th
+    $ rmd ddl                         # List all deadlines
+    $ rmd ddl rm "project1"           # Delete a deadline
 """
 
 import sys
@@ -52,7 +52,7 @@ def add_deadline(args) -> int:
         0 on success, 1 on error
 
     Example:
-        $ reminder ddl add "homework2" 7.4
+        $ rmd ddl add "homework2" 7.4
         ✅ Deadline 'homework2' added successfully for 2024-07-04!
     """
     event_name = args.event
@@ -246,7 +246,7 @@ def delete_deadline(args) -> int:
         0 on success, 1 if any deletions failed
 
     Example:
-        $ reminder ddl rm homework1 homework2
+        $ rmd ddl rm homework1 homework2
         ✅ 2 sets of deadlines deleted successfully
     """
     event_identifiers = args.events

@@ -498,7 +498,7 @@ def modify_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
                 _write_bundle(config_dir, bundle)
 
             CONSOLE.print("[bold green]Schedule updated.[/]")
-            CONSOLE.print("[bold cyan]Run reminder view to preview the result.[/]")
+            CONSOLE.print("[bold cyan]Run rmd view to preview the result.[/]")
             break
 
         if not _ask_yes_no("Do you want to apply another adjustment?", default=False):
@@ -685,7 +685,7 @@ def build_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
         break
 
     CONSOLE.print("[bold green]Initial schedule created.[/]")
-    CONSOLE.print("[bold cyan]Run reminder view to visualize your schedule.[/]")
+    CONSOLE.print("[bold cyan]Run rmd view to visualize your schedule.[/]")
 
     if _ask_yes_no("Do you need to adjust this plan now?", default=True):
         return modify_schedule_agent(llm_config, config_dir)

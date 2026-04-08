@@ -9,9 +9,10 @@
 
 一个面向 AI 的时间管理工具：更容易上手、本地优先，并尽量把日程建立在更健康、更科学的默认原则上，而不是单纯把时间塞满。
 
-`reminder setup` 采用“先画像、后排程”的流程：它会先创建或更新
+`rmd setup` 采用“先画像、后排程”的流程：它会先创建或更新
 `profile.md`，追问关键细节，先给出摘要供你确认，最后才写入日程。
-`reminder sync` 会读取当前任务，把今天的 pomodoro/potato 自动分配成具体工作事项，并在保存前先给你预览。
+`rmd sync` 会读取当前任务，把今天的 pomodoro/potato 自动分配成具体工作事项，并在保存前先给你预览。
+`rmd` 现在是主 CLI 名称；`reminder` 仍保留为兼容别名。
 
 ## 为什么要做这个
 
@@ -39,8 +40,8 @@
 ## 为什么它更容易用
 
 - `profile.md` 保存的是你的长期工作方式和约束，而不只是几个时间块名字。
-- `reminder setup` 用自然语言对话来搭建日程，而不是一开始就逼你手写完整配置。
-- `reminder sync` 会把 `tasks.json` 转成当天的专注块任务，并且先预览、后保存。
+- `rmd setup` 用自然语言对话来搭建日程，而不是一开始就逼你手写完整配置。
+- `rmd sync` 会把 `tasks.json` 转成当天的专注块任务，并且先预览、后保存。
 - 整套系统仍然是本地文件：TOML、JSON、小型 CLI，没有云端后台依赖。
 - 你随时都可以手动查看和编辑生成结果，因为它们都是纯文本。
 
@@ -58,7 +59,7 @@ cd schedule-everything
 ### 2. 用 AI 创建你的日程
 
 ```bash
-reminder setup
+rmd setup
 ```
 
 这个流程会把模型配置保存到 `~/.schedule_management/llm.toml`，构建或更新
@@ -67,35 +68,35 @@ reminder setup
 ### 3. 添加任务并同步今天
 
 ```bash
-reminder add "完成方案初稿" 9
-reminder add "Review PR #128" 7
-reminder sync
+rmd add "完成方案初稿" 9
+rmd add "Review PR #128" 7
+rmd sync
 ```
 
-`reminder sync` 会读取 `tasks/tasks.json`，为今天的 pomodoro/potato 生成具体任务分配；如果你拒绝预览，它会带着你的反馈再排一次。
+`rmd sync` 会读取 `tasks/tasks.json`，为今天的 pomodoro/potato 生成具体任务分配；如果你拒绝预览，它会带着你的反馈再排一次。
 
 ### 4. 检查结果
 
 ```bash
-reminder status
-reminder status -v
-reminder view
-reminder update
+rmd status
+rmd status -v
+rmd view
+rmd update
 ```
 
-当今天已经有同步 overlay 时，`reminder status` 会显示块类型和具体任务标题，例如 `pomodoro: 完成方案初稿`。
+当今天已经有同步 overlay 时，`rmd status` 会显示块类型和具体任务标题，例如 `pomodoro: 完成方案初稿`。
 
 ## 常用命令
 
 | 命令 | 作用 |
 | --- | --- |
-| `reminder setup` | 用基于画像的 AI 流程构建或修改日程 |
-| `reminder sync` | 为今天的 pomodoro/potato 生成任务分配，并先预览后确认 |
-| `reminder status [-v]` | 查看当前状态和今天日程，包含同步后的任务标题 |
-| `reminder add/ls/rm` | 管理会被 sync 使用的任务列表 |
-| `reminder track` | 记录习惯 |
-| `reminder ddl` | 管理截止日期 |
-| `reminder view` | 生成 PDF 日程可视化 |
+| `rmd setup` | 用基于画像的 AI 流程构建或修改日程 |
+| `rmd sync` | 为今天的 pomodoro/potato 生成任务分配，并先预览后确认 |
+| `rmd status [-v]` | 查看当前状态和今天日程，包含同步后的任务标题 |
+| `rmd add/ls/rm` | 管理会被 sync 使用的任务列表 |
+| `rmd track` | 记录习惯 |
+| `rmd ddl` | 管理截止日期 |
+| `rmd view` | 生成 PDF 日程可视化 |
 
 ## 手动配置和文档
 

@@ -306,7 +306,7 @@ def _prompt_acceptance() -> bool:
 
 
 def sync_command(args) -> int:
-    """Handle `reminder sync`."""
+    """Handle `rmd sync`."""
     del args  # command has no flags yet
 
     try:
@@ -407,7 +407,7 @@ def sync_command(args) -> int:
                 f"[bold green]Saved accepted sync overlay to[/] [cyan]{saved_path}[/]."
             )
             CONSOLE.print(
-                "[bold cyan]Run `reminder status` to inspect the assigned focus blocks.[/]"
+                "[bold cyan]Run `rmd status` to inspect the assigned focus blocks.[/]"
             )
             return 0
 

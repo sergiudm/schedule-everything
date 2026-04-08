@@ -11,8 +11,8 @@ records file. The tracking can be done via:
 - CLI fallback prompt
 
 Example Usage (via CLI):
-    $ reminder track              # Opens GUI prompt for habits
-    $ reminder track 1 2 3        # Mark habits 1, 2, 3 as done
+    $ rmd track              # Opens GUI prompt for habits
+    $ rmd track 1 2 3        # Mark habits 1, 2, 3 as done
 """
 
 import re
@@ -167,8 +167,8 @@ def track_habits(args) -> int:
         0 on success, 1 on error or cancellation
 
     Example:
-        $ reminder track           # Opens GUI prompt
-        $ reminder track 1 2 3     # Mark habits 1, 2, 3 as done
+        $ rmd track           # Opens GUI prompt
+        $ rmd track 1 2 3     # Mark habits 1, 2, 3 as done
 
         Output:
         ✅ Recorded habit tracking for 2024-07-15
@@ -197,7 +197,7 @@ def track_habits(args) -> int:
 
         if habit_ids is None:
             print(
-                "❌ Could not open a habit prompt window. Provide habit IDs, e.g. `reminder track 1 2`."
+                "❌ Could not open a habit prompt window. Provide habit IDs, e.g. `rmd track 1 2`."
             )
             return 1
 

@@ -11,10 +11,11 @@
 AI-assisted time management for people who want a schedule that is easy to use,
 local-first, and grounded in healthier defaults instead of pure calendar spam.
 
-`reminder setup` is profile-first: it creates or refines `profile.md`, asks
+`rmd setup` is profile-first: it creates or refines `profile.md`, asks
 follow-up questions, summarizes the plan, and only then writes the schedule.
-`reminder sync` takes your current tasks and turns today's pomodoro/potato
+`rmd sync` takes your current tasks and turns today's pomodoro/potato
 blocks into concrete work items with a preview-before-save loop.
+`rmd` is now the primary CLI name; `reminder` is still shipped as a legacy alias.
 
 ## Why This Exists
 
@@ -46,8 +47,8 @@ Selected sources:
 ## Why It Feels Easy
 
 - `profile.md` stores durable context about how you work, not just what time blocks exist.
-- `reminder setup` asks normal-language questions instead of forcing you to hand-author a calendar first.
-- `reminder sync` converts `tasks.json` into titled focus blocks and asks for approval before writing anything.
+- `rmd setup` asks normal-language questions instead of forcing you to hand-author a calendar first.
+- `rmd sync` converts `tasks.json` into titled focus blocks and asks for approval before writing anything.
 - The system stays local: TOML files, JSON task data, and a small CLI instead of a cloud dashboard.
 - You can still inspect and edit everything manually because the generated files are plain text.
 
@@ -65,7 +66,7 @@ cd schedule-everything
 ### 2. Build Your Schedule with AI
 
 ```bash
-reminder setup
+rmd setup
 ```
 
 This stores model settings in `~/.schedule_management/llm.toml`, builds or
@@ -75,38 +76,38 @@ summary first.
 ### 3. Add Tasks and Sync Today
 
 ```bash
-reminder add "Finish proposal draft" 9
-reminder add "Review PR #128" 7
-reminder sync
+rmd add "Finish proposal draft" 9
+rmd add "Review PR #128" 7
+rmd sync
 ```
 
-`reminder sync` reads `tasks/tasks.json`, proposes task assignments for today's
+`rmd sync` reads `tasks/tasks.json`, proposes task assignments for today's
 pomodoro/potato blocks, and regenerates if you reject the preview with
 feedback.
 
 ### 4. Check the Result
 
 ```bash
-reminder status
-reminder status -v
-reminder view
-reminder update
+rmd status
+rmd status -v
+rmd view
+rmd update
 ```
 
-When a sync overlay exists for today, `reminder status` shows the block type and
+When a sync overlay exists for today, `rmd status` shows the block type and
 the specific assigned event, for example `pomodoro: Finish proposal draft`.
 
 ## Core Commands
 
 | Command | What it does |
 | --- | --- |
-| `reminder setup` | Build or modify your schedule with a profile-first AI workflow |
-| `reminder sync` | Assign today's pomodoro/potato blocks to tasks with preview + approval |
-| `reminder status [-v]` | Show what is happening now and today's schedule, including synced titles |
-| `reminder add/ls/rm` | Manage the task list that feeds the sync flow |
-| `reminder track` | Record habits |
-| `reminder ddl` | Manage deadlines |
-| `reminder view` | Generate a PDF schedule visualization |
+| `rmd setup` | Build or modify your schedule with a profile-first AI workflow |
+| `rmd sync` | Assign today's pomodoro/potato blocks to tasks with preview + approval |
+| `rmd status [-v]` | Show what is happening now and today's schedule, including synced titles |
+| `rmd add/ls/rm` | Manage the task list that feeds the sync flow |
+| `rmd track` | Record habits |
+| `rmd ddl` | Manage deadlines |
+| `rmd view` | Generate a PDF schedule visualization |
 
 ## Manual Setup and Docs
 

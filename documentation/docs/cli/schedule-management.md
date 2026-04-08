@@ -12,7 +12,7 @@ Launch an interactive setup wizard that can configure your model provider creden
 
 ### Syntax
 ```bash
-reminder setup
+rmd setup
 ```
 
 ### What it does
@@ -27,7 +27,7 @@ reminder setup
 - Uses evidence-informed defaults around sleep regularity, physical activity, movement breaks, and daytime light exposure when the user leaves details open.
 - Only after you confirm the summary does it generate TOML configuration files.
 - During build/modify turns, the OpenCode-backed agent can attach local files/images and reason over local context files when needed.
-- Recommends `reminder view` and supports iterative adjustments.
+- Recommends `rmd view` and supports iterative adjustments.
 
 ## update
 
@@ -35,24 +35,24 @@ Reload the schedule configuration files (pulling from a remote Git repository if
 
 ### Syntax
 ```bash
-reminder update
+rmd update
 ```
 
 ### Examples
 ```bash
 # Basic update
-reminder update
+rmd update
 ```
 
 ## status
 
 Show upcoming events and current service status.
-When `reminder sync` has produced an accepted overlay for today, pomodoro and
+When `rmd sync` has produced an accepted overlay for today, pomodoro and
 potato blocks show both the block type and the assigned task title.
 
 ### Syntax
 ```bash
-reminder status [OPTIONS]
+rmd status [OPTIONS]
 ```
 
 ### Options
@@ -63,10 +63,10 @@ reminder status [OPTIONS]
 ### Examples
 ```bash
 # Show current status and next events
-reminder status
+rmd status
 
 # Show detailed today's schedule
-reminder status -v
+rmd status -v
 ```
 
 ## sync
@@ -76,13 +76,13 @@ an LLM, show a preview, and only save the overlay after you approve it.
 
 ### Syntax
 ```bash
-reminder sync
+rmd sync
 ```
 
 ### What it does
 - Loads today's untitled pomodoro/potato blocks from the active schedule.
 - Reads tasks from `tasks/tasks.json` and sorts them by priority.
-- Uses the same OpenCode-backed model configuration flow as `reminder setup`.
+- Uses the same OpenCode-backed model configuration flow as `rmd setup`.
 - Shows a preview table before writing `synced_schedule.toml`.
 - If you reject the preview, asks for a reason and regenerates using that feedback.
 - Applies the accepted overlay only to the matching day, so base odd/even templates stay unchanged.
@@ -90,7 +90,7 @@ reminder sync
 ### Examples
 ```bash
 # Generate and review today's focus-block assignments
-reminder sync
+rmd sync
 ```
 
 ## view
@@ -99,13 +99,13 @@ Generate a visual representation of your schedule as a PDF document. This comman
 
 ### Syntax
 ```bash
-reminder view
+rmd view
 ```
 
 ### Examples
 ```bash
 # Generate and open schedule PDF visualization
-reminder view
+rmd view
 ```
 
 ## edit
@@ -114,7 +114,7 @@ Open the TOML schedule configuration files directly in your default system edito
 
 ### Syntax
 ```bash
-reminder edit [FILE]
+rmd edit [FILE]
 ```
 
 ### Options
@@ -123,13 +123,13 @@ FILE choices: `settings`, `odd`, `even`, `deadlines`, `habits` (default is `sett
 ### Examples
 ```bash
 # Edit settings (default)
-reminder edit
+rmd edit
 
 # Edit odd weeks schedule
-reminder edit odd
+rmd edit odd
 
 # Edit deadlines
-reminder edit deadlines
+rmd edit deadlines
 ```
 
 ## stop
@@ -138,7 +138,7 @@ Stop the reminder-runner background service.
 
 ### Syntax
 ```bash
-reminder stop
+rmd stop
 ```
 
 ## report
@@ -147,7 +147,7 @@ Generate a productivity report as a PDF document.
 
 ### Syntax
 ```bash
-reminder report TYPE [OPTIONS]
+rmd report TYPE [OPTIONS]
 ```
 
 ### Parameters
@@ -164,11 +164,11 @@ reminder report TYPE [OPTIONS]
 ### Examples
 ```bash
 # Generate report for last 7 days
-reminder report weekly
+rmd report weekly
 
 # Generate a monthly report
-reminder report monthly
+rmd report monthly
 
 # Generate report starting from a specific date
-reminder report weekly -d 2024-02-01 --days 14
+rmd report weekly -d 2024-02-01 --days 14
 ```

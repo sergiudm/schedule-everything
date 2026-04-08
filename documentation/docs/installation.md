@@ -15,7 +15,7 @@ Before proceeding, ensure you have the following installed:
 *   **Python 3.12+**: [Download Python](https://www.python.org/downloads/)
 *   **Git**: [Download Git](https://git-scm.com/downloads)
 *   **Terminal**: Any standard terminal emulator (Terminal.app, iTerm2, etc.)
-*   **OpenCode CLI**: Required for `reminder setup` and `reminder sync`
+*   **OpenCode CLI**: Required for `rmd setup` and `rmd sync`
 
 ## Installation Methods
 
@@ -24,6 +24,7 @@ We provide an automated installer for convenience, but manual installation is fu
 ### Method 1: Automated Installer (Recommended)
 
 The `install.sh` script handles dependency installation, configuration scaffolding, and service registration in one go.
+It installs `rmd` as the primary CLI and keeps `reminder` as a compatibility alias.
 
 1.  **Clone the repository**:
     ```bash
@@ -90,12 +91,12 @@ For advanced users or those integrating into existing environments.
     ```
 
 6.  **Configure Shell Environment**:
-    Add the following to your shell profile (`~/.zshrc`, `~/.bash_profile`, etc.) to access the `reminder` CLI:
+    Add the following to your shell profile (`~/.zshrc`, `~/.bash_profile`, etc.) to access the `rmd` CLI:
 
     ```bash
     export PATH="$HOME/schedule_management:$PATH"
     export REMINDER_CONFIG_DIR="$HOME/schedule_management/config"
-    alias reminder="$HOME/schedule_management/reminder"
+    alias rmd="$HOME/schedule_management/rmd"
     ```
 
 7.  **Apply Changes**:
@@ -118,7 +119,7 @@ Confirm that everything is working correctly.
 
 1.  **Check CLI**:
     ```bash
-    reminder --help
+    rmd --help
     ```
     *Expected output: A list of available commands.*
 
@@ -130,7 +131,7 @@ Confirm that everything is working correctly.
 
 3.  **View Schedule**:
     ```bash
-    reminder status
+    rmd status
     ```
     *Expected output: A summary of upcoming events or "No upcoming events".*
 
@@ -155,5 +156,5 @@ To completely remove the application:
 
 ## Troubleshooting
 
-*   **"Command not found: reminder"**: Ensure you have added the alias and exports to your shell profile and sourced it.
-*   **Service not starting**: Check the logs (standard error/output) or try running `reminder update` to refresh the service definition.
+*   **"Command not found: rmd"**: Ensure you have added the alias and exports to your shell profile and sourced it.
+*   **Service not starting**: Check the logs (standard error/output) or try running `rmd update` to refresh the service definition.

@@ -187,13 +187,13 @@ Always test your schedule configuration:
 
 ```bash
 # Check for configuration errors
-reminder status
+rmd status
 
 # View your complete schedule
-reminder status -v
+rmd status -v
 
 # Generate a visual schedule
-reminder view
+rmd view
 ```
 
 ## Common Patterns
@@ -246,6 +246,6 @@ reminder view
 - Review logs for error messages
 
 ### Overlapping Events
-- Use `reminder status -v` to identify overlaps
+- Use `rmd status -v` to identify overlaps
 - Adjust timing to prevent conflicts
 - Consider using shorter time blocks
