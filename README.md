@@ -12,16 +12,11 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sergiudm/schedule-everything)
 [中文版本](README_zh.md)
 
-AI-assisted time management for people who want a schedule that is easy to
-adopt, local-first, and grounded in healthier defaults instead of pure
-calendar spam.
-
-`rmd setup` is profile-first: it creates or refines `profile.md` in your
-config directory, asks follow-up questions, summarizes the plan, and only then
-writes the schedule. `rmd sync` takes your current tasks and turns today's
-`pomodoro` and `potato` blocks into concrete work items with a
-preview-before-save loop. `rmd` is the primary CLI name; `reminder` remains as
-a compatibility alias.
+Schedule Everything is a local-first, AI-assisted scheduling CLI for building a
+durable weekly routine and then turning today's focus blocks into concrete
+work. `rmd setup` builds or refines your schedule from a profile, `rmd sync`
+assigns real tasks to today's `pomodoro` and `potato` blocks, and `rmd` is the
+primary CLI name while `reminder` remains as a compatibility alias.
 
 ## Workflow
 
@@ -32,43 +27,6 @@ a compatibility alias.
     width="860"
   >
 </p>
-
-
-## Why This Exists
-
-Most productivity tools are good at filling time and bad at protecting energy.
-Schedule Everything is built around a different assumption: good time
-management should be easier, more personalized, and more scientifically
-informed.
-
-When your preferences are incomplete, the planner leans on evidence-informed
-defaults that try to protect:
-
-- enough sleep opportunity instead of routinely cutting sleep for more work
-- regular sleep timing instead of large weekday/weekend swings
-- consistent movement and exercise across the week
-- short recovery breaks during long desk-bound stretches
-- earlier placement of demanding work when daylight and flexibility allow
-
-These are heuristics, not medical advice. Real constraints, clinician
-guidance, shift work, disability needs, and caregiving realities should
-override them.
-
-Selected sources:
-
-- Watson NF, Badr MS, Belenky G, et al. Recommended Amount of Sleep for a Healthy Adult. [AASM consensus PDF](https://aasm.org/resources/pdf/pressroom/adult-sleep-duration-consensus.pdf)
-- Sletten TL, Weaver MD, Foster RG, et al. The importance of sleep regularity. [Sleep Health, 2023](https://doi.org/10.1016/j.sleh.2023.07.016)
-- World Health Organization. Physical activity recommendations for adults. [WHO guidance](https://www.who.int/initiatives/behealthy/physical-activity)
-- Albulescu P, Macsinga I, Rusu A, et al. "Give me a break!" [PLOS ONE, 2022](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0272460)
-- Figueiro MG, Steverson B, Heerwagen J, et al. The impact of daytime light exposures on sleep and mood in office workers. [Sleep Health, 2017](https://doi.org/10.1016/j.sleh.2017.03.005)
-
-## Why It Feels Easy
-
-- `profile.md` stores durable context about how you work, not just what time blocks exist.
-- `rmd setup` asks normal-language questions instead of forcing you to hand-author a calendar first.
-- `rmd sync` converts `tasks/tasks.json` into titled focus blocks and asks for approval before writing anything.
-- The system stays local: TOML files, JSON task data, and a small CLI instead of a cloud dashboard.
-- You can still inspect and edit everything manually because the generated files are plain text.
 
 ## Quick Start
 
@@ -82,7 +40,7 @@ cd schedule-everything
 ```
 
 `./install.sh` sets up the local environment and config scaffold. OpenCode is
-required for the AI-assisted commands such as `rmd setup` and `rmd sync`.
+required for AI-assisted commands such as `rmd setup` and `rmd sync`.
 
 ### 2. Build Your Schedule with One Command!
 
@@ -90,15 +48,19 @@ required for the AI-assisted commands such as `rmd setup` and `rmd sync`.
 rmd setup
 ```
 
-After a short conversation about your workday, habits, and constraints, the
-tool stores model settings in `~/.schedule_management/llm.toml`, builds or
-updates `profile.md`, shows a summary for confirmation, and only then writes
-your schedule files.
+After a short conversation about your workday, constraints, and habits,
+`rmd setup` stores model settings in `~/.schedule_management/llm.toml`, builds
+or updates `profile.md`, shows a summary for confirmation, and only then
+writes your schedule files.
+
+Once that schedule exists, the system can remind you about scheduled blocks,
+habit/deadline prompts, and give you both a live status view and a PDF
+visualization of the result.
 
 ### 3. Add Tasks and Sync Today
 
-Plans drift. When that happens, add tasks and sync the current day instead of
-rewriting the whole weekly schedule.
+Plans change faster than weekly templates. When that happens, add tasks and
+sync the current day instead of rebuilding the whole schedule.
 
 ```bash
 rmd add "Finish proposal draft" 9
@@ -121,7 +83,7 @@ rmd update
 
 When a sync overlay exists for today, `rmd status` shows the block type and
 the specific assigned event, for example `pomodoro: Finish proposal draft`.
-If your config directory is also a git repo, `rmd update` pulls the latest
+If your config directory is a git repository, `rmd update` pulls the latest
 schedule changes from that remote.
 
 ## Core Commands
