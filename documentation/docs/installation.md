@@ -15,6 +15,7 @@ Before proceeding, ensure you have the following installed:
 *   **Python 3.12+**: [Download Python](https://www.python.org/downloads/)
 *   **Git**: [Download Git](https://git-scm.com/downloads)
 *   **Terminal**: Any standard terminal emulator (Terminal.app, iTerm2, etc.)
+*   **OpenCode CLI**: Required for `reminder setup` and `reminder sync`
 
 ## Installation Methods
 
@@ -42,7 +43,12 @@ The `install.sh` script handles dependency installation, configuration scaffoldi
     *   Prompt for missing required config values one by one.
     *   Register the background service (on macOS).
 
-3.  **Finalize Setup**:
+3.  **Install OpenCode CLI**:
+    ```bash
+    ./third_party/opencode/install --no-modify-path
+    ```
+
+4.  **Finalize Setup**:
     Follow the on-screen instructions to load the service. Typically, this involves:
     ```bash
     launchctl load ~/Library/LaunchAgents/com.sergiudm.schedule_management.plist
@@ -61,16 +67,21 @@ For advanced users or those integrating into existing environments.
 2.  **Install the Package**:
     We recommend installing in editable mode (`-e`) to easily pull updates.
     ```bash
-    pip install -e .
+    uv pip install -e .
     ```
-    *Tip: Consider using a virtual environment (`venv` or `conda`) to isolate dependencies.*
+    *Tip: Consider using a virtual environment managed by `uv` or `venv`.*
 
-3.  **Create Configuration Directory**:
+3.  **Install OpenCode CLI** if you want the AI-assisted commands:
+    ```bash
+    ./third_party/opencode/install --no-modify-path
+    ```
+
+4.  **Create Configuration Directory**:
     ```bash
     mkdir -p ~/schedule_management/config
     ```
 
-4.  **Initialize Config Files**:
+5.  **Initialize Config Files**:
     Copy the templates to your config directory:
     ```bash
     cp config/settings_template.toml ~/schedule_management/config/settings.toml
@@ -78,7 +89,7 @@ For advanced users or those integrating into existing environments.
     cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
     ```
 
-5.  **Configure Shell Environment**:
+6.  **Configure Shell Environment**:
     Add the following to your shell profile (`~/.zshrc`, `~/.bash_profile`, etc.) to access the `reminder` CLI:
 
     ```bash
@@ -87,7 +98,7 @@ For advanced users or those integrating into existing environments.
     alias reminder="$HOME/schedule_management/reminder"
     ```
 
-6.  **Apply Changes**:
+7.  **Apply Changes**:
     ```bash
     source ~/.zshrc  # or your specific profile file
     ```

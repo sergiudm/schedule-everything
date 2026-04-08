@@ -1,50 +1,80 @@
-
 ---
 sidebar_position: 3
 ---
 
 # Quick Start
 
-This guide will walk you through creating your first schedule and running the reminder service.
+This guide focuses on the fastest path to a useful schedule.
 
-## What You'll Build
+If you want the AI-assisted flow, start with `reminder setup`.
+If you prefer hand-editing TOML, the manual path is included later on this page.
 
-<div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
-  <div style={{flex: '1', minWidth: '300px', maxWidth: '48%'}}>
-    <img src="/img/rmd_add.gif" alt="Add Schedule" style={{width: '100%'}} />
-    <p style={{textAlign: 'center', marginTop: '0.5rem'}}><em>Adding tasks via CLI</em></p>
-  </div>
-  <div style={{flex: '1', minWidth: '300px', maxWidth: '48%'}}>
-    <img src="/img/rmd_view.gif" alt="View Schedule" style={{width: '100%'}} />
-    <p style={{textAlign: 'center', marginTop: '0.5rem'}}><em>Viewing your schedule</em></p>
-  </div>
-</div>
+## Fastest Path: AI-Assisted Setup
 
-## 1. Initialize Configuration
-
-If you haven't already, create your configuration files from the provided templates.
+### 1. Install the project and OpenCode
 
 ```bash
-# Create the config directory if it doesn't exist
-mkdir -p ~/schedule_management/config
+git clone --recurse-submodules https://github.com/sergiudm/schedule-everything.git
+cd schedule-everything
+./install.sh
+./third_party/opencode/install --no-modify-path
+```
 
-# Copy templates
+### 2. Run the profile-first planner
+
+```bash
+reminder setup
+```
+
+What happens:
+
+- It stores your model settings in `~/.schedule_management/llm.toml`.
+- It creates or refines `profile.md` next to your schedule files.
+- It asks follow-up questions until that profile is detailed enough to plan from.
+- It shows a summary before writing the schedule.
+
+### 3. Add tasks and sync today
+
+```bash
+reminder add "Finish proposal draft" 9
+reminder add "Review pull request" 7
+reminder sync
+```
+
+`reminder sync` reads `tasks/tasks.json`, assigns today's untitled
+`pomodoro`/`potato` blocks to specific tasks, shows a preview, and only writes
+`synced_schedule.toml` after approval.
+
+### 4. Verify and launch
+
+```bash
+reminder status
+reminder status -v
+reminder view
+reminder update
+```
+
+## Manual Path: Hand-Editing the Schedule
+
+Use this if you want full manual control over the TOML files.
+
+### 1. Create the config files
+
+```bash
+mkdir -p ~/schedule_management/config
 cp config/settings_template.toml ~/schedule_management/config/settings.toml
 cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
 cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
 ```
 
-## 2. Define Your Building Blocks (`settings.toml`)
-
-Open `~/schedule_management/config/settings.toml`. This file defines the *vocabulary* of your schedule—the reusable blocks and settings.
+### 2. Define reusable blocks in `settings.toml`
 
 ```toml
 [settings]
 sound_file = "/System/Library/Sounds/Ping.aiff"
-alarm_interval = 5        # Repeat alert every 5 seconds
-max_alarm_duration = 300  # Stop after 5 minutes
+alarm_interval = 5
+max_alarm_duration = 300
 
-# Define reusable time blocks (duration in minutes)
 [time_blocks]
 pomodoro = 25
 short_break = 5
@@ -52,75 +82,42 @@ long_break = 15
 meeting = 60
 lunch = 60
 
-# Define reusable messages
 [time_points]
 bedtime = "Wind down and disconnect 😴"
 standup = "Daily Standup Meeting 🗣️"
 ```
 
-## 3. Build Your Schedule (`odd_weeks.toml`)
-
-Open `~/schedule_management/config/odd_weeks.toml`. This is where you map time to action.
-
-The file is organized by day of the week (`[monday]`, `[tuesday]`, etc.) and a `[common]` section for daily habits.
+### 3. Map time to actions in `odd_weeks.toml`
 
 ```toml
-# Events that happen every day
 [common]
 "12:00" = "lunch"
 "23:00" = "bedtime"
 
-# Specific schedule for Monday
 [monday]
-"09:00" = "pomodoro"       # Starts at 09:00, ends at 09:25
-"09:25" = "short_break"    # Starts at 09:25, ends at 09:30
+"09:00" = "pomodoro"
+"09:25" = "short_break"
 "09:30" = "pomodoro"
 "10:00" = { block = "meeting", title = "Weekly Planning" }
-
-# ... add other days as needed
 ```
 
-> **Tip**: The system automatically switches between `odd_weeks.toml` and `even_weeks.toml` based on the ISO week number. For a simple weekly schedule, just make them identical or symlink them.
+For a simple weekly schedule, copy the same structure to `even_weeks.toml`.
 
-## 4. Verify and Launch
+### 4. Optional: add a synced overlay later
 
-Before letting it run in the background, verify your setup.
+Once you start using tasks, `reminder sync` can generate a daily overlay file:
 
-1.  **Check for Syntax Errors**:
-    ```bash
-    reminder status
-    ```
-    *If your config is valid, this will show the next upcoming event.*
-
-2.  **Visualize the Day**:
-    ```bash
-    reminder view
-    ```
-    *This prints a timeline of your schedule to the terminal.*
-
-3.  **Start/Restart the Service**:
-    Apply your changes and restart the background daemon.
-    ```bash
-    reminder update
-    ```
-
-## 5. Managing Tasks (Optional)
-
-Schedule Everything also includes a lightweight CLI task manager.
-
-```bash
-# Add tasks with an importance score (1-10)
-reminder add "Fix critical bug" 10
-reminder add "Email the team" 5
-
-# List tasks (sorted by importance)
-reminder ls
-
-# Remove a task
-reminder rm "Email the team"
+```toml
+[schedule]
+"09:00" = { block = "pomodoro", title = "Finish proposal draft" }
 ```
+
+That overlay lives in `synced_schedule.toml` and does not rewrite your base
+odd/even week templates.
 
 ## Next Steps
 
-*   **[Configuration Reference](configuration/overview.md)**: Deep dive into all available settings.
-*   **[Advanced Usage](advanced/weekly-rotation.md)**: Learn about complex rotation patterns.
+- [Installation](installation.md)
+- [Configuration Overview](configuration/overview.md)
+- [Weekly Schedules](configuration/weekly-schedules.md)
+- [CLI Overview](cli/overview.md)

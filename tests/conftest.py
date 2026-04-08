@@ -27,7 +27,7 @@ TEST_RECORD_PATH = TEST_CONFIG_DIR / "tasks" / "record.json"
 TEST_PROCRASTINATE_PATH = TEST_CONFIG_DIR / "tasks" / "procrastinate.json"
 
 
-def _apply_test_paths(module):
+def _apply_test_paths(module, *, task_log_path: Path | None = None):
     """Mirror src path constants on the provided module for deterministic tests."""
     setattr(module, "CONFIG_DIR", str(TEST_CONFIG_DIR))
     setattr(module, "SETTINGS_PATH", str(TEST_SETTINGS_PATH))
@@ -36,15 +36,16 @@ def _apply_test_paths(module):
     setattr(module, "DDL_PATH", str(TEST_DDL_PATH))
     setattr(module, "HABIT_PATH", str(TEST_HABIT_PATH))
     setattr(module, "TASKS_PATH", str(TEST_TASKS_PATH))
-    setattr(module, "TASK_LOG_PATH", str(TEST_TASK_LOG_PATH))
+    setattr(module, "TASK_LOG_PATH", str(task_log_path or TEST_TASK_LOG_PATH))
     setattr(module, "RECORD_PATH", str(TEST_RECORD_PATH))
     setattr(module, "PROCRASTINATE_PATH", str(TEST_PROCRASTINATE_PATH))
 
 
 @pytest.fixture(autouse=True)
-def configure_test_environment(monkeypatch):
+def configure_test_environment(monkeypatch, tmp_path):
     """Ensure every test runs against the dedicated config directory."""
     monkeypatch.setenv("REMINDER_CONFIG_DIR", str(TEST_CONFIG_DIR))
+    isolated_task_log_path = tmp_path / "tasks.log"
 
     # Update both the package constants and modules that imported them
     import schedule_management
@@ -59,17 +60,17 @@ def configure_test_environment(monkeypatch):
     import schedule_management.popups as popups_module
     import schedule_management.runner as runner_module
 
-    _apply_test_paths(schedule_management)
-    _apply_test_paths(reminder_module)
-    _apply_test_paths(reminder_macos_module)
-    _apply_test_paths(data_loaders)
-    _apply_test_paths(tasks_commands)
-    _apply_test_paths(deadlines_commands)
-    _apply_test_paths(service_commands)
-    _apply_test_paths(status_commands)
-    _apply_test_paths(sync_commands)
-    _apply_test_paths(popups_module)
-    _apply_test_paths(runner_module)
+    _apply_test_paths(schedule_management, task_log_path=isolated_task_log_path)
+    _apply_test_paths(reminder_module, task_log_path=isolated_task_log_path)
+    _apply_test_paths(reminder_macos_module, task_log_path=isolated_task_log_path)
+    _apply_test_paths(data_loaders, task_log_path=isolated_task_log_path)
+    _apply_test_paths(tasks_commands, task_log_path=isolated_task_log_path)
+    _apply_test_paths(deadlines_commands, task_log_path=isolated_task_log_path)
+    _apply_test_paths(service_commands, task_log_path=isolated_task_log_path)
+    _apply_test_paths(status_commands, task_log_path=isolated_task_log_path)
+    _apply_test_paths(sync_commands, task_log_path=isolated_task_log_path)
+    _apply_test_paths(popups_module, task_log_path=isolated_task_log_path)
+    _apply_test_paths(runner_module, task_log_path=isolated_task_log_path)
 
 
 # Export all test paths for easy import in test files
