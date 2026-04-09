@@ -51,7 +51,9 @@ rmd setup
 After a short conversation about your workday, constraints, and habits,
 `rmd setup` stores model settings in `~/.schedule_management/llm.toml`, builds
 or updates `profile.md`, shows a summary for confirmation, and only then
-writes your schedule files.
+writes your schedule files into `user_config_0`. Later accepted changes are
+saved as `user_config_1`, `user_config_2`, and so on under the same config
+root while `tasks/` remains shared.
 
 Once that schedule exists, the system can remind you about scheduled blocks,
 habit/deadline prompts, and give you both a live status view and a PDF
@@ -79,12 +81,14 @@ rmd status
 rmd status -v
 rmd view
 rmd update
+rmd switch 0
 ```
 
 When a sync overlay exists for today, `rmd status` shows the block type and
 the specific assigned event, for example `pomodoro: Finish proposal draft`.
-If your config directory is a git repository, `rmd update` pulls the latest
-schedule changes from that remote.
+`rmd update` reloads the reminder service. If your config directory is a git
+repository, it pulls the latest schedule changes first; otherwise it skips the
+git step and reloads your local files as-is.
 
 ## Core Commands
 
@@ -97,6 +101,7 @@ schedule changes from that remote.
 | `rmd track` | Record habits |
 | `rmd ddl` | Manage deadlines |
 | `rmd view` | Generate a PDF schedule visualization |
+| `rmd switch <id>` | Activate a different `user_config_n` snapshot and reload the service |
 
 ## Manual Setup and Docs
 

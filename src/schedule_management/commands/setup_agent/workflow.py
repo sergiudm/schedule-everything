@@ -17,6 +17,11 @@ from typing import Any
 
 from rich.panel import Panel
 
+from schedule_management.config_layout import (
+    clone_active_config_dir,
+    get_next_config_id,
+    write_active_config_id,
+)
 from schedule_management.commands.setup_agent.attachments import (
     _load_source_attachment,
     _resolve_source_path_input,
@@ -364,6 +369,30 @@ def _persist_profile_draft(config_dir: Path, profile_markdown: str | None) -> st
     return profile_markdown.strip()
 
 
+def _apply_versioned_schedule_update(
+    config_dir: Path,
+    bundle: dict[str, str],
+    *,
+    profile_markdown: str | None,
+) -> tuple[int, Path]:
+    root_dir = config_dir.parent
+    new_config_id, new_config_dir = clone_active_config_dir(
+        root_dir,
+        source_dir=config_dir,
+    )
+    _write_bundle(new_config_dir, bundle)
+    if profile_markdown:
+        _write_profile_markdown(new_config_dir, profile_markdown)
+    write_active_config_id(root_dir, new_config_id)
+    return new_config_id, new_config_dir
+
+
+def _reload_runner_after_config_change() -> tuple[bool, str]:
+    from schedule_management.commands.service import _restart_reminder_service
+
+    return _restart_reminder_service()
+
+
 def _turn_requests_manual_image_transcription(turn: AgentTurn) -> bool:
     combined = " ".join(
         [
@@ -458,12 +487,8 @@ def modify_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
                 return 1
 
             _render_conversation_message(turn.conversation)
-            updated_profile = _persist_profile_draft(
-                config_dir,
-                turn.profile_markdown,
-            )
-            if updated_profile is not None:
-                current_profile = updated_profile
+            if turn.profile_markdown:
+                current_profile = turn.profile_markdown.strip()
 
             if turn.needs_user_input:
                 _render_missing_information(turn.missing_information)
@@ -492,13 +517,52 @@ def modify_schedule_agent(llm_config: LLMConfig, config_dir: Path) -> int:
             ):
                 bundle["habits.toml"] = DEFAULT_HABITS_TOML
 
+            pending_config_id = get_next_config_id(config_dir.parent)
+            if not _ask_yes_no(
+                f"Apply this update as {config_dir.parent / f'user_config_{pending_config_id}'} "
+                "and switch to it?",
+                default=True,
+            ):
+                revision_request = _prompt_non_empty(
+                    "What should I adjust before trying again? "
+                )
+                follow_up_details.append(revision_request)
+                conversation_history = _append_conversation_history(
+                    conversation_history,
+                    assistant_text=turn.conversation,
+                    user_text=revision_request,
+                )
+                continue
+
             with CONSOLE.status(
                 "[bold green]Applying schedule updates...[/]",
                 spinner="line",
             ):
-                _write_bundle(config_dir, bundle)
+                new_config_id, new_config_dir = _apply_versioned_schedule_update(
+                    config_dir,
+                    bundle,
+                    profile_markdown=current_profile,
+                )
 
-            CONSOLE.print("[bold green]Schedule updated.[/]")
+            CONSOLE.print(
+                "[bold green]Schedule updated as[/] "
+                f"[cyan]{new_config_dir.name}[/]."
+            )
+            reloaded, details = _reload_runner_after_config_change()
+            if reloaded:
+                CONSOLE.print("[bold green]Reminder service reloaded.[/]")
+            elif details == "No installer restart script found.":
+                CONSOLE.print(
+                    "[bold yellow]No installer restart script found.[/] "
+                    "Restart the reminder service manually if it is running."
+                )
+            else:
+                CONSOLE.print(
+                    f"[bold red]Reminder service reload failed:[/] {details}"
+                )
+                return 1
+
+            config_dir = new_config_dir
             CONSOLE.print("[bold cyan]Run rmd view to preview the result.[/]")
             break
 

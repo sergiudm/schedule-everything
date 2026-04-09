@@ -48,3 +48,9 @@ __all__ = [
     "show_daily_summary",
     "habit_tracking_popup",
 ]
+
+
+# Keep direct script execution working for installer-managed services that still
+# invoke reminder_macos.py instead of the dedicated runner entry point.
+if __name__ == "__main__":
+    main()

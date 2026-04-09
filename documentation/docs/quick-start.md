@@ -61,11 +61,14 @@ Use this if you want full manual control over the TOML files.
 ### 1. Create the config files
 
 ```bash
-mkdir -p ~/schedule_management/config
-cp config/settings_template.toml ~/schedule_management/config/settings.toml
-cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
-cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
+mkdir -p ~/schedule_management/config/user_config_0
+cp config/settings_template.toml ~/schedule_management/config/user_config_0/settings.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/odd_weeks.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/even_weeks.toml
 ```
+
+Later accepted schedule edits create `user_config_1`, `user_config_2`, and so
+on under the same config root.
 
 ### 2. Define reusable blocks in `settings.toml`
 

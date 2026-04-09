@@ -13,7 +13,7 @@ Architecture:
     ├── commands/completion.py - shell completion script generation
     ├── commands/status.py    - status, view commands
     ├── commands/sync.py      - sync command
-    ├── commands/service.py   - update, stop, report commands
+    ├── commands/service.py   - update, switch, stop, report commands
     └── commands/setup.py     - setup command
 
 Entry Points:
@@ -40,12 +40,13 @@ Module Dependencies:
 """
 
 import argparse
-import os
 import sys
-from pathlib import Path
 
-import schedule_management
 from schedule_management import COLORS
+from schedule_management.config_layout import (
+    preview_active_config_dir,
+    resolve_config_root_dir,
+)
 
 # Import command handlers from organized modules
 from schedule_management.commands.tasks import add_task, delete_task, show_tasks
@@ -64,6 +65,7 @@ from schedule_management.commands.sync import sync_command
 from schedule_management.commands.service import (
     update_command,
     stop_command,
+    switch_command,
     report_command,
     edit_schedule_command,
 )
@@ -95,17 +97,16 @@ def create_parser() -> argparse.ArgumentParser:
         ├── sync                        - Assign today's work blocks to tasks
         ├── view                        - Generate PDF visualization
         ├── update                      - Update config from git
+        ├── switch <config_id>          - Switch active config snapshot
         ├── stop                        - Stop reminder service
         ├── report <type>               - Generate report
         ├── edit <file>                 - Edit config file
         ├── completion [shell]          - Print shell completion script
         └── setup                       - Interactive schedule setup
     """
-    # Resolve config directory at runtime so test fixtures and env overrides apply.
-    config_dir = (
-        schedule_management.CONFIG_DIR or os.getenv("REMINDER_CONFIG_DIR") or "config"
-    )
-    config_dir_path = Path(config_dir).expanduser().resolve()
+    # Resolve config directories at runtime so test fixtures and env overrides apply.
+    config_root_dir = resolve_config_root_dir()
+    active_config_dir = preview_active_config_dir(config_root_dir)
 
     # Build colored help text
     colored_description = (
@@ -114,7 +115,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     colored_epilog = f"""
-{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Configuration directory:{COLORS["RESET"]} {COLORS["BLUE"]}{config_dir_path}{COLORS["RESET"]}
+{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Configuration root:{COLORS["RESET"]} {COLORS["BLUE"]}{config_root_dir}{COLORS["RESET"]}
+{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Active config:{COLORS["RESET"]} {COLORS["BLUE"]}{active_config_dir}{COLORS["RESET"]}
     """
 
     # Create main parser
@@ -284,8 +286,11 @@ def create_parser() -> argparse.ArgumentParser:
     # update - Update config from git
     update_parser = subparsers.add_parser(
         "update",
-        help="Update configuration from git repository",
-        description="Pull latest schedule files from remote git repository.",
+        help="Reload config and pull from git when available",
+        description=(
+            "Reload the reminder service, pulling latest schedule files first "
+            "when the config directory is git-managed."
+        ),
     )
     update_parser.set_defaults(func=update_command)
 
@@ -296,6 +301,21 @@ def create_parser() -> argparse.ArgumentParser:
         description="Stop the running reminder-runner background service.",
     )
     stop_parser.set_defaults(func=stop_command)
+
+    # switch - Switch active config set
+    switch_parser = subparsers.add_parser(
+        "switch",
+        help="Switch to a different versioned config set and reload the service",
+        description=(
+            "Activate a different user_config_n directory and reload the "
+            "reminder service."
+        ),
+    )
+    switch_parser.add_argument(
+        "config_id",
+        help="Numeric config id to activate (for example: 0, 1, 2)",
+    )
+    switch_parser.set_defaults(func=switch_command)
 
     # report - Generate report
     report_parser = subparsers.add_parser(
@@ -316,8 +336,8 @@ def create_parser() -> argparse.ArgumentParser:
     report_parser.add_argument(
         "--days",
         type=int,
-        default=7,
-        help="Number of days to include (default: 7)",
+        default=None,
+        help="Compatibility flag; only '--days 7' is accepted for weekly reports",
     )
     report_parser.set_defaults(func=report_command)
 

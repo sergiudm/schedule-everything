@@ -1,4 +1,4 @@
-import os
+from schedule_management.config_layout import DynamicPath, resolve_runtime_paths
 
 # ANSI color codes
 COLORS = {
@@ -13,16 +13,16 @@ COLORS = {
     "RESET": "\033[0m",
 }
 
-CONFIG_DIR = os.getenv("REMINDER_CONFIG_DIR")
-SETTINGS_PATH = f"{CONFIG_DIR}/settings.toml"
-ODD_PATH = f"{CONFIG_DIR}/odd_weeks.toml"
-EVEN_PATH = f"{CONFIG_DIR}/even_weeks.toml"
-DDL_PATH = f"{CONFIG_DIR}/ddl.json"
-HABIT_PATH = f"{CONFIG_DIR}/habits.toml"
-TASKS_PATH = f"{CONFIG_DIR}/tasks/tasks.json"
-TASK_LOG_PATH = f"{CONFIG_DIR}/tasks/tasks.log"
-RECORD_PATH = f"{CONFIG_DIR}/tasks/record.json"
-PROCRASTINATE_PATH = f"{CONFIG_DIR}/tasks/procrastinate.json"
+CONFIG_DIR = DynamicPath(lambda: resolve_runtime_paths().active_config_dir)
+SETTINGS_PATH = DynamicPath(lambda: resolve_runtime_paths().settings_path)
+ODD_PATH = DynamicPath(lambda: resolve_runtime_paths().odd_path)
+EVEN_PATH = DynamicPath(lambda: resolve_runtime_paths().even_path)
+DDL_PATH = DynamicPath(lambda: resolve_runtime_paths().ddl_path)
+HABIT_PATH = DynamicPath(lambda: resolve_runtime_paths().habit_path)
+TASKS_PATH = DynamicPath(lambda: resolve_runtime_paths().tasks_path)
+TASK_LOG_PATH = DynamicPath(lambda: resolve_runtime_paths().task_log_path)
+RECORD_PATH = DynamicPath(lambda: resolve_runtime_paths().record_path)
+PROCRASTINATE_PATH = DynamicPath(lambda: resolve_runtime_paths().procrastinate_path)
 
 
 __all__ = [

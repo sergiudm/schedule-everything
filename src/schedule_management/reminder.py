@@ -42,6 +42,7 @@ from schedule_management.commands import (
     # Service commands
     update_command,
     stop_command,
+    switch_command,
     report_command,
     edit_schedule_command,
     setup_command,
@@ -93,6 +94,7 @@ __all__ = [
     # Service commands
     "update_command",
     "stop_command",
+    "switch_command",
     "report_command",
     "edit_schedule_command",
     "setup_command",

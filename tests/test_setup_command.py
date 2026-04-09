@@ -530,6 +530,113 @@ def test_setup_command_routes_to_modify_when_config_exists(tmp_path):
     modify_mock.assert_called_once_with(llm, tmp_path)
 
 
+def test_modify_schedule_agent_creates_next_version_after_acceptance(tmp_path):
+    config_dir = tmp_path / "user_config_0"
+    _write(
+        config_dir / "settings.toml",
+        """
+[settings]
+
+[time_blocks]
+focus = 50
+
+[time_points]
+
+[tasks]
+
+[paths]
+""".strip()
+        + "\n",
+    )
+    _write(
+        config_dir / "odd_weeks.toml",
+        """
+[monday]
+"09:00" = "focus"
+
+[common]
+""".strip()
+        + "\n",
+    )
+    _write(
+        config_dir / "even_weeks.toml",
+        """
+[monday]
+"09:00" = "focus"
+
+[common]
+""".strip()
+        + "\n",
+    )
+    _write(config_dir / "habits.toml", '[habits]\n1 = "Read"\n')
+    _write(config_dir / "profile.md", "# Before\n")
+    _write(config_dir / "ddl.json", "{}\n")
+
+    turn = setup_cmd_module.AgentTurn(
+        phase="final",
+        conversation="I moved lunch later and kept the rest stable.",
+        needs_user_input=False,
+        profile_markdown="# After\n- Keep afternoons lighter",
+        bundle={
+            "settings.toml": (
+                "[settings]\n\n"
+                "[time_blocks]\nfocus = 60\n\n"
+                "[time_points]\n\n"
+                "[tasks]\n\n"
+                "[paths]\n"
+            ),
+            "odd_weeks.toml": '[monday]\n"10:00" = "focus"\n\n[common]\n',
+            "even_weeks.toml": '[monday]\n"10:00" = "focus"\n\n[common]\n',
+            "habits.toml": '[habits]\n1 = "Read"\n',
+        },
+    )
+
+    status_mock = MagicMock()
+    status_mock.__enter__.return_value = None
+    status_mock.__exit__.return_value = False
+
+    with (
+        patch(
+            "schedule_management.commands.setup_agent.workflow._request_agent_turn",
+            return_value=(turn, None),
+        ),
+        patch(
+            "schedule_management.commands.setup_agent.workflow._prompt_non_empty",
+            side_effect=["Move lunch later"],
+        ),
+        patch(
+            "schedule_management.commands.setup_agent.workflow._ask_yes_no",
+            side_effect=[True, False],
+        ),
+        patch(
+            "schedule_management.commands.setup_agent.workflow._reload_runner_after_config_change",
+            return_value=(True, ""),
+        ),
+        patch.object(
+            setup_cmd_module.CONSOLE,
+            "status",
+            return_value=status_mock,
+        ),
+    ):
+        result = setup_cmd_module.modify_schedule_agent(
+            LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="k"),
+            config_dir,
+        )
+
+    assert result == 0
+    assert (tmp_path / ".active_config").read_text(encoding="utf-8").strip() == "1"
+    assert (tmp_path / "user_config_1" / "ddl.json").read_text(encoding="utf-8") == "{}\n"
+    assert (
+        tmp_path / "user_config_1" / "profile.md"
+    ).read_text(encoding="utf-8") == "# After\n- Keep afternoons lighter\n"
+    assert (
+        tmp_path / "user_config_1" / "settings.toml"
+    ).read_text(encoding="utf-8") == turn.bundle["settings.toml"]
+    assert (
+        tmp_path / "user_config_0" / "settings.toml"
+    ).read_text(encoding="utf-8") != turn.bundle["settings.toml"]
+
+
 def test_setup_command_routes_to_build_when_config_missing(tmp_path):
     llm = LLMConfig(vendor="openai", model="gpt-4.1-mini", api_key="k")
 

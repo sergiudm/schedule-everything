@@ -19,6 +19,9 @@ PYTHON_VERSION="3.12"
 # VENV_NAME="schedule_management_env"
 INSTALL_DIR="$HOME/SCHEDULE_MANAGEMENT"
 INSTALL_CONFIG_DIR="$HOME/.schedule_management/config"
+INSTALL_ACTIVE_CONFIG_ID="0"
+INSTALL_ACTIVE_CONFIG_DIR="$INSTALL_CONFIG_DIR/user_config_${INSTALL_ACTIVE_CONFIG_ID}"
+INSTALL_ACTIVE_CONFIG_FILE="$INSTALL_CONFIG_DIR/.active_config"
 LAUNCH_AGENT_NAME="com.sergiudm.schedule.management.reminder"
 LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_NAME}.plist"
 SYSTEMD_SERVICE_NAME="schedule-management.service"
@@ -52,6 +55,76 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+has_legacy_config_files() {
+    local legacy_files=(
+        "ddl.json"
+        "even_weeks.toml"
+        "habits.toml"
+        "habits_template.toml"
+        "odd_weeks.toml"
+        "profile.md"
+        "settings.toml"
+        "settings_template.toml"
+        "week_schedule_template.toml"
+    )
+    local file_name
+    for file_name in "${legacy_files[@]}"; do
+        if [[ -e "$INSTALL_CONFIG_DIR/$file_name" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+has_versioned_config_dirs() {
+    compgen -G "$INSTALL_CONFIG_DIR/user_config_*" > /dev/null
+}
+
+resolve_install_target_config_dir() {
+    if [[ -f "$INSTALL_ACTIVE_CONFIG_FILE" ]]; then
+        local active_id
+        active_id="$(tr -d '[:space:]' < "$INSTALL_ACTIVE_CONFIG_FILE")"
+        if [[ "$active_id" =~ ^[0-9]+$ ]] && [[ -d "$INSTALL_CONFIG_DIR/user_config_${active_id}" ]]; then
+            echo "$INSTALL_CONFIG_DIR/user_config_${active_id}"
+            return 0
+        fi
+    fi
+
+    if has_legacy_config_files; then
+        echo "$INSTALL_CONFIG_DIR"
+        return 0
+    fi
+
+    echo "$INSTALL_ACTIVE_CONFIG_DIR"
+}
+
+scaffold_versioned_config_root() {
+    log_info "Scaffolding versioned config layout in $INSTALL_CONFIG_DIR"
+
+    mkdir -p "$INSTALL_ACTIVE_CONFIG_DIR"
+    mkdir -p "$INSTALL_CONFIG_DIR/tasks"
+    printf '%s\n' "$INSTALL_ACTIVE_CONFIG_ID" > "$INSTALL_ACTIVE_CONFIG_FILE"
+
+    if [[ -d "$SCRIPT_DIR/config" ]]; then
+        local source_path
+        for source_path in "$SCRIPT_DIR"/config/*; do
+            local base_name
+            base_name="$(basename "$source_path")"
+            if [[ "$base_name" == "llm.toml" ]]; then
+                continue
+            fi
+            if [[ -f "$source_path" ]]; then
+                cp "$source_path" "$INSTALL_ACTIVE_CONFIG_DIR/$base_name"
+            fi
+        done
+        log_success "Initial config files copied to $INSTALL_ACTIVE_CONFIG_DIR"
+    else
+        log_warning "config/ directory not found in project. Created empty versioned config layout at $INSTALL_CONFIG_DIR."
+    fi
+
+    log_success "Active config marker created at $INSTALL_ACTIVE_CONFIG_FILE"
 }
 
 # Check OS compatibility
@@ -226,8 +299,8 @@ setup_project() {
         exit 1
     fi
 
-    # Copy metadata files
-    for file in pyproject.toml README.md uv.lock requirements.txt requirements-test.txt; do
+    # Copy build metadata files needed by editable installs.
+    for file in LICENSE pyproject.toml README.md uv.lock requirements.txt requirements-test.txt; do
         if [[ -f "$file" ]]; then
             cp "$file" "$INSTALL_DIR/"
             log_success "$file copied"
@@ -238,17 +311,15 @@ setup_project() {
     mkdir -p "$(dirname "$INSTALL_CONFIG_DIR")"
 
     if [[ -d "$INSTALL_CONFIG_DIR" ]]; then
-        # If config directory already exists,
-        # do NOT touch it and do NOT copy or back up anything.
-        log_warning "Config directory $INSTALL_CONFIG_DIR already exists; skipping config copy."
-    else
-        if [[ -d "config" ]]; then
-            cp -r config "$INSTALL_CONFIG_DIR"
-            log_success "config/ directory copied to $INSTALL_CONFIG_DIR"
+        # If config root already exists, preserve it unless it is still empty.
+        if has_legacy_config_files || has_versioned_config_dirs || [[ -f "$INSTALL_ACTIVE_CONFIG_FILE" ]]; then
+            log_warning "Config directory $INSTALL_CONFIG_DIR already exists; skipping config copy."
         else
-            mkdir -p "$INSTALL_CONFIG_DIR"
-            log_warning "config/ directory not found in project. Created empty config directory at $INSTALL_CONFIG_DIR."
+            scaffold_versioned_config_root
         fi
+    else
+        mkdir -p "$INSTALL_CONFIG_DIR"
+        scaffold_versioned_config_root
     fi
 
     # Create logs directory
@@ -303,6 +374,8 @@ configure_configs() {
 
     local wizard_script="$INSTALL_DIR/src/schedule_management/install_config_wizard.py"
     local template_dir="$SCRIPT_DIR/config"
+    local target_config_dir
+    target_config_dir="$(resolve_install_target_config_dir)"
 
     if [[ ! -f "$wizard_script" ]]; then
         log_error "Config wizard not found: $wizard_script"
@@ -311,14 +384,15 @@ configure_configs() {
 
     if [[ -d "$template_dir" ]]; then
         "$INSTALL_DIR/.venv/bin/python" "$wizard_script" \
-            --config-dir "$INSTALL_CONFIG_DIR" \
+            --config-dir "$target_config_dir" \
             --template-dir "$template_dir"
     else
         log_warning "Template directory not found at $template_dir; using config directory as template source."
         "$INSTALL_DIR/.venv/bin/python" "$wizard_script" \
-            --config-dir "$INSTALL_CONFIG_DIR"
+            --config-dir "$target_config_dir"
     fi
 
+    log_info "Validated active config directory: $target_config_dir"
     log_success "Configuration checks complete"
 }
 

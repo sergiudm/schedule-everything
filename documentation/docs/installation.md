@@ -79,15 +79,15 @@ For advanced users or those integrating into existing environments.
 
 4.  **Create Configuration Directory**:
     ```bash
-    mkdir -p ~/schedule_management/config
+    mkdir -p ~/schedule_management/config/user_config_0
     ```
 
 5.  **Initialize Config Files**:
-    Copy the templates to your config directory:
+    Copy the templates into the first versioned config set:
     ```bash
-    cp config/settings_template.toml ~/schedule_management/config/settings.toml
-    cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
-    cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
+    cp config/settings_template.toml ~/schedule_management/config/user_config_0/settings.toml
+    cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/odd_weeks.toml
+    cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/even_weeks.toml
     ```
 
 6.  **Configure Shell Environment**:

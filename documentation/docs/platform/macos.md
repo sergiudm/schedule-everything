@@ -43,12 +43,12 @@ If you prefer manual control:
 pip install schedule-management
 
 # Create directories
-mkdir -p ~/schedule_management/config
+mkdir -p ~/schedule_management/config/user_config_0
 
 # Copy configuration templates
-cp config/settings_template.toml ~/schedule_management/config/settings.toml
-cp config/week_schedule_template.toml ~/schedule_management/config/odd_weeks.toml
-cp config/week_schedule_template.toml ~/schedule_management/config/even_weeks.toml
+cp config/settings_template.toml ~/schedule_management/config/user_config_0/settings.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/odd_weeks.toml
+cp config/week_schedule_template.toml ~/schedule_management/config/user_config_0/even_weeks.toml
 
 # Set up shell profile
 echo 'export PATH="$HOME/schedule_management:$PATH"' >> ~/.zshrc

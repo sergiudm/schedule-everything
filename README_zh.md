@@ -63,7 +63,9 @@ rmd setup
 ```
 
 这个流程会把模型配置保存到 `~/.schedule_management/llm.toml`，构建或更新
-`profile.md`，并在真正写入日程文件之前先给你一个摘要确认。
+`profile.md`，并在真正写入日程文件之前先给你一个摘要确认。首次生成会写到
+`user_config_0`；之后每次确认过的修改都会在同一配置根目录下生成新的
+`user_config_n` 版本，而 `tasks/` 会继续共用。
 
 ### 3. 添加任务并同步今天
 
@@ -82,9 +84,11 @@ rmd status
 rmd status -v
 rmd view
 rmd update
+rmd switch 0
 ```
 
 当今天已经有同步 overlay 时，`rmd status` 会显示块类型和具体任务标题，例如 `pomodoro: 完成方案初稿`。
+`rmd update` 会重新加载提醒服务；如果配置目录本身是 git 仓库，会先拉取最新日程，否则跳过 git 步骤并直接按本地文件重载。
 
 ## 常用命令
 
@@ -97,6 +101,7 @@ rmd update
 | `rmd track` | 记录习惯 |
 | `rmd ddl` | 管理截止日期 |
 | `rmd view` | 生成 PDF 日程可视化 |
+| `rmd switch <id>` | 切换到不同的 `user_config_n` 配置版本并重载服务 |
 
 ## 手动配置和文档
 

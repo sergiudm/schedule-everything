@@ -20,6 +20,7 @@ from typing import Any
 import tomllib
 from rich.panel import Panel
 
+from schedule_management.config_layout import resolve_active_config_dir
 from schedule_management.commands.setup_agent.console import CONSOLE
 from schedule_management.commands.setup_agent.models import LLMConfig
 
@@ -40,8 +41,7 @@ REQUIRED_CONFIG_FILES = (
 
 
 def _resolve_config_dir() -> Path:
-    config_dir = os.getenv("REMINDER_CONFIG_DIR") or "config"
-    return Path(config_dir).expanduser().resolve()
+    return resolve_active_config_dir(create=True)
 
 
 def _resolve_llm_config_path() -> Path:

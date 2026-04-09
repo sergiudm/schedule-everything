@@ -58,6 +58,17 @@ from schedule_management.report import auto_generate_reports
 
 
 # =============================================================================
+# RUNTIME LOGGING
+# =============================================================================
+
+
+def _log_runtime_event(message: str) -> None:
+    """Write a timestamped runtime event line to stdout for service log capture."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}", flush=True)
+
+
+# =============================================================================
 # AUTO REPORT GENERATION
 # =============================================================================
 
@@ -76,11 +87,11 @@ def try_auto_generate_reports(settings_path: str) -> None:
         generated = auto_generate_reports(settings_path)
         if generated:
             for span, pdf_path in generated.items():
-                print(f"📊 Generated {span} report at {pdf_path}")
+                _log_runtime_event(f"Generated {span} report at {pdf_path}")
     except FileNotFoundError:
-        print(f"⚠️  settings.toml not found for auto reports: {settings_path}")
+        _log_runtime_event(f"Auto reports skipped: settings.toml not found at {settings_path}")
     except Exception as exc:
-        print(f"⚠️  Auto report generation skipped: {exc}")
+        _log_runtime_event(f"Auto report generation skipped: {exc}")
 
 
 # =============================================================================
@@ -183,6 +194,7 @@ class ScheduleRunner:
                     message = self.config.time_points[event]
                 else:
                     message = event  # Use string as message directly
+                _log_runtime_event(f"Time point triggered at {time_str}: {message}")
                 self._trigger_alarm("提醒", message)
                 self.notified_today.add(time_str)
         elif isinstance(event, dict) and "block" in event:
@@ -192,7 +204,9 @@ class ScheduleRunner:
             if block_type in self.config.time_blocks:
                 self._start_time_block(time_str, block_type, title)
             else:
-                print(f"Warning: Unknown block type '{block_type}' at {time_str}")
+                _log_runtime_event(
+                    f"Warning: Unknown block type '{block_type}' at {time_str}"
+                )
 
     def _start_time_block(self, start_time: str, block_type: str, title: str) -> None:
         """
@@ -217,6 +231,9 @@ class ScheduleRunner:
         # Schedule end notification
         end_message = f"{title} 结束！休息一下 🎉"
         self.pending_end_alarms[end_time_str] = end_message
+        _log_runtime_event(
+            f"Time block started at {start_time}: {title} ({duration}min), ends at {end_time_str}"
+        )
 
     # =========================================================================
     # URGENT TASKS & DEADLINES
@@ -274,8 +291,12 @@ class ScheduleRunner:
             ]
 
             if not urgent_tasks:
+                _log_runtime_event("Urgent task prompt found no unfinished high-priority tasks")
                 return
 
+            _log_runtime_event(
+                f"Urgent task prompt opened for {len(urgent_tasks)} high-priority task(s)"
+            )
             urgent_tasks.sort(
                 key=lambda task: (
                     -self._task_priority(task),
@@ -323,7 +344,9 @@ class ScheduleRunner:
                         try:
                             log_task_action("deleted", task)
                         except Exception as exc:
-                            print(f"⚠️  Warning: Could not log task deletion: {exc}")
+                            _log_runtime_event(
+                                f"Warning: Could not log task deletion: {exc}"
+                            )
 
                     if description in procrastinate_list:
                         procrastinate_list.discard(description)
@@ -338,7 +361,7 @@ class ScheduleRunner:
             if procrastinate_changed:
                 save_procrastinate_list(procrastinate_list)
         except Exception as exc:
-            print(f"⚠️  Urgent task prompt skipped: {exc}")
+            _log_runtime_event(f"Urgent task prompt skipped: {exc}")
         finally:
             self._urgent_task_prompt_lock.release()
 
@@ -399,12 +422,14 @@ class ScheduleRunner:
         if self._urgent_task_prompt_lock.locked():
             return
 
+        _log_runtime_event("Urgent task check triggered")
         threading.Thread(target=self._prompt_urgent_tasks, daemon=True).start()
 
     def _check_urgent_deadlines(self) -> None:
         """Show reminder for approaching deadlines."""
         urgent_deadlines = self._get_urgent_deadlines()
         if not urgent_deadlines:
+            _log_runtime_event("Urgent deadline check found no approaching deadlines")
             return
 
         lines: list[str] = []
@@ -421,6 +446,9 @@ class ScheduleRunner:
                 lines.append(f"🚨 {event} - {deadline_str} (剩余 {days_left} 天)")
 
         message = "📅 紧急DDL提醒\n\n" + "\n".join(lines)
+        _log_runtime_event(
+            f"Urgent deadline reminder triggered for {len(urgent_deadlines)} deadline(s)"
+        )
         self._trigger_alarm("Urgent Deadlines", message, sound="Glass")
 
     # =========================================================================
@@ -465,6 +493,7 @@ class ScheduleRunner:
                 and daily_summary_key not in self.notified_today
                 and not self.config.should_skip_today()
             ):
+                _log_runtime_event("Daily summary popup triggered")
                 threading.Thread(target=show_daily_summary_popup, daemon=True).start()
                 self.notified_today.add(daily_summary_key)
 
@@ -479,6 +508,7 @@ class ScheduleRunner:
                 and habit_prompt_key not in self.notified_today
                 and not self.config.should_skip_today()
             ):
+                _log_runtime_event("Habit tracking popup triggered")
                 threading.Thread(target=show_habit_tracking_popup, daemon=True).start()
                 self.notified_today.add(habit_prompt_key)
 
@@ -493,6 +523,9 @@ class ScheduleRunner:
                         now_str == urgent_time
                         and urgent_tasks_key not in self.notified_today
                     ):
+                        _log_runtime_event(
+                            f"Scheduled urgent task check reached at {urgent_time}"
+                        )
                         self._check_urgent_tasks()
                         self.notified_today.add(urgent_tasks_key)
 
@@ -503,6 +536,9 @@ class ScheduleRunner:
                         now_str == urgent_time
                         and urgent_ddls_key not in self.notified_today
                     ):
+                        _log_runtime_event(
+                            f"Scheduled urgent deadline check reached at {urgent_time}"
+                        )
                         self._check_urgent_deadlines()
                         self.notified_today.add(urgent_ddls_key)
 
@@ -572,6 +608,7 @@ class ScheduleRunner:
                 and now_str not in self.notified_today
             ):
                 message = self.pending_end_alarms[now_str]
+                _log_runtime_event(f"End alarm triggered at {now_str}: {message}")
                 self._trigger_alarm("结束提醒", message)
                 self.notified_today.add(now_str)
                 del self.pending_end_alarms[now_str]
@@ -580,6 +617,7 @@ class ScheduleRunner:
             # Midnight Reset
             # -----------------------------------------------------------------
             if now_str == "00:00":
+                _log_runtime_event("Midnight reset triggered")
                 self.notified_today.clear()
                 self.pending_end_alarms.clear()
 
@@ -603,6 +641,12 @@ def main() -> None:
 
     config = ScheduleConfig(SETTINGS_PATH)
     weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
+    _log_runtime_event(
+        "Runner started with "
+        f"settings={SETTINGS_PATH}, daily_urgent={config.daily_urgent_times}, "
+        f"ddl_urgent={config.ddl_urgent_times}, daily_summary={config.daily_summary_time}, "
+        f"habit_prompt={config.habit_prompt_time}"
+    )
     runner = ScheduleRunner(config, weekly)
     runner.run()
 

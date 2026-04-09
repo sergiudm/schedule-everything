@@ -20,7 +20,7 @@ Example Usage:
 """
 
 import subprocess
-import platform as platform_module
+import sys
 
 
 # =============================================================================
@@ -41,12 +41,12 @@ def get_platform() -> str:
         ...     # macOS-specific code
         ...     pass
     """
-    system = platform_module.system().lower()
-    if system == "darwin":
+    platform_id = sys.platform.lower()
+    if platform_id == "darwin":
         return "macos"
-    elif system == "linux":
+    elif platform_id.startswith("linux"):
         return "linux"
-    elif system == "windows":
+    elif platform_id.startswith("win"):
         return "windows"
     else:
         return "unknown"

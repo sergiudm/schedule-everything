@@ -24,21 +24,24 @@ from conftest import TEST_CONFIG_DIR
 class TestUpdateCommand:
     """Test the update command functionality."""
 
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._has_git_metadata")
+    @patch("schedule_management.commands.service._resolve_config_dir")
     @patch("schedule_management.commands.service.subprocess.run")
-    @patch("schedule_management.commands.service.Path")
-    def test_update_success(self, mock_path_class, mock_subprocess):
-        """Test successful update command."""
-        # Mock Path to return paths that exist and have .git
+    def test_update_success(
+        self,
+        mock_subprocess,
+        mock_resolve_config_dir,
+        mock_has_git_metadata,
+        mock_restart_service,
+    ):
+        """Test successful update command for a git-managed config."""
         mock_config_dir = MagicMock()
         mock_config_dir.exists.return_value = True
-        mock_git_dir = MagicMock()
-        mock_git_dir.exists.return_value = True
-        mock_config_dir.__truediv__ = MagicMock(return_value=mock_git_dir)
-
-        mock_path_instance = MagicMock()
-        mock_path_instance.parent = mock_config_dir
-        mock_path_class.return_value = mock_path_instance
-
+        mock_config_dir.__str__.return_value = "/tmp/config"
+        mock_resolve_config_dir.return_value = mock_config_dir
+        mock_has_git_metadata.return_value = True
+        mock_restart_service.return_value = (True, "")
         mock_subprocess.return_value = MagicMock(
             returncode=0, stdout="Already up to date", stderr=""
         )
@@ -47,23 +50,31 @@ class TestUpdateCommand:
         result = reminder.update_command(args)
 
         assert result == 0
-        mock_subprocess.assert_called_once()
+        mock_subprocess.assert_called_once_with(
+            ["git", "-C", "/tmp/config", "pull", "--rebase"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        mock_restart_service.assert_called_once_with()
 
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._has_git_metadata")
+    @patch("schedule_management.commands.service._resolve_config_dir")
     @patch("schedule_management.commands.service.subprocess.run")
-    @patch("schedule_management.commands.service.Path")
-    def test_update_invalid_config(self, mock_path_class, mock_subprocess):
+    def test_update_invalid_config(
+        self,
+        mock_subprocess,
+        mock_resolve_config_dir,
+        mock_has_git_metadata,
+        mock_restart_service,
+    ):
         """Test update command when git pull fails."""
-        # Mock Path to return paths that exist
         mock_config_dir = MagicMock()
         mock_config_dir.exists.return_value = True
-        mock_git_dir = MagicMock()
-        mock_git_dir.exists.return_value = True
-        mock_config_dir.__truediv__ = MagicMock(return_value=mock_git_dir)
-
-        mock_path_instance = MagicMock()
-        mock_path_instance.parent = mock_config_dir
-        mock_path_class.return_value = mock_path_instance
-
+        mock_config_dir.__str__.return_value = "/tmp/config"
+        mock_resolve_config_dir.return_value = mock_config_dir
+        mock_has_git_metadata.return_value = True
         mock_subprocess.return_value = MagicMock(
             returncode=1, stdout="", stderr="error: failed to pull"
         )
@@ -72,22 +83,179 @@ class TestUpdateCommand:
         result = reminder.update_command(args)
 
         assert result == 1
+        mock_restart_service.assert_not_called()
 
-    @patch("schedule_management.commands.service.Path")
-    def test_update_missing_files(self, mock_path_class):
+    @patch("schedule_management.commands.service._resolve_config_dir")
+    def test_update_missing_files(self, mock_resolve_config_dir):
         """Test update command with missing configuration files."""
-        # Mock Path to return a path that doesn't exist
         mock_config_dir = MagicMock()
         mock_config_dir.exists.return_value = False
-
-        mock_path_instance = MagicMock()
-        mock_path_instance.parent = mock_config_dir
-        mock_path_class.return_value = mock_path_instance
+        mock_resolve_config_dir.return_value = mock_config_dir
 
         args = MagicMock()
         result = reminder.update_command(args)
 
         assert result == 1
+
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._has_git_metadata")
+    @patch("schedule_management.commands.service._resolve_config_dir")
+    @patch("schedule_management.commands.service.subprocess.run")
+    def test_update_non_git_config_skips_pull(
+        self,
+        mock_subprocess,
+        mock_resolve_config_dir,
+        mock_has_git_metadata,
+        mock_restart_service,
+    ):
+        """Test update command when config is local-only and not git-managed."""
+        mock_config_dir = MagicMock()
+        mock_config_dir.exists.return_value = True
+        mock_config_dir.__str__.return_value = "/tmp/config"
+        mock_resolve_config_dir.return_value = mock_config_dir
+        mock_has_git_metadata.return_value = False
+        mock_restart_service.return_value = (False, "No installer restart script found.")
+
+        args = MagicMock()
+        result = reminder.update_command(args)
+
+        assert result == 0
+        mock_subprocess.assert_not_called()
+        mock_restart_service.assert_called_once_with()
+
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._has_git_metadata")
+    @patch("schedule_management.commands.service._resolve_config_dir")
+    def test_update_restart_failure(
+        self,
+        mock_resolve_config_dir,
+        mock_has_git_metadata,
+        mock_restart_service,
+    ):
+        """Test update command when service restart fails."""
+        mock_config_dir = MagicMock()
+        mock_config_dir.exists.return_value = True
+        mock_resolve_config_dir.return_value = mock_config_dir
+        mock_has_git_metadata.return_value = False
+        mock_restart_service.return_value = (False, "launchctl failed")
+
+        args = MagicMock()
+        result = reminder.update_command(args)
+
+        assert result == 1
+
+
+class TestSwitchCommand:
+    """Test the switch command functionality."""
+
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._resolve_config_dir")
+    def test_switch_updates_active_config_and_restarts_service(
+        self,
+        mock_resolve_config_dir,
+        mock_restart_service,
+        tmp_path,
+    ):
+        config_root = tmp_path / "config"
+        (config_root / "user_config_0").mkdir(parents=True)
+        (config_root / "user_config_1").mkdir(parents=True)
+        mock_resolve_config_dir.return_value = config_root
+        mock_restart_service.return_value = (True, "")
+
+        args = MagicMock(config_id="1")
+        result = reminder.switch_command(args)
+
+        assert result == 0
+        assert (config_root / ".active_config").read_text(encoding="utf-8").strip() == "1"
+        mock_restart_service.assert_called_once_with()
+
+    @patch("schedule_management.commands.service._restart_reminder_service")
+    @patch("schedule_management.commands.service._resolve_config_dir")
+    def test_switch_rejects_invalid_config_id(
+        self,
+        mock_resolve_config_dir,
+        mock_restart_service,
+        tmp_path,
+    ):
+        config_root = tmp_path / "config"
+        (config_root / "user_config_0").mkdir(parents=True)
+        (config_root / "user_config_2").mkdir(parents=True)
+        mock_resolve_config_dir.return_value = config_root
+
+        args = MagicMock(config_id="5")
+        with patch("builtins.print") as mock_print:
+            result = reminder.switch_command(args)
+
+        assert result == 1
+        mock_restart_service.assert_not_called()
+        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "Invalid config id: 5" in printed
+        assert "Valid config ids: 0, 2" in printed
+
+
+class TestReportCommand:
+    """Test the manual report command."""
+
+    @patch("schedule_management.report.generate_manual_report")
+    def test_report_weekly_success(self, mock_generate_manual_report):
+        """Test successful weekly report generation."""
+        mock_generate_manual_report.return_value = Path("/tmp/weekly_report.pdf")
+
+        args = MagicMock(type="weekly", date="2024-02-01", days=7)
+        result = reminder.report_command(args)
+
+        assert result == 0
+        mock_generate_manual_report.assert_called_once_with(
+            "weekly",
+            target_date=date(2024, 2, 1),
+        )
+
+    @patch("schedule_management.report.generate_manual_report")
+    def test_report_monthly_success(self, mock_generate_manual_report):
+        """Test successful monthly report generation."""
+        mock_generate_manual_report.return_value = Path("/tmp/monthly_report.pdf")
+
+        args = MagicMock(type="monthly", date="2024-02-01", days=None)
+        result = reminder.report_command(args)
+
+        assert result == 0
+        mock_generate_manual_report.assert_called_once_with(
+            "monthly",
+            target_date=date(2024, 2, 1),
+        )
+
+    def test_report_rejects_invalid_date(self):
+        """Test report command with an invalid date string."""
+        args = MagicMock(type="weekly", date="2024/02/01", days=None)
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.report_command(args)
+
+        assert result == 1
+        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "Invalid date format" in printed
+
+    def test_report_rejects_custom_weekly_day_range(self):
+        """Test report command rejecting unsupported custom weekly ranges."""
+        args = MagicMock(type="weekly", date=None, days=14)
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.report_command(args)
+
+        assert result == 1
+        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "Custom day ranges are not supported for weekly reports." in printed
+
+    def test_report_rejects_days_for_monthly(self):
+        """Test report command rejecting --days for monthly reports."""
+        args = MagicMock(type="monthly", date=None, days=7)
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.report_command(args)
+
+        assert result == 1
+        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list)
+        assert "'--days' is not supported for monthly reports." in printed
 
 
 class TestViewCommand:
@@ -632,6 +800,16 @@ class TestCompletionCommand:
 
         assert args.command == "completion"
         assert args.shell == "bash"
+
+    def test_create_parser_with_switch_command(self):
+        """Test parser wiring for the switch command."""
+        parser = reminder.create_parser()
+
+        args = parser.parse_args(["switch", "2"])
+
+        assert args.command == "switch"
+        assert args.config_id == "2"
+        assert args.func is reminder.switch_command
 
     def test_completion_command_prints_bash_script(self, capsys):
         """Test completion command emits a bash completion script."""

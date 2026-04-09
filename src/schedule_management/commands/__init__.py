@@ -8,7 +8,7 @@ This package contains all CLI command implementations, organized by domain:
 - completion: Shell completion script generation
 - status: Status and schedule viewing commands
 - sync: LLM-assisted task assignment for today's work blocks
-- service: Service management (update, stop, report)
+- service: Service management (update, switch, stop, report)
 - setup: Interactive AI-assisted schedule setup
 """
 
@@ -25,6 +25,7 @@ from schedule_management.commands.sync import sync_command
 from schedule_management.commands.service import (
     update_command,
     stop_command,
+    switch_command,
     report_command,
     edit_schedule_command,
 )
@@ -50,6 +51,7 @@ __all__ = [
     # Service commands
     "update_command",
     "stop_command",
+    "switch_command",
     "report_command",
     "edit_schedule_command",
     # Setup command

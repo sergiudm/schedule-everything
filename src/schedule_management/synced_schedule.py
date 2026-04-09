@@ -18,6 +18,8 @@ from typing import Any
 
 import tomllib
 
+from schedule_management.config_layout import resolve_config_root_dir
+
 SYNCABLE_BLOCKS = {"pomodoro", "potato"}
 
 
@@ -37,8 +39,7 @@ def resolve_synced_schedule_path() -> Path:
     if override:
         return Path(override).expanduser().resolve()
 
-    config_dir = os.getenv("REMINDER_CONFIG_DIR") or "config"
-    return (Path(config_dir).expanduser().resolve() / "synced_schedule.toml").resolve()
+    return (resolve_config_root_dir() / "synced_schedule.toml").resolve()
 
 
 def _normalize_assignment(event: Any) -> dict[str, str] | None:

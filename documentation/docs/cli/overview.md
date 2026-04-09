@@ -28,6 +28,7 @@ The CLI commands are organized into these main categories:
 ### Schedule Management
 Commands for managing your schedule and service:
 - [`rmd update`](schedule-management.md#update) - Reload config and restart service
+- [`rmd switch`](schedule-management.md#switch) - Change the active `user_config_n` snapshot and reload the service
 - [`rmd setup`](schedule-management.md#setup) - Interactive AI-assisted setup powered by OpenCode with profile-first intake, evidence-informed schedule planning, and optional file-aware reasoning
 - [`rmd sync`](schedule-management.md#sync) - Generate and confirm today's pomodoro/potato task assignments
 - [`rmd view`](schedule-management.md#view) - Generate schedule visualization
@@ -60,8 +61,11 @@ Commands for generating productivity reports:
 
 ## Configuration Directory
 
-By default, the CLI looks for configuration files in:
+By default, the CLI looks for its config root in:
 - `~/schedule_management/config/` (macOS/Linux)
+
+Inside that root, schedule files live under versioned `user_config_n`
+directories and shared task data stays under `tasks/`.
 
 You can override this by setting the `REMINDER_CONFIG_DIR` environment variable.
 
@@ -112,6 +116,9 @@ rmd stop
 ```bash
 # Update with custom config directory
 REMINDER_CONFIG_DIR=/custom/path/config rmd update
+
+# Switch to config snapshot 2 under a custom config root
+REMINDER_CONFIG_DIR=/custom/path/config rmd switch 2
 
 # List tasks with verbose output (if supported)
 rmd status -v

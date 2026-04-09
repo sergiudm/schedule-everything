@@ -1,3 +1,4 @@
+import runpy
 from datetime import time
 from unittest.mock import patch, MagicMock
 
@@ -37,6 +38,16 @@ def test_add_minutes_to_time():
     # Exact hour
     result = add_minutes_to_time("10:00", 60)
     assert result == "11:00"
+
+
+def test_reminder_macos_runs_runner_main_when_executed_as_script():
+    """Executing the compatibility module as a script should start the runner."""
+    import schedule_management.reminder_macos as reminder_macos_module
+
+    with patch("schedule_management.runner.main") as mock_main:
+        runpy.run_path(str(reminder_macos_module.__file__), run_name="__main__")
+
+    mock_main.assert_called_once_with()
 
 
 class TestScheduleConfig:
@@ -186,6 +197,19 @@ class TestScheduleRunner:
         assert "08:55" in self.runner.pending_end_alarms
         assert self.runner.pending_end_alarms["08:55"] == "pomodoro 结束！休息一下 🎉"
 
+    @patch("schedule_management.runner._log_runtime_event")
+    @patch("schedule_management.runner.alarm")
+    def test_handle_string_block_event_logs_runtime_event(
+        self, mock_alarm, mock_log_runtime_event
+    ):
+        """Time blocks should emit a runtime log line when they start."""
+        self.runner._handle_event("08:30", "pomodoro")
+
+        mock_alarm.assert_called_once()
+        mock_log_runtime_event.assert_called_once_with(
+            "Time block started at 08:30: pomodoro (25min), ends at 08:55"
+        )
+
     @patch("schedule_management.runner.alarm")
     def test_handle_time_point_event(self, mock_alarm):
         """测试 time_point 事件触发一次性提醒"""
@@ -194,6 +218,19 @@ class TestScheduleRunner:
         mock_alarm.assert_called_once()
         assert "21:00" in self.runner.notified_today
         assert len(self.runner.pending_end_alarms) == 0
+
+    @patch("schedule_management.runner._log_runtime_event")
+    @patch("schedule_management.runner.alarm")
+    def test_handle_time_point_event_logs_runtime_event(
+        self, mock_alarm, mock_log_runtime_event
+    ):
+        """Time points should emit a runtime log line with the resolved message."""
+        self.runner._handle_event("21:00", "summary")
+
+        mock_alarm.assert_called_once()
+        mock_log_runtime_event.assert_called_once_with(
+            "Time point triggered at 21:00: 今天的工作结束 🎉, 总结一下"
+        )
 
     @patch("schedule_management.runner.alarm")
     def test_handle_direct_message_event(self, mock_alarm):

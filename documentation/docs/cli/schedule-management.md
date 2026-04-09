@@ -24,19 +24,54 @@ rmd setup
 - Reads or writes `profile.md` in the same config directory as `settings.toml`.
 - In build flow, iteratively refines the profile first, asks for timetable context when available, then produces a pure-text schedule summary before generating TOML.
 - In modify flow, reads `profile.md` first so edits stay aligned with the user's long-term context.
+- Writes the first accepted schedule to `user_config_0`, then versions later accepted edits as `user_config_n+1`.
+- Switches the active config snapshot after an accepted modification.
 - Uses evidence-informed defaults around sleep regularity, physical activity, movement breaks, and daytime light exposure when the user leaves details open.
 - Only after you confirm the summary does it generate TOML configuration files.
 - During build/modify turns, the OpenCode-backed agent can attach local files/images and reason over local context files when needed.
 - Recommends `rmd view` and supports iterative adjustments.
 
+## switch
+
+Activate a specific versioned config snapshot and reload the background
+service.
+
+### Syntax
+```bash
+rmd switch CONFIG_ID
+```
+
+### What it does
+- Validates that `CONFIG_ID` exists as `user_config_<id>` under your config root.
+- Updates `.active_config` so the selected snapshot becomes live.
+- Restarts the installer-managed reminder service when its restart helper is available.
+- Prints the valid ids when you request an invalid one.
+
+### Examples
+```bash
+# Switch back to the first generated schedule
+rmd switch 0
+
+# Activate the third accepted revision
+rmd switch 2
+```
+
 ## update
 
-Reload the schedule configuration files (pulling from a remote Git repository if `.git` is present) and restart the background service.
+Reload the schedule configuration files and restart the background service. If
+the active config directory contains `.git`, `rmd update` runs `git pull
+--rebase` first. Otherwise it skips the git step and reloads the local files
+as-is.
 
 ### Syntax
 ```bash
 rmd update
 ```
+
+### What it does
+- Pulls the latest config changes when your config directory is git-managed.
+- Restarts the installer-managed reminder service when its restart helper is available.
+- Falls back to a local-only reload flow for configs created by `rmd setup` or manual edits.
 
 ### Examples
 ```bash
@@ -143,7 +178,7 @@ rmd stop
 
 ## report
 
-Generate a productivity report as a PDF document.
+Generate a weekly or monthly productivity report as a PDF document.
 
 ### Syntax
 ```bash
@@ -153,22 +188,25 @@ rmd report TYPE [OPTIONS]
 ### Parameters
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `TYPE` | string | `weekly` or `monthly` |
+| `TYPE` | string | `weekly` for the calendar week containing the target date, or `monthly` for the calendar month containing the target date |
 
 ### Options
 | Option | Description |
 |--------|-------------|
 | `-d, --date` | Target date in YYYY-MM-DD format (default: today) |
-| `--days` | Number of days to include (default: 7) |
+| `--days` | Compatibility flag for older scripts. `weekly` only accepts `7`; `monthly` does not support it. |
 
 ### Examples
 ```bash
-# Generate report for last 7 days
+# Generate the weekly report for the current week
 rmd report weekly
 
-# Generate a monthly report
+# Generate the monthly report for the current month
 rmd report monthly
 
-# Generate report starting from a specific date
-rmd report weekly -d 2024-02-01 --days 14
+# Generate the weekly report for the week containing a specific date
+rmd report weekly -d 2024-02-01
+
+# Generate the monthly report for the month containing a specific date
+rmd report monthly -d 2024-02-01
 ```

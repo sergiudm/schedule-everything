@@ -270,12 +270,12 @@ class ReportGenerator:
         habit_records: list[dict],
         habits_config: dict,
         target_date: date | None = None,
-    ):
+    ) -> Path | None:
         if not MATPLOTLIB_AVAILABLE:
             print(
                 "❌ matplotlib is not available. Please install it: pip install matplotlib"
             )
-            return
+            return None
 
         if target_date is None:
             target_date = date.today()
@@ -305,6 +305,7 @@ class ReportGenerator:
                 )
 
         print(f"✅ Weekly report generated: {filepath}")
+        return filepath
 
     def generate_monthly_report(
         self,
@@ -312,12 +313,12 @@ class ReportGenerator:
         habit_records: list[dict],
         habits_config: dict,
         target_date: date | None = None,
-    ):
+    ) -> Path | None:
         if not MATPLOTLIB_AVAILABLE:
             print(
                 "❌ matplotlib is not available. Please install it: pip install matplotlib"
             )
-            return
+            return None
 
         if target_date is None:
             target_date = date.today()
@@ -347,6 +348,7 @@ class ReportGenerator:
                 )
 
         print(f"✅ Monthly report generated: {filepath}")
+        return filepath
 
     def _create_weekly_summary_page(
         self, pdf, start_date, end_date, tasks, habits_data, habits_config
@@ -671,16 +673,16 @@ def auto_generate_reports(
     """Auto-generate weekly/monthly reports using paths and schedule from settings.toml."""
 
     settings_data = _load_settings(settings_path)
-    config_dir = CONFIG_DIR
+    config_dir = Path(CONFIG_DIR)
     paths_section = settings_data.get("paths", {})
 
     reports_path = _expand_path(
         paths_section.get("reports_path", "~/Desktop/reports"), config_dir
     )
 
-    task_log = _load_json_file(TASK_LOG_PATH)
-    habit_records = _load_json_file(RECORD_PATH)
-    habits_config = _load_habits_config(HABIT_PATH)
+    task_log = _load_json_file(Path(TASK_LOG_PATH))
+    habit_records = _load_json_file(Path(RECORD_PATH))
+    habits_config = _load_habits_config(Path(HABIT_PATH))
 
     generator = ReportGenerator(str(reports_path))
     return generator.generate_due_reports(
@@ -690,3 +692,42 @@ def auto_generate_reports(
         habits_config,
         now=now,
     )
+
+
+def generate_manual_report(
+    report_type: str,
+    target_date: date | None = None,
+    settings_path: str | None = SETTINGS_PATH,
+) -> Path | None:
+    """Generate a manual weekly or monthly report using the active config."""
+
+    settings_data = _load_settings(settings_path)
+    config_dir = Path(CONFIG_DIR)
+    paths_section = settings_data.get("paths", {})
+
+    reports_path = _expand_path(
+        paths_section.get("reports_path", "~/Desktop/reports"), config_dir
+    )
+
+    task_log = _load_json_file(Path(TASK_LOG_PATH))
+    habit_records = _load_json_file(Path(RECORD_PATH))
+    habits_config = _load_habits_config(Path(HABIT_PATH))
+
+    generator = ReportGenerator(str(reports_path))
+
+    if report_type == "weekly":
+        return generator.generate_weekly_report(
+            task_log,
+            habit_records,
+            habits_config,
+            target_date=target_date,
+        )
+    if report_type == "monthly":
+        return generator.generate_monthly_report(
+            task_log,
+            habit_records,
+            habits_config,
+            target_date=target_date,
+        )
+
+    raise ValueError(f"Unknown report type: {report_type}")

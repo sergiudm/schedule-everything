@@ -2,7 +2,8 @@
 Service Commands - CLI commands for managing the reminder service.
 
 This module provides CLI command handlers for service management:
-- update_command: Update schedule files from git repository
+- update_command: Reload schedule files and restart the reminder service
+- switch_command: Switch the active versioned config snapshot and reload
 - stop_command: Stop the running reminder-runner service
 - report_command: Generate report manually
 
@@ -10,7 +11,8 @@ These commands manage the lifecycle and configuration of the schedule
 reminder system.
 
 Example Usage (via CLI):
-    $ rmd update          # Pull latest schedule files from git
+    $ rmd update          # Reload local config, pulling from git when present
+    $ rmd switch 2        # Activate user_config_2 and reload the service
     $ rmd stop            # Stop the reminder service
     $ rmd report          # Generate manual report
 """
@@ -28,6 +30,82 @@ from schedule_management import (
     DDL_PATH,
     HABIT_PATH,
 )
+from schedule_management.config_layout import (
+    list_config_ids,
+    preview_active_config_dir,
+    resolve_config_root_dir,
+    write_active_config_id,
+)
+
+
+# =============================================================================
+# UPDATE HELPERS
+# =============================================================================
+
+
+def _resolve_config_dir() -> Path:
+    """Resolve the root config directory from the runtime environment."""
+    return resolve_config_root_dir()
+
+
+def _has_git_metadata(config_dir: Path) -> bool:
+    """Return whether the config directory is backed by a local git checkout."""
+    return (config_dir / ".git").exists()
+
+
+def _find_installer_script(script_name: str) -> Path | None:
+    """Search near the active Python executable for installer helper scripts."""
+    search_roots: list[Path] = []
+
+    for raw_path in (sys.executable, sys.argv[0]):
+        if not raw_path:
+            continue
+
+        resolved = Path(raw_path).expanduser()
+        try:
+            resolved = resolved.resolve()
+        except OSError:
+            resolved = resolved.absolute()
+
+        search_roots.append(resolved)
+        search_roots.extend(resolved.parents)
+
+    seen: set[Path] = set()
+    for root in search_roots:
+        candidate = root / script_name
+        if candidate in seen:
+            continue
+
+        seen.add(candidate)
+        if candidate.is_file():
+            return candidate
+
+    return None
+
+
+def _restart_reminder_service() -> tuple[bool, str]:
+    """Restart the installer-managed reminder service when helper scripts exist."""
+    restart_script = _find_installer_script("restart_reminders.sh")
+    if restart_script is None:
+        return False, "No installer restart script found."
+
+    try:
+        result = subprocess.run(
+            [str(restart_script)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        return False, str(exc)
+
+    if result.returncode == 0:
+        return True, ""
+
+    details = result.stderr.strip() or result.stdout.strip()
+    if not details:
+        details = f"Restart script exited with status {result.returncode}."
+    return False, details
 
 
 # =============================================================================
@@ -37,10 +115,12 @@ from schedule_management import (
 
 def update_command(args) -> int:
     """
-    Handle the 'update' command - update schedule files from remote.
+    Handle the 'update' command - reload schedule files and service state.
 
-    Performs git pull in the configuration directory to fetch the latest
-    schedule, settings, and habit files from the remote repository.
+    If the config directory is git-managed, this command performs a
+    `git pull --rebase` before attempting to restart the installer-managed
+    reminder service. For local-only config directories, it skips the git
+    step and just reloads the service when the restart script is available.
 
     Args:
         args: Namespace (unused, for CLI compatibility)
@@ -49,8 +129,8 @@ def update_command(args) -> int:
         0 on success, 1 on error
 
     Side Effects:
-        - Runs `git pull --rebase` in the config directory
-        - May modify local schedule files
+        - May run `git pull --rebase` in the config directory
+        - May restart the reminder service via `restart_reminders.sh`
 
     Example:
         $ rmd update
@@ -59,50 +139,105 @@ def update_command(args) -> int:
     """
     print("📥 Updating schedule files...")
 
-    # Determine config directory from known paths
-    config_dir = Path(SETTINGS_PATH).parent
+    config_dir = _resolve_config_dir()
 
     if not config_dir.exists():
         print(f"❌ Config directory not found: {config_dir}")
         return 1
 
-    # Verify git repository
-    git_dir = config_dir / ".git"
-    if not git_dir.exists():
-        print(f"⚠️  Config directory is not a git repository: {config_dir}")
-        print("   Update requires git version control.")
-        return 1
-
     try:
-        # Execute git pull with rebase
-        result = subprocess.run(
-            ["git", "-C", str(config_dir), "pull", "--rebase"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        if _has_git_metadata(config_dir):
+            try:
+                result = subprocess.run(
+                    ["git", "-C", str(config_dir), "pull", "--rebase"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except FileNotFoundError:
+                print("❌ Git not found. Please install git to use update.")
+                return 1
 
-        if result.returncode == 0:
-            print("✅ Successfully pulled latest changes")
+            if result.returncode == 0:
+                print("✅ Successfully pulled latest changes")
 
-            # Show what changed (if anything meaningful)
-            if "Already up to date" in result.stdout:
-                print("   Already up to date.")
+                if "Already up to date" in result.stdout:
+                    print("   Already up to date.")
+                else:
+                    print(result.stdout.strip())
             else:
-                print(result.stdout.strip())
-
-            return 0
+                print("❌ Git pull failed:")
+                print(result.stderr.strip())
+                return 1
         else:
-            print(f"❌ Git pull failed:")
-            print(result.stderr.strip())
+            print(f"ℹ️  Config directory is not a git repository: {config_dir}")
+            print("   Skipping git pull and using local schedule files as-is.")
+
+        restarted, details = _restart_reminder_service()
+        if restarted:
+            print("✅ Reminder service restarted")
+        elif details == "No installer restart script found.":
+            print("ℹ️  No installer restart script found.")
+            print("   Restart the reminder service manually if it is already running.")
+        else:
+            print("❌ Reminder service restart failed:")
+            print(details)
             return 1
 
-    except FileNotFoundError:
-        print("❌ Git not found. Please install git to use update.")
-        return 1
+        print("✅ Update finished")
+        return 0
+
     except Exception as e:
         print(f"❌ Error updating: {e}")
         return 1
+
+
+def switch_command(args) -> int:
+    """
+    Handle the 'switch' command - activate a different versioned config set.
+
+    This updates the active config marker under the root config directory and
+    then reloads the reminder service so the running runner process picks up
+    the newly selected config set.
+    """
+    config_root_dir = _resolve_config_dir()
+    available_ids = list_config_ids(config_root_dir)
+    if not available_ids:
+        print(f"❌ No config sets found under: {config_root_dir}")
+        print("   Create or migrate a schedule first so user_config_0 exists.")
+        return 1
+
+    raw_config_id = str(getattr(args, "config_id", "")).strip()
+    try:
+        requested_id = int(raw_config_id)
+    except ValueError:
+        print(f"❌ Invalid config id: {raw_config_id or '(empty)'}")
+        print(f"   Valid config ids: {', '.join(str(item) for item in available_ids)}")
+        return 1
+
+    if requested_id not in available_ids:
+        print(f"❌ Invalid config id: {requested_id}")
+        print(f"   Valid config ids: {', '.join(str(item) for item in available_ids)}")
+        return 1
+
+    write_active_config_id(config_root_dir, requested_id)
+    active_config_dir = preview_active_config_dir(config_root_dir)
+    print(f"✅ Switched to user_config_{requested_id}")
+    print(f"   Active config directory: {active_config_dir}")
+
+    restarted, details = _restart_reminder_service()
+    if restarted:
+        print("✅ Reminder service restarted")
+        return 0
+
+    if details == "No installer restart script found.":
+        print("ℹ️  No installer restart script found.")
+        print("   Restart the reminder service manually if it is already running.")
+        return 0
+
+    print("❌ Reminder service restart failed:")
+    print(details)
+    return 1
 
 
 # =============================================================================
@@ -194,14 +329,14 @@ def report_command(args) -> int:
     """
     Handle the 'report' command - generate a manual report.
 
-    Creates a report for the specified date range using the ReportGenerator.
-    Reports include habit completion rates, task statistics, and productivity
-    metrics.
+    Creates a weekly or monthly report using the active config's report paths
+    and log files.
 
     Args:
-        args: Namespace with optional 'date' and 'days' parameters
+        args: Namespace with 'type' and optional 'date'/'days' parameters
+            - type: Report type ("weekly" or "monthly")
             - date: Target date for report (default: today)
-            - days: Number of days to include (default: 7)
+            - days: Compatibility flag for older weekly invocations
 
     Returns:
         0 on success, 1 on error
@@ -211,16 +346,17 @@ def report_command(args) -> int:
         - May open generated report in browser
 
     Example:
-        $ rmd report                 # Last 7 days
-        $ rmd report -d 2024-01-15   # Week ending on specific date
-        $ rmd report --days 30       # Last 30 days
+        $ rmd report weekly
+        $ rmd report weekly -d 2024-01-15
+        $ rmd report monthly -d 2024-01-15
     """
     print("📊 Generating report...")
 
     try:
         # Import here to avoid circular dependency
-        from schedule_management.report import ReportGenerator
-        from datetime import datetime, timedelta
+        from datetime import datetime
+
+        from schedule_management.report import generate_manual_report
 
         # Parse target date
         if hasattr(args, "date") and args.date:
@@ -231,23 +367,31 @@ def report_command(args) -> int:
                 print("   Use YYYY-MM-DD format (e.g., 2024-01-15)")
                 return 1
         else:
-            target_date = datetime.now().date()
+            target_date = None
 
-        # Parse number of days
-        days = getattr(args, "days", 7) or 7
+        report_type = getattr(args, "type", None)
+        if report_type not in {"weekly", "monthly"}:
+            print(f"❌ Unsupported report type: {report_type}")
+            return 1
 
-        # Calculate date range
-        start_date = target_date - timedelta(days=days - 1)
-        end_date = target_date
+        days = getattr(args, "days", None)
+        if report_type == "weekly":
+            if days not in (None, 7):
+                print("❌ Custom day ranges are not supported for weekly reports.")
+                print("   Use '--days 7' or omit the flag.")
+                return 1
+        elif days is not None:
+            print("❌ '--days' is not supported for monthly reports.")
+            return 1
 
-        print(f"   Date range: {start_date} to {end_date}")
-        print(f"   Days included: {days}")
+        print(f"   Report type: {report_type}")
+        if target_date is not None:
+            print(f"   Target date: {target_date}")
 
         # Generate report
-        generator = ReportGenerator()
-        report_path = generator.generate_report(
-            start_date=start_date,
-            end_date=end_date,
+        report_path = generate_manual_report(
+            report_type,
+            target_date=target_date,
         )
 
         if report_path:
@@ -312,12 +456,13 @@ def edit_schedule_command(args) -> int:
         print(f"   Available: {', '.join(file_map.keys())}")
         return 1
 
-    file_path = file_map[target]
+    file_path = Path(file_map[target])
 
-    if not Path(file_path).exists():
+    if not file_path.exists():
         print(f"⚠️  File does not exist: {file_path}")
         print("   Creating empty file...")
-        Path(file_path).touch()
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.touch()
 
     # Find editor
     editor = os.environ.get("EDITOR", os.environ.get("VISUAL"))
