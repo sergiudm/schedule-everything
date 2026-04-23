@@ -38,6 +38,7 @@ from schedule_management import (
     DDL_PATH,
 )
 from schedule_management.config import ScheduleConfig, WeeklySchedule
+from schedule_management.commands.deadlines import prune_expired_deadlines
 from schedule_management.synced_schedule import apply_synced_schedule
 from schedule_management.time_utils import add_minutes_to_time, alarm, get_week_parity
 from schedule_management.platform import ask_yes_no
@@ -359,7 +360,7 @@ class ScheduleRunner:
             if tasks_changed:
                 save_tasks(tasks)
             if procrastinate_changed:
-                save_procrastinate_list(procrastinate_list)
+                save_procrastinate_list(procrastinate_list, today=today)
         except Exception as exc:
             _log_runtime_event(f"Urgent task prompt skipped: {exc}")
         finally:
@@ -379,6 +380,14 @@ class ScheduleRunner:
             return []
 
         today = datetime.now().date()
+        deadlines, removed_deadlines = prune_expired_deadlines(deadlines, today=today)
+        if removed_deadlines:
+            try:
+                with open(DDL_PATH, "w", encoding="utf-8") as f:
+                    json.dump(deadlines, f, indent=2, ensure_ascii=False)
+            except OSError as exc:
+                _log_runtime_event(f"Expired deadline cleanup skipped: {exc}")
+
         urgent: list[dict[str, Any]] = []
 
         for ddl in deadlines:

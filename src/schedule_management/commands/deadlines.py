@@ -16,7 +16,8 @@ Example Usage (via CLI):
 """
 
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from typing import Any
 
 try:
     from rich import box
@@ -27,6 +28,35 @@ except ImportError:
     sys.exit(1)
 
 from schedule_management.data import load_deadlines, save_deadlines
+
+AUTO_REMOVE_OVERDUE_DAYS = -2
+
+
+def prune_expired_deadlines(
+    deadlines: list[dict[str, Any]],
+    today: date | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split deadlines into retained and auto-removed overdue entries."""
+    current_date = today or datetime.now().date()
+    kept_deadlines: list[dict[str, Any]] = []
+    removed_deadlines: list[dict[str, Any]] = []
+
+    for deadline in deadlines:
+        try:
+            deadline_date = datetime.strptime(
+                deadline["deadline"], "%Y-%m-%d"
+            ).date()
+        except Exception:
+            kept_deadlines.append(deadline)
+            continue
+
+        days_left = (deadline_date - current_date).days
+        if days_left <= AUTO_REMOVE_OVERDUE_DAYS:
+            removed_deadlines.append(deadline)
+        else:
+            kept_deadlines.append(deadline)
+
+    return kept_deadlines, removed_deadlines
 
 
 # =============================================================================
@@ -159,9 +189,18 @@ def show_deadlines(args) -> int:
         🔴 TODAY: Due today
         ⚠️ OVERDUE: Past deadline (dimmed row)
     """
-    deadlines = load_deadlines()
-
     console = Console()
+    current_date = datetime.now().date()
+
+    deadlines, removed_deadlines = prune_expired_deadlines(
+        load_deadlines(), today=current_date
+    )
+    if removed_deadlines:
+        try:
+            save_deadlines(deadlines)
+        except Exception as e:
+            console.print(f"[bold red]❌ Error saving pruned deadlines: {e}[/bold red]")
+            return 1
 
     if not deadlines:
         console.print("[bold yellow]📅 No deadlines found[/bold yellow]")
@@ -182,8 +221,6 @@ def show_deadlines(args) -> int:
     table.add_column("Deadline", justify="left", width=15)
     table.add_column("Days Left", justify="right", width=12)
     table.add_column("Status", justify="center", width=10)
-
-    current_date = datetime.now().date()
 
     for ddl in sorted_deadlines:
         event_name = ddl["event"]

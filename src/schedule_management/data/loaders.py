@@ -141,18 +141,21 @@ def load_procrastinate_records() -> dict[str, dict[str, str]]:
     return records
 
 
-def save_procrastinate_list(descriptions: set[str] | list[str]) -> None:
+def save_procrastinate_list(
+    descriptions: set[str] | list[str], today: date | None = None
+) -> None:
     """
     Save procrastinated task descriptions to JSON.
 
     Args:
         descriptions: Task descriptions to persist.
+        today: Optional date used for new procrastination records.
     """
     procrastinate_path = Path(PROCRASTINATE_PATH)
     procrastinate_path.parent.mkdir(parents=True, exist_ok=True)
 
     existing_records = load_procrastinate_records()
-    today_str = datetime.now().date().isoformat()
+    today_str = (today or datetime.now().date()).isoformat()
     normalized_descriptions = sorted(
         {
             item.strip()

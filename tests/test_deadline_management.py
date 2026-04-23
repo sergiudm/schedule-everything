@@ -488,9 +488,9 @@ class TestShowDeadlines:
             },  # 23 days
             {
                 "event": "overdue",
-                "deadline": "2025-11-20",
+                "deadline": "2025-11-21",
                 "added": "2025-11-22T13:00:00Z",
-            },  # -2 days
+            },  # -1 day
         ]
         mock_load.return_value = test_deadlines
 
@@ -505,6 +505,53 @@ class TestShowDeadlines:
         assert result == 0
         # Verify console was used to print the table
         assert mock_console.print.call_count >= 2
+
+    @patch("schedule_management.commands.deadlines.save_deadlines")
+    @patch("schedule_management.commands.deadlines.load_deadlines")
+    @patch("schedule_management.commands.deadlines.datetime")
+    def test_show_deadlines_auto_removes_two_day_overdue_entries(
+        self, mock_datetime, mock_load, mock_save
+    ):
+        """Test showing deadlines prunes entries two or more days overdue."""
+        mock_now = MagicMock()
+        mock_now.date.return_value = datetime(2026, 4, 23).date()
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.strptime.side_effect = datetime.strptime
+
+        test_deadlines = [
+            {
+                "event": "remove",
+                "deadline": "2026-04-21",
+                "added": "2026-04-01T00:00:00Z",
+            },
+            {
+                "event": "keep-overdue",
+                "deadline": "2026-04-22",
+                "added": "2026-04-01T00:00:00Z",
+            },
+            {
+                "event": "keep-future",
+                "deadline": "2026-04-25",
+                "added": "2026-04-01T00:00:00Z",
+            },
+        ]
+        mock_load.return_value = test_deadlines
+
+        args = MagicMock()
+
+        with patch("schedule_management.commands.deadlines.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+
+            result = reminder.show_deadlines(args)
+
+        assert result == 0
+        mock_save.assert_called_once()
+        saved_deadlines = mock_save.call_args[0][0]
+        assert [deadline["event"] for deadline in saved_deadlines] == [
+            "keep-overdue",
+            "keep-future",
+        ]
 
 
 class TestDeadlineIntegration:

@@ -597,6 +597,41 @@ class TestUrgentDeadlines:
         assert [d["event"] for d in urgent] == ["yesterday", "today", "in2"]
         assert [d["days_left"] for d in urgent] == [-1, 0, 2]
 
+    def test_get_urgent_deadlines_prunes_two_day_overdue_entries(
+        self, tmp_path, monkeypatch
+    ):
+        import json
+        from datetime import datetime, timedelta
+
+        import schedule_management.runner as runner_module
+
+        ddl_path = tmp_path / "ddl.json"
+        monkeypatch.setattr(runner_module, "DDL_PATH", str(ddl_path))
+
+        today = datetime.now().date()
+        deadlines = [
+            {"event": "remove", "deadline": (today - timedelta(days=2)).isoformat()},
+            {
+                "event": "keep-overdue",
+                "deadline": (today - timedelta(days=1)).isoformat(),
+            },
+            {"event": "today", "deadline": today.isoformat()},
+        ]
+        ddl_path.write_text(json.dumps(deadlines), encoding="utf-8")
+
+        runner = ScheduleRunner.__new__(ScheduleRunner)
+        urgent = runner._get_urgent_deadlines()
+
+        assert [deadline["event"] for deadline in urgent] == [
+            "keep-overdue",
+            "today",
+        ]
+        saved_deadlines = json.loads(ddl_path.read_text(encoding="utf-8"))
+        assert [deadline["event"] for deadline in saved_deadlines] == [
+            "keep-overdue",
+            "today",
+        ]
+
     def test_check_urgent_deadlines_triggers_alarm(self, tmp_path, monkeypatch):
         import json
         from datetime import datetime

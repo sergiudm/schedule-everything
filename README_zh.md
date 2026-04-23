@@ -99,7 +99,7 @@ rmd switch 0
 | `rmd status [-v]` | 查看当前状态和今天日程，包含同步后的任务标题 |
 | `rmd add/ls/rm` | 管理会被 sync 使用的任务列表 |
 | `rmd track` | 记录习惯 |
-| `rmd ddl` | 管理截止日期 |
+| `rmd ddl` | 管理截止日期；逾期两天及以上的条目会自动清理 |
 | `rmd view` | 生成 PDF 日程可视化 |
 | `rmd switch <id>` | 切换到不同的 `user_config_n` 配置版本并重载服务 |
 

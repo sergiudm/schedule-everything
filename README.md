@@ -99,7 +99,7 @@ git step and reloads your local files as-is.
 | `rmd status [-v]` | Show what is happening now and today's schedule, including synced titles |
 | `rmd add/ls/rm` | Manage the task list that feeds the sync flow |
 | `rmd track` | Record habits |
-| `rmd ddl` | Manage deadlines |
+| `rmd ddl` | Manage deadlines; entries two or more days overdue are auto-pruned |
 | `rmd view` | Generate a PDF schedule visualization |
 | `rmd switch <id>` | Activate a different `user_config_n` snapshot and reload the service |
 

@@ -127,9 +127,17 @@ rmd ddl
 | 🟢 OK      | Green  | 8+ days  | Plenty of time    |
 | ⚠️ OVERDUE | Red    | Negative | Past deadline     |
 
+### Automatic Cleanup
+
+Deadlines are automatically removed once they are two or more days overdue
+(`days_left <= -2`). A deadline that was due yesterday remains visible as
+overdue, while a deadline that was due two days ago is pruned the next time
+deadlines are listed or checked by the reminder service.
+
 ### Filtering and Sorting
 
 The deadline list is automatically:
 - **Sorted by date**: Earliest deadlines appear first
 - **Color-coded**: Visual urgency indicators
 - **Calculated**: Shows exact days remaining
+- **Pruned**: Removes deadlines that are two or more days overdue
