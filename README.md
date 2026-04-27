@@ -90,6 +90,22 @@ the specific assigned event, for example `pomodoro: Finish proposal draft`.
 repository, it pulls the latest schedule changes first; otherwise it skips the
 git step and reloads your local files as-is.
 
+### 5. Optional macOS Daily Command Center
+
+The repository also includes a Tauri 2 desktop app for macOS. It uses the same
+local config, tasks, deadlines, habits, and sync overlay files as the CLI, but
+presents them as a daily command center with quick task/deadline entry, habit
+checks, and `rmd sync` proposal review.
+
+```bash
+npm install
+npm run tauri:dev
+npm run tauri:build
+```
+
+`npm run tauri:build` packages the Python JSON bridge as a sidecar and writes
+the macOS bundles under `src-tauri/target/release/bundle/`.
+
 ## Core Commands
 
 | Command | What it does |
