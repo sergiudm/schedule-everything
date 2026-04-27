@@ -59,6 +59,11 @@ describe("renderApp", () => {
     expect(root.textContent).toContain("Draft proposal");
     expect(root.textContent).toContain("Submit paper");
     expect(root.textContent).toContain("Read");
+    expect(root.querySelector(".grid")).not.toBeNull();
+    expect(root.querySelector(".now-panel")).not.toBeNull();
+    expect(root.querySelector(".timeline-panel")).not.toBeNull();
+    expect(root.querySelector(".queue-panel")).not.toBeNull();
+    expect(root.querySelector(".quick-panel")).not.toBeNull();
   });
 
   it("sends task add command and refreshes", async () => {
