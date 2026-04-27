@@ -11,13 +11,6 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any
 
-from schedule_management import (
-    DDL_PATH,
-    HABIT_PATH,
-    RECORD_PATH,
-    TASKS_PATH,
-    TASK_LOG_PATH,
-)
 from schedule_management.commands import status as status_commands
 from schedule_management.commands.deadlines import prune_expired_deadlines
 from schedule_management.commands.status import (
@@ -125,6 +118,38 @@ def _require_priority(payload: dict[str, Any]) -> int:
     return priority
 
 
+def _save_tasks_or_error(tasks: list[dict[str, Any]]) -> None:
+    try:
+        save_tasks(tasks)
+    except Exception as exc:
+        raise GuiError("storage_error", f"failed to save tasks: {exc}") from exc
+
+
+def _log_task_or_error(
+    action: str,
+    task: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    try:
+        log_task_action(action, task, metadata)
+    except Exception as exc:
+        raise GuiError("storage_error", f"failed to log task action: {exc}") from exc
+
+
+def _save_deadlines_or_error(deadlines: list[dict[str, Any]]) -> None:
+    try:
+        save_deadlines(deadlines)
+    except Exception as exc:
+        raise GuiError("storage_error", f"failed to save deadlines: {exc}") from exc
+
+
+def _save_habit_records_or_error(records: list[dict[str, Any]]) -> None:
+    try:
+        save_habit_records(records)
+    except Exception as exc:
+        raise GuiError("storage_error", f"failed to save habit records: {exc}") from exc
+
+
 def _parse_deadline_date(raw_date: str) -> str:
     text = raw_date.strip()
     try:
@@ -183,7 +208,7 @@ def _deadline_status(deadline_date: date, current_date: date) -> str:
 def _deadline_rows(current_date: date) -> list[dict[str, Any]]:
     deadlines, removed = prune_expired_deadlines(load_deadlines(), today=current_date)
     if removed:
-        save_deadlines(deadlines)
+        _save_deadlines_or_error(deadlines)
 
     rows: list[dict[str, Any]] = []
     for item in sorted(deadlines, key=lambda value: str(value.get("deadline", ""))):
@@ -326,8 +351,8 @@ def task_add(payload: dict[str, Any]) -> dict[str, Any]:
         log_action = "updated"
         metadata = {"old_priority": old_priority}
 
-    save_tasks(tasks)
-    log_task_action(log_action, new_task, metadata)
+    _save_tasks_or_error(tasks)
+    _log_task_or_error(log_action, new_task, metadata)
     return new_task
 
 
@@ -337,13 +362,20 @@ def task_update(payload: dict[str, Any]) -> dict[str, Any]:
     priority = _require_priority(payload)
     tasks = load_tasks()
 
+    for task in tasks:
+        if (
+            task.get("description") == description
+            and task.get("description") != original_description
+        ):
+            raise GuiError("duplicate", f"task already exists: {description}")
+
     for index, task in enumerate(tasks):
         if task.get("description") == original_description:
             updated = {"description": description, "priority": priority}
             old_task = dict(task)
             tasks[index] = updated
-            save_tasks(tasks)
-            log_task_action("updated", updated, {"old_task": old_task})
+            _save_tasks_or_error(tasks)
+            _log_task_or_error("updated", updated, {"old_task": old_task})
             return updated
 
     raise GuiError("not_found", f"task not found: {original_description}")
@@ -357,9 +389,9 @@ def task_delete(payload: dict[str, Any]) -> dict[str, Any]:
         raise GuiError("not_found", f"task not found: {description}")
 
     remaining = [task for task in tasks if task.get("description") != description]
-    save_tasks(remaining)
+    _save_tasks_or_error(remaining)
     for task in deleted:
-        log_task_action("deleted", dict(task))
+        _log_task_or_error("deleted", dict(task))
     return {"description": description, "deleted": len(deleted)}
 
 
@@ -382,7 +414,7 @@ def deadline_add(payload: dict[str, Any]) -> dict[str, Any]:
         deadlines.append(new_deadline)
     else:
         deadlines[existing_index] = new_deadline
-    save_deadlines(deadlines)
+    _save_deadlines_or_error(deadlines)
     return new_deadline
 
 
@@ -392,6 +424,10 @@ def deadline_update(payload: dict[str, Any]) -> dict[str, Any]:
     deadline = _parse_deadline_date(_require_text(payload, "date"))
     deadlines = load_deadlines()
 
+    for item in deadlines:
+        if item.get("event") == event and item.get("event") != original_event:
+            raise GuiError("duplicate", f"deadline already exists: {event}")
+
     for index, item in enumerate(deadlines):
         if item.get("event") == original_event:
             updated = {
@@ -400,7 +436,7 @@ def deadline_update(payload: dict[str, Any]) -> dict[str, Any]:
                 "added": str(item.get("added") or datetime.now(timezone.utc).isoformat()),
             }
             deadlines[index] = updated
-            save_deadlines(deadlines)
+            _save_deadlines_or_error(deadlines)
             return updated
 
     raise GuiError("not_found", f"deadline not found: {original_event}")
@@ -413,7 +449,7 @@ def deadline_delete(payload: dict[str, Any]) -> dict[str, Any]:
     if not deleted:
         raise GuiError("not_found", f"deadline not found: {event}")
     remaining = [item for item in deadlines if item.get("event") != event]
-    save_deadlines(remaining)
+    _save_deadlines_or_error(remaining)
     return {"event": event, "deleted": len(deleted)}
 
 
@@ -455,5 +491,5 @@ def habit_mark(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         records.append(new_record)
 
-    save_habit_records(records)
+    _save_habit_records_or_error(records)
     return new_record
