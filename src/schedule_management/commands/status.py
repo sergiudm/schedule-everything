@@ -175,6 +175,12 @@ def get_current_and_next_events(
 # =============================================================================
 
 
+def _schedule_visualizer_class():
+    from schedule_management.visualizer import ScheduleVisualizer
+
+    return ScheduleVisualizer
+
+
 def status_command(args) -> int:
     """
     Handle the 'status' command - show current status and schedule.
@@ -385,10 +391,9 @@ def view_command(args) -> int:
     print("📊 Generating schedule visualizations...")
 
     try:
-        from schedule_management.visualizer import ScheduleVisualizer
-
         config = ScheduleConfig(SETTINGS_PATH)
         weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
+        ScheduleVisualizer = _schedule_visualizer_class()
         visualizer = ScheduleVisualizer(config, weekly.odd_data, weekly.even_data)
         visualizer.visualize()
 
