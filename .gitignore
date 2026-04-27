@@ -9,6 +9,10 @@ __pycache__/
 build/
 .superpowers/
 .worktrees/
+dist/
+node_modules/
+src-tauri/gen/
+src-tauri/target/
 
 schedule_visualization/
 
