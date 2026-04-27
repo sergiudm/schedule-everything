@@ -11,8 +11,11 @@ build/
 .worktrees/
 dist/
 node_modules/
+build/gui-sidecar/
 src-tauri/gen/
 src-tauri/target/
+src-tauri/binaries/schedule-gui-bridge-*
+*.spec
 
 schedule_visualization/
 

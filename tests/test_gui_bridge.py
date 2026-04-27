@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 import json
+import sys
 
 
 def test_dispatch_returns_success(monkeypatch):
@@ -59,3 +61,13 @@ def test_main_reads_json_from_argument(capsys, monkeypatch):
     assert exit_code == 0
     output = json.loads(capsys.readouterr().out)
     assert output == {"ok": True, "data": {"echo": "hello"}}
+
+
+def test_bridge_import_does_not_load_visualizer():
+    sys.modules.pop("schedule_management.gui.bridge", None)
+    sys.modules.pop("schedule_management.commands.status", None)
+    sys.modules.pop("schedule_management.visualizer", None)
+
+    importlib.import_module("schedule_management.gui.bridge")
+
+    assert "schedule_management.visualizer" not in sys.modules

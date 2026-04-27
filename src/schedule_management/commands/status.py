@@ -38,7 +38,6 @@ from schedule_management.synced_schedule import (
     get_event_block_name,
 )
 from schedule_management.time_utils import get_week_parity, parse_time
-from schedule_management.visualizer import ScheduleVisualizer
 
 
 # =============================================================================
@@ -386,6 +385,8 @@ def view_command(args) -> int:
     print("📊 Generating schedule visualizations...")
 
     try:
+        from schedule_management.visualizer import ScheduleVisualizer
+
         config = ScheduleConfig(SETTINGS_PATH)
         weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
         visualizer = ScheduleVisualizer(config, weekly.odd_data, weekly.even_data)
