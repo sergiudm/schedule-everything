@@ -137,7 +137,8 @@ h3 {
 }
 
 .icon-button,
-.primary-button {
+.primary-button,
+.secondary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -160,7 +161,8 @@ h3 {
 }
 
 .icon-button:hover,
-.primary-button:hover {
+.primary-button:hover,
+.secondary-button:hover {
   transform: translateY(-1px);
 }
 
@@ -177,6 +179,14 @@ h3 {
   font-weight: 740;
   background: #315a63;
   box-shadow: 0 10px 24px rgba(49, 90, 99, 0.2);
+}
+
+.secondary-button {
+  padding: 0 12px;
+  color: #31424b;
+  font-weight: 720;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(80, 103, 113, 0.16);
 }
 
 .lucide-icon {
@@ -314,7 +324,7 @@ h3 {
 }
 
 .queue-row.deadline {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .queue-row.urgent strong {
@@ -339,29 +349,108 @@ h3 {
   align-items: center;
 }
 
+.deadline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+textarea {
   width: 100%;
-  min-height: 36px;
   border: 1px solid rgba(82, 103, 112, 0.15);
   border-radius: 8px;
-  padding: 0 10px;
   color: #17232c;
   background: rgba(255, 255, 255, 0.72);
   outline: none;
 }
 
-input:focus {
+input[type="text"],
+input[type="number"] {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
   border-color: rgba(49, 90, 99, 0.55);
   box-shadow: 0 0 0 3px rgba(49, 90, 99, 0.12);
 }
 
+.sync-box {
+  margin-top: 14px;
+}
+
+.sync-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .sync-button {
   width: 100%;
-  margin-top: 10px;
+}
+
+.accept-button {
+  background: #516d43;
+  box-shadow: 0 10px 24px rgba(81, 109, 67, 0.18);
+}
+
+.sync-preview {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
   color: #2a3a43;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: inset 0 0 0 1px rgba(80, 103, 113, 0.16);
+}
+
+.sync-preview p {
+  margin: 0 0 8px;
+  color: #586c76;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.sync-preview ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sync-preview-row {
+  display: grid;
+  grid-template-columns: 50px 10px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  color: #273840;
+  font-size: 13px;
+}
+
+.sync-preview-row time {
+  color: #728189;
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
+}
+
+.sync-preview-row span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .error-panel {
@@ -396,7 +485,15 @@ input:focus {
     grid-template-columns: minmax(0, 1fr) 68px;
   }
 
+  .deadline-form {
+    grid-template-columns: minmax(0, 1fr) 112px;
+  }
+
   .form-row .primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .deadline-form .secondary-button {
     grid-column: 1 / -1;
   }
 }
@@ -417,5 +514,9 @@ input:focus {
 
   .topbar {
     gap: 10px;
+  }
+
+  .sync-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -15,6 +15,12 @@ export type ScheduleEvent = {
   syncable: boolean;
 };
 
+export type SchedulePreviewEvent = {
+  time: string;
+  label: string;
+  block: string | null;
+};
+
 export type TaskItem = {
   description: string;
   priority: number;
@@ -69,7 +75,7 @@ export type SyncProposal = {
     weekday: string;
     assignments: Record<string, { block: string; title: string }>;
   };
-  preview: ScheduleEvent[];
+  preview: SchedulePreviewEvent[];
 };
 
 export type BridgeClient = {
