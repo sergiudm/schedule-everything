@@ -38,7 +38,6 @@ from schedule_management.synced_schedule import (
     get_event_block_name,
 )
 from schedule_management.time_utils import get_week_parity, parse_time
-from schedule_management.visualizer import ScheduleVisualizer
 
 
 # =============================================================================
@@ -174,6 +173,12 @@ def get_current_and_next_events(
 # =============================================================================
 # STATUS COMMAND
 # =============================================================================
+
+
+def _schedule_visualizer_class():
+    from schedule_management.visualizer import ScheduleVisualizer
+
+    return ScheduleVisualizer
 
 
 def status_command(args) -> int:
@@ -388,6 +393,7 @@ def view_command(args) -> int:
     try:
         config = ScheduleConfig(SETTINGS_PATH)
         weekly = WeeklySchedule(ODD_PATH, EVEN_PATH)
+        ScheduleVisualizer = _schedule_visualizer_class()
         visualizer = ScheduleVisualizer(config, weekly.odd_data, weekly.even_data)
         visualizer.visualize()
 

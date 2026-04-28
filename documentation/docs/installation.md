@@ -16,6 +16,7 @@ Before proceeding, ensure you have the following installed:
 *   **Git**: [Download Git](https://git-scm.com/downloads)
 *   **Terminal**: Any standard terminal emulator (Terminal.app, iTerm2, etc.)
 *   **OpenCode CLI**: Required for `rmd setup` and `rmd sync`
+*   **Node.js and Rust**: Required only when running or building the optional Tauri desktop app from source
 
 ## Installation Methods
 
@@ -112,6 +113,33 @@ For advanced users or those integrating into existing environments.
 pip install schedule-management
 ```
 After installation, follow steps 3-6 from the "Manual Installation" section above.
+
+## Optional macOS Desktop App
+
+The source tree includes a Tauri 2 desktop app named **Schedule Everything**.
+It is a daily command center for the same local files used by the CLI:
+tasks, deadlines, habits, today's schedule, and accepted sync overlays.
+
+From the repository root:
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+To create standalone macOS bundles:
+
+```bash
+npm run tauri:build
+```
+
+The build command first packages `schedule-gui-bridge` as a Python sidecar,
+then runs the Tauri release build. Outputs are written to:
+
+```text
+src-tauri/target/release/bundle/macos/Schedule Everything.app
+src-tauri/target/release/bundle/dmg/Schedule Everything_0.1.0_<arch>.dmg
+```
 
 ## Verifying Installation
 

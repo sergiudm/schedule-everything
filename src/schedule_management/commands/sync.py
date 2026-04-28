@@ -60,6 +60,16 @@ Rules:
 """.strip()
 
 
+def _today() -> date:
+    """Return today's date for sync operations."""
+    return date.today()
+
+
+def _now() -> datetime:
+    """Return the current datetime for sync operations."""
+    return datetime.now()
+
+
 def _get_base_today_schedule() -> tuple[dict[str, Any], str, bool, ScheduleConfig]:
     """Load today's base schedule without applying an existing sync overlay."""
     config = ScheduleConfig(SETTINGS_PATH)
@@ -282,6 +292,152 @@ def _render_preview_table(schedule: dict[str, Any]) -> Table:
     return table
 
 
+def _schedule_preview_rows(schedule: dict[str, Any]) -> list[dict[str, str | None]]:
+    """Return GUI-friendly preview rows for a schedule."""
+    rows: list[dict[str, str | None]] = []
+    for time_str in sorted(schedule.keys()):
+        event = schedule[time_str]
+        rows.append(
+            {
+                "time": time_str,
+                "label": format_event_label(event),
+                "block": get_event_block_name(event),
+            }
+        )
+    return rows
+
+
+def _plan_to_payload(plan: SyncedDaySchedule) -> dict[str, Any]:
+    """Serialize a synced day plan for the GUI bridge."""
+    return {
+        "target_date": plan.target_date,
+        "parity": plan.parity,
+        "weekday": plan.weekday,
+        "assignments": plan.assignments,
+    }
+
+
+def _plan_from_payload(payload: dict[str, Any]) -> SyncedDaySchedule:
+    """Validate a GUI-provided synced plan payload."""
+    target_date = payload.get("target_date")
+    parity = payload.get("parity")
+    weekday = payload.get("weekday")
+    assignments = payload.get("assignments")
+
+    if not isinstance(target_date, str) or not target_date.strip():
+        raise ValueError("target_date is required.")
+    if not isinstance(parity, str) or not parity.strip():
+        raise ValueError("parity is required.")
+    if not isinstance(weekday, str) or not weekday.strip():
+        raise ValueError("weekday is required.")
+    if not isinstance(assignments, dict):
+        raise ValueError("assignments must be an object.")
+
+    normalized: dict[str, dict[str, str]] = {}
+    for time_str, raw_assignment in assignments.items():
+        if not isinstance(raw_assignment, dict):
+            raise ValueError(f"assignment for {time_str} must be an object.")
+        block = raw_assignment.get("block")
+        title = raw_assignment.get("title")
+        if not isinstance(block, str) or not block.strip():
+            raise ValueError(f"assignment for {time_str} requires block.")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(f"assignment for {time_str} requires title.")
+        normalized[str(time_str)] = {
+            "block": block.strip(),
+            "title": title.strip(),
+        }
+
+    return SyncedDaySchedule(
+        target_date=target_date.strip(),
+        parity=parity.strip(),
+        weekday=weekday.strip(),
+        assignments=normalized,
+    )
+
+
+def _generate_sync_proposal_from_context(
+    *,
+    schedule: dict[str, Any],
+    parity: str,
+    config: ScheduleConfig,
+    feedback: list[str] | None = None,
+    llm_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Generate a sync proposal from already-loaded schedule context."""
+    slots = iter_syncable_slots(schedule)
+    if not slots:
+        raise ValueError("No untitled pomodoro/potato blocks need syncing today.")
+
+    tasks = _load_ranked_tasks()
+    if not tasks:
+        raise ValueError("No tasks found in tasks.json. Add tasks before running sync.")
+
+    actual_llm_config = llm_config or ensure_llm_config()
+    client = LLMClient(actual_llm_config)
+    current_date = _today()
+    target_date = current_date.isoformat()
+    weekday = _now().strftime("%A").lower()
+    feedback_items = feedback or []
+
+    user_prompt = _render_sync_user_prompt(
+        target_date=target_date,
+        parity=parity,
+        weekday=weekday,
+        schedule=schedule,
+        slots=slots,
+        tasks=tasks,
+        feedback=feedback_items,
+        config=config,
+    )
+    raw_response = client.generate(SYNC_SYSTEM_PROMPT, user_prompt)
+    payload = _extract_json_payload(raw_response)
+    summary, assignments = _parse_assignments(payload, slots)
+    plan = _build_plan(
+        target_date=target_date,
+        parity=parity,
+        weekday=weekday,
+        slots=slots,
+        assignments=assignments,
+    )
+    preview_schedule = apply_synced_schedule(
+        schedule,
+        target_date=current_date,
+        parity=parity,
+        weekday=weekday,
+        synced=plan,
+    )
+
+    return {
+        "summary": summary,
+        "plan": _plan_to_payload(plan),
+        "preview": _schedule_preview_rows(preview_schedule),
+    }
+
+
+def generate_sync_proposal(feedback: list[str] | None = None) -> dict[str, Any]:
+    """Generate a synced schedule proposal without prompting for acceptance."""
+    schedule, parity, is_skipped, config = _get_base_today_schedule()
+    if is_skipped:
+        raise ValueError("Today is a skipped day. Nothing to sync.")
+    if not schedule:
+        raise ValueError("No schedule found for today.")
+
+    return _generate_sync_proposal_from_context(
+        schedule=schedule,
+        parity=parity,
+        config=config,
+        feedback=feedback,
+    )
+
+
+def accept_sync_plan(plan_payload: dict[str, Any]) -> dict[str, str]:
+    """Persist a GUI-accepted synced schedule proposal."""
+    plan = _plan_from_payload(plan_payload)
+    saved_path = save_synced_schedule(plan)
+    return {"savedPath": str(saved_path)}
+
+
 def _prompt_rejection_reason() -> str:
     """Collect non-empty feedback for the next sync attempt."""
     while True:
@@ -346,65 +502,50 @@ def sync_command(args) -> int:
         CONSOLE.print(f"[bold red]Failed to initialize LLM config:[/] {exc}")
         return 1
 
-    client = LLMClient(llm_config)
-    target_date = date.today().isoformat()
-    weekday = datetime.now().strftime("%A").lower()
     feedback: list[str] = []
 
     while True:
-        user_prompt = _render_sync_user_prompt(
-            target_date=target_date,
-            parity=parity,
-            weekday=weekday,
-            schedule=schedule,
-            slots=slots,
-            tasks=tasks,
-            feedback=feedback,
-            config=config,
-        )
-
         try:
             with CONSOLE.status(
                 "[bold green]Generating task assignments...[/]",
                 spinner="line",
             ):
-                raw_response = client.generate(SYNC_SYSTEM_PROMPT, user_prompt)
-            payload = _extract_json_payload(raw_response)
-            summary, assignments = _parse_assignments(payload, slots)
-            plan = _build_plan(
-                target_date=target_date,
+                proposal = _generate_sync_proposal_from_context(
+                    schedule=schedule,
+                    parity=parity,
+                    config=config,
+                    feedback=feedback,
+                    llm_config=llm_config,
+                )
+            summary = proposal.get("summary")
+            plan_payload = proposal["plan"]
+            plan = _plan_from_payload(plan_payload)
+            preview_schedule = apply_synced_schedule(
+                schedule,
+                target_date=date.fromisoformat(plan.target_date),
                 parity=parity,
-                weekday=weekday,
-                slots=slots,
-                assignments=assignments,
+                weekday=plan.weekday,
+                synced=plan,
             )
         except Exception as exc:
             CONSOLE.print(f"[bold red]Could not generate a synced schedule:[/] {exc}")
             return 1
 
-        preview_schedule = apply_synced_schedule(
-            schedule,
-            target_date=date.today(),
-            parity=parity,
-            weekday=weekday,
-            synced=plan,
-        )
-
         if summary:
             CONSOLE.print(
-                Panel.fit(summary, title="Model Summary", border_style="cyan")
+                Panel.fit(str(summary), title="Model Summary", border_style="cyan")
             )
         CONSOLE.print(_render_preview_table(preview_schedule))
 
         if _prompt_acceptance():
             try:
-                saved_path = save_synced_schedule(plan)
+                result = accept_sync_plan(plan_payload)
             except Exception as exc:
                 CONSOLE.print(f"[bold red]Failed to save synced schedule:[/] {exc}")
                 return 1
 
             CONSOLE.print(
-                f"[bold green]Saved accepted sync overlay to[/] [cyan]{saved_path}[/]."
+                f"[bold green]Saved accepted sync overlay to[/] [cyan]{result['savedPath']}[/]."
             )
             CONSOLE.print(
                 "[bold cyan]Run `rmd status` to inspect the assigned focus blocks.[/]"

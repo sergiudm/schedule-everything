@@ -261,16 +261,18 @@ class TestReportCommand:
 class TestViewCommand:
     """Test the view command functionality."""
 
-    @patch("schedule_management.commands.status.ScheduleVisualizer")
+    @patch("schedule_management.commands.status._schedule_visualizer_class")
     @patch("schedule_management.commands.status.WeeklySchedule")
     @patch("schedule_management.commands.status.ScheduleConfig")
     @patch("schedule_management.commands.status.subprocess.run")
     def test_view_success(
-        self, mock_subprocess, mock_config, mock_weekly, mock_visualizer
+        self, mock_subprocess, mock_config, mock_weekly, mock_visualizer_class
     ):
         """Test successful view command."""
+        mock_visualizer = MagicMock()
         mock_visualizer_instance = MagicMock()
         mock_visualizer.return_value = mock_visualizer_instance
+        mock_visualizer_class.return_value = mock_visualizer
         mock_subprocess.return_value = MagicMock(returncode=0)
 
         # Configure the mock config to return a proper config_dir
@@ -284,12 +286,16 @@ class TestViewCommand:
         assert result == 0
         mock_visualizer_instance.visualize.assert_called_once()
 
-    @patch("schedule_management.commands.status.ScheduleVisualizer")
+    @patch("schedule_management.commands.status._schedule_visualizer_class")
     @patch("schedule_management.commands.status.WeeklySchedule")
     @patch("schedule_management.commands.status.ScheduleConfig")
-    def test_view_visualization_error(self, mock_config, mock_weekly, mock_visualizer):
+    def test_view_visualization_error(
+        self, mock_config, mock_weekly, mock_visualizer_class
+    ):
         """Test view command when visualization fails."""
+        mock_visualizer = MagicMock()
         mock_visualizer.side_effect = Exception("Visualization error")
+        mock_visualizer_class.return_value = mock_visualizer
 
         # Configure the mock config to return a proper config_dir
         mock_config_instance = MagicMock()

@@ -90,6 +90,19 @@ rmd switch 0
 当今天已经有同步 overlay 时，`rmd status` 会显示块类型和具体任务标题，例如 `pomodoro: 完成方案初稿`。
 `rmd update` 会重新加载提醒服务；如果配置目录本身是 git 仓库，会先拉取最新日程，否则跳过 git 步骤并直接按本地文件重载。
 
+### 5. 可选的 macOS Daily Command Center
+
+仓库中也包含一个基于 Tauri 2 的 macOS 桌面应用。它和 CLI 使用同一套本地配置、任务、截止日期、习惯记录和 sync overlay 文件，但用 Daily Command Center 的界面展示当天日程，并提供快速添加任务/截止日期、勾选习惯、预览并确认 `rmd sync` 方案等操作。
+
+```bash
+npm install
+npm run tauri:dev
+npm run tauri:build
+```
+
+`npm run tauri:build` 会把 Python JSON bridge 打包成 sidecar，并把 macOS
+应用包输出到 `src-tauri/target/release/bundle/`。
+
 ## 常用命令
 
 | 命令 | 作用 |

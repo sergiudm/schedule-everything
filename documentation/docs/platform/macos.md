@@ -109,6 +109,30 @@ tail -f ~/schedule_management/logs/stdout.log
 tail -f ~/schedule_management/logs/stderr.log
 ```
 
+## Daily Command Center App
+
+Schedule Everything also ships with an optional Tauri 2 macOS app. The app is
+designed for day-to-day operations: it shows the current/next event, today's
+timeline, tasks, deadlines, habits, quick entry forms, and a preview/accept
+flow for `rmd sync`.
+
+It does not replace the CLI setup flow. Run `rmd setup` first so the local
+config exists, then launch the app from source:
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+Build standalone app bundles with:
+
+```bash
+npm run tauri:build
+```
+
+The build includes a PyInstaller sidecar for the desktop JSON bridge and writes
+the packaged app and DMG under `src-tauri/target/release/bundle/`.
+
 ## macOS-Specific Configuration
 
 ### Sound Files
