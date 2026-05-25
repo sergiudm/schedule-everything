@@ -7,6 +7,13 @@ import json
 import shutil
 import sys
 import tomllib
+from pathlib import Path
+
+# Ensure src/ is in sys.path to resolve imports during installation bootstrapping
+src_dir = Path(__file__).resolve().parent.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
 from schedule_management.i18n import _t
 from collections.abc import Callable
 from collections import OrderedDict
