@@ -14,9 +14,7 @@
 
 Schedule Everything is a local-first, AI-assisted scheduling CLI for building a
 durable weekly routine and then turning today's focus blocks into concrete
-work. `rmd setup` builds or refines your schedule from a profile, `rmd sync`
-assigns real tasks to today's `pomodoro` and `potato` blocks, and `rmd` is the
-primary CLI name while `reminder` remains as a compatibility alias.
+work.
 
 ## Workflow
 
