@@ -18,13 +18,14 @@ Example Usage (via CLI):
 import sys
 from datetime import date, datetime, timezone
 from typing import Any
+from schedule_management.i18n import _t
 
 try:
     from rich import box
     from rich.console import Console
     from rich.table import Table
 except ImportError:
-    print("Please install the 'rich' library: pip install rich")
+    print(_t("Please install the 'rich' library: pip install rich"))
     sys.exit(1)
 
 from schedule_management.data import load_deadlines, save_deadlines
@@ -92,7 +93,7 @@ def add_deadline(args) -> int:
     try:
         parts = date_str.split(".")
         if len(parts) != 2:
-            print("❌ Error: Date must be in format M.D or MM.DD (e.g., 7.4 or 07.04)")
+            print(_t("❌ Error: Date must be in format M.D or MM.DD (e.g., 7.4 or 07.04)"))
             return 1
 
         month = int(parts[0])
@@ -100,10 +101,10 @@ def add_deadline(args) -> int:
 
         # Validate month and day
         if not (1 <= month <= 12):
-            print("❌ Error: Month must be between 1 and 12")
+            print(_t("❌ Error: Month must be between 1 and 12"))
             return 1
         if not (1 <= day <= 31):
-            print("❌ Error: Day must be between 1 and 31")
+            print(_t("❌ Error: Day must be between 1 and 31"))
             return 1
 
         # Determine year (current or next if date has passed)
@@ -118,7 +119,7 @@ def add_deadline(args) -> int:
         deadline_str = deadline_date.strftime("%Y-%m-%d")
 
     except ValueError as e:
-        print(f"❌ Error: Invalid date format - {e}")
+        print(_t("❌ Error: Invalid date format - {e}").format(e=e))
         return 1
 
     # Load existing deadlines
@@ -142,13 +143,13 @@ def add_deadline(args) -> int:
     if existing_index is not None:
         old_date = deadlines[existing_index]["deadline"]
         deadlines[existing_index] = new_deadline
-        action_msg = (
-            f"✅ Deadline for '{event_name}' updated from {old_date} to {deadline_str}"
+        action_msg = _t("✅ Deadline for '{event_name}' updated from {old_date} to {deadline_str}").format(
+            event_name=event_name, old_date=old_date, deadline_str=deadline_str
         )
     else:
         deadlines.append(new_deadline)
-        action_msg = (
-            f"✅ Deadline '{event_name}' added successfully for {deadline_str}!"
+        action_msg = _t("✅ Deadline '{event}' added successfully for {date}!").format(
+            event=event_name, date=deadline_str
         )
 
     # Save deadlines
@@ -157,7 +158,7 @@ def add_deadline(args) -> int:
         print(action_msg)
         return 0
     except Exception as e:
-        print(f"❌ Error saving deadline: {e}")
+        print(_t("❌ Error saving deadline: {e}").format(e=e))
         return 1
 
 
@@ -199,11 +200,11 @@ def show_deadlines(args) -> int:
         try:
             save_deadlines(deadlines)
         except Exception as e:
-            console.print(f"[bold red]❌ Error saving pruned deadlines: {e}[/bold red]")
+            console.print(_t("[bold red]❌ Error saving pruned deadlines: {e}[/bold red]").format(e=e))
             return 1
 
     if not deadlines:
-        console.print("[bold yellow]📅 No deadlines found[/bold yellow]")
+        console.print(_t("[bold yellow]📅 No deadlines found[/bold yellow]"))
         return 0
 
     # Sort by date (earliest first)
@@ -211,16 +212,16 @@ def show_deadlines(args) -> int:
 
     # Create table
     table = Table(
-        title="[bold]Upcoming Deadlines[/bold]",
+        title="[bold]" + _t("Current Deadlines") + "[/bold]",
         box=box.ROUNDED,
         header_style="bold cyan",
         expand=True,
     )
 
-    table.add_column("Event", justify="left", style="bold")
-    table.add_column("Deadline", justify="left", width=15)
-    table.add_column("Days Left", justify="right", width=12)
-    table.add_column("Status", justify="center", width=10)
+    table.add_column(_t("Event"), justify="left", style="bold")
+    table.add_column(_t("Deadline"), justify="left", width=15)
+    table.add_column(_t("Days Left"), justify="right", width=12)
+    table.add_column(_t("Status"), justify="center", width=10)
 
     for ddl in sorted_deadlines:
         event_name = ddl["event"]
@@ -236,25 +237,25 @@ def show_deadlines(args) -> int:
         if days_left < 0:
             # Overdue: dimmed row
             color = "dim"
-            status = "⚠️ OVERDUE"
+            status = _t("⚠️ OVERDUE")
             days_text = ""
             row_style = "dim"
         elif days_left == 0:
             color = "red"
-            status = "🔴 TODAY"
-            days_text = f"[{color}]TODAY[/{color}]"
+            status = _t("🔴 TODAY")
+            days_text = f"[{color}]" + _t("Today!") + f"[/{color}]"
         elif days_left <= 3:
             color = "red"
-            status = "🔴 URGENT"
-            days_text = f"[{color}]{days_left} days[/{color}]"
+            status = _t("🔴 URGENT")
+            days_text = f"[{color}]" + _t("{days} days left").format(days=days_left) + f"[/{color}]"
         elif days_left <= 7:
             color = "yellow"
-            status = "🟡 SOON"
-            days_text = f"[{color}]{days_left} days[/{color}]"
+            status = _t("🟡 SOON")
+            days_text = f"[{color}]" + _t("{days} days left").format(days=days_left) + f"[/{color}]"
         else:
             color = "green"
-            status = "🟢 OK"
-            days_text = f"[{color}]{days_left} days[/{color}]"
+            status = _t("🟢 OK")
+            days_text = f"[{color}]" + _t("{days} days left").format(days=days_left) + f"[/{color}]"
 
         # Format date for display
         deadline_display = deadline_date.strftime("%b %d, %Y")
@@ -262,7 +263,7 @@ def show_deadlines(args) -> int:
         table.add_row(event_name, deadline_display, days_text, status, style=row_style)
 
     console.print(table)
-    console.print(f"[dim]Total deadlines: {len(deadlines)}[/dim]", justify="right")
+    console.print("[dim]" + _t("Total deadlines: {count}").format(count=len(deadlines)) + "[/dim]", justify="right")
 
     return 0
 
@@ -292,7 +293,7 @@ def delete_deadline(args) -> int:
     deadlines = load_deadlines()
 
     if not deadlines:
-        print("⚠️  No deadlines found to delete")
+        print(_t("⚠️  No deadlines found to delete"))
         return 1
 
     total_deleted_count = 0
@@ -308,7 +309,7 @@ def delete_deadline(args) -> int:
         deadlines = [ddl for ddl in deadlines if ddl["event"] != event_name]
 
         if len(deadlines) == original_count:
-            error_msg = f"❌ Deadline '{event_name}' not found"
+            error_msg = _t("❌ Deadline '{event}' not found").format(event=event_name)
             all_errors.append(error_msg)
             continue
 
@@ -316,10 +317,12 @@ def delete_deadline(args) -> int:
         total_deleted_count += deleted_count
 
         if deleted_count == 1:
-            successful_deletions.append(f"Deadline '{event_name}'")
+            successful_deletions.append(_t("Deadline '{event}'").format(event=event_name))
         else:
             successful_deletions.append(
-                f"{deleted_count} deadlines with name '{event_name}'"
+                _t("{deleted_count} deadlines with name '{event}'").format(
+                    deleted_count=deleted_count, event=event_name
+                )
             )
 
     # Print results
@@ -330,16 +333,16 @@ def delete_deadline(args) -> int:
         try:
             save_deadlines(deadlines)
             if len(successful_deletions) == 1:
-                print(f"✅ {successful_deletions[0]} deleted successfully!")
+                print(_t("✅ {deletion} deleted successfully!").format(deletion=successful_deletions[0]))
             else:
                 print(
-                    f"✅ {len(successful_deletions)} sets of deadlines deleted successfully:"
+                    _t("✅ {count} deadlines deleted successfully:").format(count=len(successful_deletions))
                 )
                 for deletion in successful_deletions:
                     print(f"   - {deletion}")
             return 0 if not all_errors else 1
         except Exception as e:
-            print(f"❌ Error saving deadlines: {e}")
+            print(_t("❌ Error saving deadlines: {e}").format(e=e))
             return 1
     else:
         return 1

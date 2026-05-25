@@ -49,6 +49,7 @@ class RuntimePaths:
     task_log_path: Path
     record_path: Path
     procrastinate_path: Path
+    mode_path: Path
 
 
 class DynamicPath(os.PathLike[str]):
@@ -276,6 +277,7 @@ def resolve_runtime_paths(root_dir: Path | None = None) -> RuntimePaths:
         task_log_path=tasks_dir / "tasks.log",
         record_path=tasks_dir / "record.json",
         procrastinate_path=tasks_dir / "procrastinate.json",
+        mode_path=tasks_dir / "mode.txt",
     )
 
 

@@ -38,6 +38,7 @@ from schedule_management import (
     DDL_PATH,
 )
 from schedule_management.config import ScheduleConfig, WeeklySchedule
+from schedule_management.i18n import _t
 from schedule_management.commands.deadlines import prune_expired_deadlines
 from schedule_management.synced_schedule import apply_synced_schedule
 from schedule_management.time_utils import add_minutes_to_time, alarm, get_week_parity
@@ -50,6 +51,7 @@ from schedule_management.data import (
     save_procrastinate_list,
     get_procrastinate_age_days,
     log_task_action,
+    load_mode,
 )
 from schedule_management.popups import (
     show_daily_summary_popup,
@@ -196,7 +198,7 @@ class ScheduleRunner:
                 else:
                     message = event  # Use string as message directly
                 _log_runtime_event(f"Time point triggered at {time_str}: {message}")
-                self._trigger_alarm("提醒", message)
+                self._trigger_alarm(_t("Reminder"), message)
                 self.notified_today.add(time_str)
         elif isinstance(event, dict) and "block" in event:
             # Dict with block type and optional title
@@ -225,12 +227,12 @@ class ScheduleRunner:
         end_time_str = add_minutes_to_time(start_time, duration)
 
         # Start notification
-        start_message = f"{title} ⏱️ ({duration}min)"
-        self._trigger_alarm("开始", start_message)
+        start_message = _t("{title} ⏱️ ({duration}min)").format(title=title, duration=duration)
+        self._trigger_alarm(_t("Start"), start_message)
         self.notified_today.add(start_time)
 
         # Schedule end notification
-        end_message = f"{title} 结束！休息一下 🎉"
+        end_message = _t("{title} finished! Take a break 🎉").format(title=title)
         self.pending_end_alarms[end_time_str] = end_message
         _log_runtime_event(
             f"Time block started at {start_time}: {title} ({duration}min), ends at {end_time_str}"
@@ -270,10 +272,10 @@ class ScheduleRunner:
         if age_days is None:
             return None
         if age_days == 0:
-            return "Deferred today"
+            return _t("Deferred today")
         if age_days == 1:
-            return "Procrastinated for 1 day"
-        return f"Procrastinated for {age_days} days"
+            return _t("Procrastinated for 1 day")
+        return _t("Procrastinated for {age_days} days").format(age_days=age_days)
 
     def _prompt_urgent_tasks(self) -> None:
         """Ask for completion of urgent tasks one-by-one and sync procrastinate list."""
@@ -313,9 +315,9 @@ class ScheduleRunner:
             today = datetime.now().date()
 
             for index, task in enumerate(urgent_tasks, 1):
-                description = str(task.get("description", "未知任务")).strip()
+                description = str(task.get("description", _t("Unknown Task"))).strip()
                 if not description:
-                    description = "未知任务"
+                    description = _t("Unknown Task")
                 priority = self._task_priority(task)
                 age_days = get_procrastinate_age_days(
                     procrastinate_records.get(description, {}).get("since"),
@@ -324,15 +326,15 @@ class ScheduleRunner:
                 age_label = self._format_procrastination_age(age_days)
 
                 question_lines = [
-                    "Did you complete this task?",
+                    _t("Did you complete this task?"),
                     "",
                     description,
-                    f"Priority: {priority}",
+                    _t("Priority: {priority}").format(priority=priority),
                 ]
                 if age_label:
                     question_lines.append(age_label)
                 question = "\n".join(question_lines)
-                title = f"Urgent Task ({index}/{total_tasks})"
+                title = _t("Urgent Task ({index}/{total_tasks})").format(index=index, total_tasks=total_tasks)
 
                 result = ask_yes_no(question, title)
                 if result is None:
@@ -443,22 +445,22 @@ class ScheduleRunner:
 
         lines: list[str] = []
         for ddl in urgent_deadlines:
-            event = ddl.get("event", "未知事件")
+            event = ddl.get("event", _t("Unknown Event"))
             deadline_str = ddl.get("deadline", "")
             days_left = ddl.get("days_left", 0)
 
             if days_left < 0:
-                lines.append(f"⚠️ {event} - {deadline_str} (已逾期 {-days_left} 天)")
+                lines.append(_t("⚠️ {event} - {deadline_str} (Overdue {days_left} days)").format(event=event, deadline_str=deadline_str, days_left=-days_left))
             elif days_left == 0:
-                lines.append(f"🔴 {event} - {deadline_str} (今天截止)")
+                lines.append(_t("🔴 {event} - {deadline_str} (Due today)").format(event=event, deadline_str=deadline_str))
             else:
-                lines.append(f"🚨 {event} - {deadline_str} (剩余 {days_left} 天)")
+                lines.append(_t("🚨 {event} - {deadline_str} ({days_left} days left)").format(event=event, deadline_str=deadline_str, days_left=days_left))
 
-        message = "📅 紧急DDL提醒\n\n" + "\n".join(lines)
+        message = _t("📅 Urgent Deadline Reminder\n\n") + "\n".join(lines)
         _log_runtime_event(
             f"Urgent deadline reminder triggered for {len(urgent_deadlines)} deadline(s)"
         )
-        self._trigger_alarm("Urgent Deadlines", message, sound="Glass")
+        self._trigger_alarm(_t("Urgent Deadlines"), message, sound="Glass")
 
     # =========================================================================
     # MAIN LOOP
@@ -484,6 +486,7 @@ class ScheduleRunner:
         while True:
             now = datetime.now()
             now_str = now.strftime("%H:%M")
+            current_mode = load_mode()
             today_schedule = self.weekly_schedule.get_today_schedule(self.config)
             if today_schedule:
                 today_schedule = apply_synced_schedule(
@@ -606,19 +609,20 @@ class ScheduleRunner:
             # -----------------------------------------------------------------
             # Handle Start Events
             # -----------------------------------------------------------------
-            if now_str in today_schedule and now_str not in self.notified_today:
+            if current_mode == "j" and now_str in today_schedule and now_str not in self.notified_today:
                 self._handle_event(now_str, today_schedule[now_str])
 
             # -----------------------------------------------------------------
             # Handle End Alarms
             # -----------------------------------------------------------------
             if (
-                now_str in self.pending_end_alarms
+                current_mode == "j"
+                and now_str in self.pending_end_alarms
                 and now_str not in self.notified_today
             ):
                 message = self.pending_end_alarms[now_str]
                 _log_runtime_event(f"End alarm triggered at {now_str}: {message}")
-                self._trigger_alarm("结束提醒", message)
+                self._trigger_alarm(_t("End Reminder"), message)
                 self.notified_today.add(now_str)
                 del self.pending_end_alarms[now_str]
 

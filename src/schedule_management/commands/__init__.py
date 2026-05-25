@@ -28,6 +28,7 @@ from schedule_management.commands.service import (
     switch_command,
     report_command,
     edit_schedule_command,
+    mode_command,
 )
 from schedule_management.commands.setup import setup_command
 
@@ -54,6 +55,7 @@ __all__ = [
     "switch_command",
     "report_command",
     "edit_schedule_command",
+    "mode_command",
     # Setup command
     "setup_command",
 ]

@@ -19,6 +19,8 @@ import re
 import sys
 from datetime import date, datetime, timezone
 
+from schedule_management.i18n import _t, get_language
+
 from schedule_management.data import (
     load_habits,
     load_habit_records,
@@ -69,11 +71,13 @@ def _habit_question(description: str) -> str:
     """
     text = description.strip()
     if not text:
-        return "Did you complete this habit today?"
+        return _t("Did you complete this habit today?")
     if text.endswith("?"):
         return text
     if text.lower().startswith("did you "):
         return f"{text}?"
+    if get_language() == "zh":
+        return f"今天你 {text} 了吗？"
     if text[0].isalpha():
         text = text[0].lower() + text[1:]
     return f"Did you {text} today?"
@@ -99,7 +103,7 @@ def _prompt_completed_habits(habits: dict[str, str]) -> list[str] | None:
 
     for i, (habit_id, description) in enumerate(sorted_habits, 1):
         question = _habit_question(description)
-        title = f"Habit Tracker ({i}/{total_habits})"
+        title = _t("Habit Tracker ({i}/{total_habits})").format(i=i, total_habits=total_habits)
 
         result = ask_yes_no(question, title)
 
@@ -132,14 +136,14 @@ def _prompt_completed_habits_cli(habits: dict[str, str]) -> list[str] | None:
     if not sys.stdin.isatty():
         return None
 
-    print("Habits for today:")
+    print(_t("Habits for today:"))
     for habit_id, description in sorted(
         habits.items(), key=lambda item: _habit_sort_key(item[0])
     ):
         print(f"  [{habit_id}] {_habit_question(description)}")
 
     raw = input(
-        "Enter completed habit IDs (space-separated), or press Enter for none: "
+        _t("Enter completed habit IDs (space-separated), or press Enter for none: ")
     ).strip()
     if not raw:
         return []
@@ -183,7 +187,7 @@ def track_habits(args) -> int:
     habits = load_habits()
 
     if not habits:
-        print("❌ Error: No habits configured. Please create config/habits.toml")
+        print(_t("❌ Error: No habits configured. Please create config/habits.toml"))
         return 1
 
     # Get habit IDs if not provided
@@ -197,7 +201,7 @@ def track_habits(args) -> int:
 
         if habit_ids is None:
             print(
-                "❌ Could not open a habit prompt window. Provide habit IDs, e.g. `rmd track 1 2`."
+                _t("❌ Could not open a habit prompt window. Provide habit IDs, e.g. `rmd track 1 2`.")
             )
             return 1
 
@@ -213,8 +217,8 @@ def track_habits(args) -> int:
             invalid_ids.append(habit_id)
 
     if invalid_ids:
-        print(f"⚠️  Warning: Invalid habit IDs: {', '.join(map(str, invalid_ids))}")
-        print(f"Available habits: {', '.join(sorted(habits.keys()))}")
+        print(_t("⚠️  Warning: Invalid habit IDs: {ids}").format(ids=', '.join(map(str, invalid_ids))))
+        print(_t("Available habits: {habits}").format(habits=', '.join(sorted(habits.keys()))))
         if not valid_habits:
             return 1
 
@@ -244,13 +248,13 @@ def track_habits(args) -> int:
     if existing_record_index is not None:
         old_completed = records[existing_record_index].get("completed", {})
         records[existing_record_index] = new_record
-        print(f"✅ Updated habit record for {today}")
-        print(f"Previously completed: {len(old_completed)} habits")
+        print(_t("✅ Updated habit record for {today}").format(today=today))
+        print(_t("Previously completed: {count} habits").format(count=len(old_completed)))
     else:
         records.append(new_record)
-        print(f"✅ Recorded habit tracking for {today}")
+        print(_t("✅ Recorded habit tracking for {today}").format(today=today))
 
-    print(f"Completed habits today: {len(completed_habits)}")
+    print(_t("Completed habits today: {count}").format(count=len(completed_habits)))
     for habit_id in sorted(valid_habits, key=_habit_sort_key):
         print(f"  [{habit_id}] {habits[habit_id]}")
 
@@ -259,5 +263,5 @@ def track_habits(args) -> int:
         save_habit_records(records)
         return 0
     except Exception as e:
-        print(f"❌ Error saving habit records: {e}")
+        print(_t("❌ Error saving habit records: {e}").format(e=e))
         return 1

@@ -45,6 +45,7 @@ from schedule_management.commands import (
     switch_command,
     report_command,
     edit_schedule_command,
+    mode_command,
     setup_command,
 )
 
@@ -58,6 +59,8 @@ from schedule_management.data import (
     load_habit_records,
     save_habit_records,
     log_task_action,
+    load_mode,
+    save_mode,
 )
 
 # Config classes (from config.py)
@@ -97,6 +100,7 @@ __all__ = [
     "switch_command",
     "report_command",
     "edit_schedule_command",
+    "mode_command",
     "setup_command",
     # Data loaders
     "load_tasks",
@@ -107,6 +111,8 @@ __all__ = [
     "load_habit_records",
     "save_habit_records",
     "log_task_action",
+    "load_mode",
+    "save_mode",
     # Config
     "ScheduleConfig",
     "WeeklySchedule",

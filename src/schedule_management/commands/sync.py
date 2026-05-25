@@ -13,12 +13,14 @@ import sys
 from datetime import date, datetime
 from typing import Any
 
+from schedule_management.i18n import _t
+
 try:
     from rich import box
     from rich.panel import Panel
     from rich.table import Table
 except ImportError:
-    print("Please install the 'rich' library: pip install rich")
+    print(_t("Please install the 'rich' library: pip install rich"))
     sys.exit(1)
 
 from schedule_management import EVEN_PATH, ODD_PATH, SETTINGS_PATH
@@ -27,7 +29,7 @@ from schedule_management.commands.setup_agent.configuration import (
     _interpret_confirmation,
 )
 from schedule_management.config import ScheduleConfig, WeeklySchedule
-from schedule_management.data import load_tasks
+from schedule_management.data import load_tasks, load_mode
 from schedule_management.synced_schedule import (
     SyncedDaySchedule,
     apply_synced_schedule,
@@ -265,13 +267,13 @@ def _build_plan(
 def _render_preview_table(schedule: dict[str, Any]) -> Table:
     """Render a full-day preview table."""
     table = Table(
-        title="[bold]Synced Schedule Preview[/bold]",
+        title="[bold]" + _t("Synced Schedule Preview") + "[/bold]",
         box=box.ROUNDED,
         header_style="bold cyan",
         expand=True,
     )
-    table.add_column("Time", justify="right", style="cyan", width=8, no_wrap=True)
-    table.add_column("Activity", justify="left")
+    table.add_column(_t("Time"), justify="right", style="cyan", width=8, no_wrap=True)
+    table.add_column(_t("Activity"), justify="left")
 
     for time_str in sorted(schedule.keys()):
         event = schedule[time_str]
@@ -442,64 +444,68 @@ def _prompt_rejection_reason() -> str:
     """Collect non-empty feedback for the next sync attempt."""
     while True:
         reason = CONSOLE.input(
-            "[bold yellow]What should change before I regenerate it?[/] "
+            "[bold yellow]" + _t("What should change before I regenerate it?") + "[/] "
         ).strip()
         if reason:
             return reason
-        CONSOLE.print("[bold yellow]Please provide a short reason.[/]")
+        CONSOLE.print("[bold yellow]" + _t("Please provide a short reason.") + "[/]")
 
 
 def _prompt_acceptance() -> bool:
     """Ask whether the user accepts the preview."""
     while True:
         answer = CONSOLE.input(
-            "[bold cyan]Accept this synced schedule?[/] [bright_black][y/n][/]: "
+            "[bold cyan]" + _t("Accept this synced schedule?") + "[/] [bright_black][y/n][/]: "
         )
         decision = _interpret_confirmation(answer)
         if decision is not None:
             return decision
-        CONSOLE.print("[bold yellow]Please answer with yes or no.[/]")
+        CONSOLE.print("[bold yellow]" + _t("Please answer with yes or no.") + "[/]")
 
 
 def sync_command(args) -> int:
     """Handle `rmd sync`."""
     del args  # command has no flags yet
 
+    if load_mode() == "p":
+        print(_t("❌ Currently in p mode. Switch back to j mode to execute this command."))
+        return 1
+
     try:
         schedule, parity, is_skipped, config = _get_base_today_schedule()
     except Exception as exc:
-        CONSOLE.print(f"[bold red]Failed to load today's schedule:[/] {exc}")
+        CONSOLE.print("[bold red]" + _t("Failed to load today's schedule:") + "[/] " + str(exc))
         return 1
 
     if is_skipped:
-        CONSOLE.print("[bold yellow]Today is a skipped day. Nothing to sync.[/]")
+        CONSOLE.print("[bold yellow]" + _t("Today is a skipped day. Nothing to sync.") + "[/]")
         return 0
 
     if not schedule:
-        CONSOLE.print("[bold yellow]No schedule found for today.[/]")
+        CONSOLE.print("[bold yellow]" + _t("No schedule found for today.") + "[/]")
         return 0
 
     slots = iter_syncable_slots(schedule)
     if not slots:
         CONSOLE.print(
-            "[bold yellow]No untitled pomodoro/potato blocks need syncing today.[/]"
+            "[bold yellow]" + _t("No untitled pomodoro/potato blocks need syncing today.") + "[/]"
         )
         return 0
 
     tasks = _load_ranked_tasks()
     if not tasks:
         CONSOLE.print(
-            "[bold red]No tasks found in tasks.json. Add tasks before running sync.[/]"
+            "[bold red]" + _t("No tasks found in tasks.json. Add tasks before running sync.") + "[/]"
         )
         return 1
 
     try:
         llm_config = ensure_llm_config()
     except KeyboardInterrupt:
-        CONSOLE.print("[bold yellow]Sync cancelled by user.[/]")
+        CONSOLE.print("[bold yellow]" + _t("Sync cancelled by user.") + "[/]")
         return 1
     except Exception as exc:
-        CONSOLE.print(f"[bold red]Failed to initialize LLM config:[/] {exc}")
+        CONSOLE.print("[bold red]" + _t("Failed to initialize LLM config:") + "[/] " + str(exc))
         return 1
 
     feedback: list[str] = []
@@ -507,7 +513,7 @@ def sync_command(args) -> int:
     while True:
         try:
             with CONSOLE.status(
-                "[bold green]Generating task assignments...[/]",
+                "[bold green]" + _t("Generating task assignments...") + "[/]",
                 spinner="line",
             ):
                 proposal = _generate_sync_proposal_from_context(
@@ -528,12 +534,12 @@ def sync_command(args) -> int:
                 synced=plan,
             )
         except Exception as exc:
-            CONSOLE.print(f"[bold red]Could not generate a synced schedule:[/] {exc}")
+            CONSOLE.print("[bold red]" + _t("Could not generate a synced schedule:") + "[/] " + str(exc))
             return 1
 
         if summary:
             CONSOLE.print(
-                Panel.fit(str(summary), title="Model Summary", border_style="cyan")
+                Panel.fit(str(summary), title=_t("Model Summary"), border_style="cyan")
             )
         CONSOLE.print(_render_preview_table(preview_schedule))
 
@@ -541,14 +547,14 @@ def sync_command(args) -> int:
             try:
                 result = accept_sync_plan(plan_payload)
             except Exception as exc:
-                CONSOLE.print(f"[bold red]Failed to save synced schedule:[/] {exc}")
+                CONSOLE.print("[bold red]" + _t("Failed to save synced schedule:") + "[/] " + str(exc))
                 return 1
 
             CONSOLE.print(
-                f"[bold green]Saved accepted sync overlay to[/] [cyan]{result['savedPath']}[/]."
+                "[bold green]" + _t("Saved accepted sync overlay to") + "[/] [cyan]" + str(result['savedPath']) + "[/]."
             )
             CONSOLE.print(
-                "[bold cyan]Run `rmd status` to inspect the assigned focus blocks.[/]"
+                "[bold cyan]" + _t("Run `rmd status` to inspect the assigned focus blocks.") + "[/]"
             )
             return 0
 

@@ -7,6 +7,7 @@ import json
 import shutil
 import sys
 import tomllib
+from schedule_management.i18n import _t
 from collections.abc import Callable
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -54,7 +55,7 @@ def _ask_yes_no(
         try:
             answer = input_func(f"{prompt} {suffix}: ").strip().lower()
         except EOFError:
-            print("Input stream closed; using default answer.")
+            print(_t("Input stream closed; using default answer."))
             return default
 
         if answer == "":
@@ -63,7 +64,7 @@ def _ask_yes_no(
             return True
         if answer in {"n", "no"}:
             return False
-        print("Please answer with 'y' or 'n'.")
+        print(_t("Please answer with 'y' or 'n'."))
 
 
 def _format_toml_value(value: Any) -> str:
@@ -216,22 +217,22 @@ def _ensure_required_files(
 
         template_path = template_dir / template_name
         if not template_path.exists():
-            print(f"Missing required template: {template_path}")
+            print(_t("Missing required template: {path}").format(path=template_path))
             return False
 
         should_create = _ask_yes_no(
-            f"{config_name} is missing. Create it from {template_name}?",
+            _t("{config_name} is missing. Create it from {template_name}?").format(config_name=config_name, template_name=template_name),
             default=True,
             auto_yes=auto_yes,
             input_func=input_func,
         )
         if not should_create:
-            print(f"Cannot continue without {config_name}.")
+            print(_t("Cannot continue without {config_name}.").format(config_name=config_name))
             return False
 
         config_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(template_path, config_path)
-        print(f"Created {config_path}")
+        print(_t("Created {config_path}").format(config_path=config_path))
 
     return True
 
@@ -249,15 +250,15 @@ def _load_current_settings(
     try:
         return _load_toml_file(settings_path)
     except tomllib.TOMLDecodeError as exc:
-        print(f"Invalid TOML in {settings_path}: {exc}")
+        print(_t("Invalid TOML in {settings_path}: {exc}").format(settings_path=settings_path, exc=exc))
         if not settings_template_path.exists():
             print(
-                "settings_template.toml is unavailable; cannot auto-repair settings.toml"
+                _t("settings_template.toml is unavailable; cannot auto-repair settings.toml")
             )
             return None
 
         should_replace = _ask_yes_no(
-            "Replace settings.toml with settings_template.toml and continue?",
+            _t("Replace settings.toml with settings_template.toml and continue?"),
             default=False,
             auto_yes=auto_yes,
             input_func=input_func,
@@ -285,13 +286,13 @@ def run_wizard(
 
     settings_template_path = template_dir / "settings_template.toml"
     if not settings_template_path.exists():
-        print("settings_template.toml not found; skipping missing-key checks.")
+        print(_t("settings_template.toml not found; skipping missing-key checks."))
         return True
 
     try:
         template_settings = _load_toml_file(settings_template_path)
     except (OSError, tomllib.TOMLDecodeError) as exc:
-        print(f"Failed to load settings template: {exc}")
+        print(_t("Failed to load settings template: {exc}").format(exc=exc))
         return False
 
     settings_path = config_dir / "settings.toml"
@@ -306,10 +307,10 @@ def run_wizard(
 
     missing_entries = _collect_missing_settings(current_settings, template_settings)
     if not missing_entries:
-        print("Configuration check complete. No missing keys found.")
+        print(_t("Configuration check complete. No missing keys found."))
         return True
 
-    print(f"Found {len(missing_entries)} missing configuration value(s).")
+    print(_t("Found {count} missing configuration value(s).").format(count=len(missing_entries)))
 
     resolved_entries: list[SettingEntry] = []
     for entry in missing_entries:
@@ -317,15 +318,18 @@ def run_wizard(
 
         if auto_yes:
             print(
-                f"Missing [{entry.section}].{entry.key}; using default {default_display}"
+                _t("Missing [{section}].{key}; using default {default_display}").format(
+                    section=entry.section, key=entry.key, default_display=default_display
+                )
             )
             resolved_entries.append(entry)
             continue
 
         while True:
             response = input_func(
-                f"Enter value for [{entry.section}].{entry.key} "
-                f"(press Enter for {default_display}): "
+                _t("Enter value for [{section}].{key} (press Enter for {default_display}): ").format(
+                    section=entry.section, key=entry.key, default_display=default_display
+                )
             ).strip()
 
             if response == "":
@@ -335,7 +339,7 @@ def run_wizard(
             try:
                 parsed_value = _parse_user_value(response, entry.value)
             except ValueError as exc:
-                print(f"Invalid value: {exc}")
+                print(_t("Invalid value: {exc}").format(exc=exc))
                 continue
 
             resolved_entries.append(
@@ -344,7 +348,7 @@ def run_wizard(
             break
 
     _write_missing_settings(settings_path, resolved_entries)
-    print(f"Updated {settings_path} with {len(resolved_entries)} missing value(s).")
+    print(_t("Updated {settings_path} with {count} missing value(s).").format(settings_path=settings_path, count=len(resolved_entries)))
     return True
 
 
@@ -379,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.yes and not sys.stdin.isatty():
         print(
-            "Interactive prompts require a TTY. Re-run with --yes to accept defaults."
+            _t("Interactive prompts require a TTY. Re-run with --yes to accept defaults.")
         )
         return 1
 

@@ -97,6 +97,7 @@ def _snapshot_runtime_paths() -> RuntimePaths:
         task_log_path=tasks_dir / "tasks.log",
         record_path=tasks_dir / "record.json",
         procrastinate_path=tasks_dir / "procrastinate.json",
+        mode_path=tasks_dir / "mode.txt",
     )
 
 

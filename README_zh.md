@@ -115,6 +115,7 @@ npm run tauri:build
 | `rmd ddl` | 管理截止日期；逾期两天及以上的条目会自动清理 |
 | `rmd view` | 生成 PDF 日程可视化 |
 | `rmd switch <id>` | 切换到不同的 `user_config_n` 配置版本并重载服务 |
+| `rmd mode [j\|p]` | 查看或切换当前模式 (j 模式允许所有提醒，p 模式取消具体日程事件提醒) |
 
 ## 手动配置和文档
 

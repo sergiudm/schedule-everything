@@ -30,6 +30,7 @@ from schedule_management import (
     DDL_PATH,
     HABIT_PATH,
 )
+from schedule_management.i18n import _t
 from schedule_management.config_layout import (
     list_config_ids,
     preview_active_config_dir,
@@ -137,12 +138,12 @@ def update_command(args) -> int:
         📥 Updating schedule files...
         Successfully pulled latest changes
     """
-    print("📥 Updating schedule files...")
+    print(_t("📥 Updating schedule files..."))
 
     config_dir = _resolve_config_dir()
 
     if not config_dir.exists():
-        print(f"❌ Config directory not found: {config_dir}")
+        print(_t("❌ Config directory not found: {config_dir}").format(config_dir=config_dir))
         return 1
 
     try:
@@ -155,40 +156,40 @@ def update_command(args) -> int:
                     check=False,
                 )
             except FileNotFoundError:
-                print("❌ Git not found. Please install git to use update.")
+                print(_t("❌ Git not found. Please install git to use update."))
                 return 1
 
             if result.returncode == 0:
-                print("✅ Successfully pulled latest changes")
+                print(_t("✅ Successfully pulled latest changes"))
 
                 if "Already up to date" in result.stdout:
-                    print("   Already up to date.")
+                    print(_t("   Already up to date."))
                 else:
                     print(result.stdout.strip())
             else:
-                print("❌ Git pull failed:")
+                print(_t("❌ Git pull failed:"))
                 print(result.stderr.strip())
                 return 1
         else:
-            print(f"ℹ️  Config directory is not a git repository: {config_dir}")
-            print("   Skipping git pull and using local schedule files as-is.")
+            print(_t("ℹ️  Config directory is not a git repository: {config_dir}").format(config_dir=config_dir))
+            print(_t("   Skipping git pull and using local schedule files as-is."))
 
         restarted, details = _restart_reminder_service()
         if restarted:
-            print("✅ Reminder service restarted")
+            print(_t("✅ Reminder service restarted"))
         elif details == "No installer restart script found.":
-            print("ℹ️  No installer restart script found.")
-            print("   Restart the reminder service manually if it is already running.")
+            print(_t("ℹ️  No installer restart script found."))
+            print(_t("   Restart the reminder service manually if it is already running."))
         else:
-            print("❌ Reminder service restart failed:")
+            print(_t("❌ Reminder service restart failed:"))
             print(details)
             return 1
 
-        print("✅ Update finished")
+        print(_t("✅ Update finished"))
         return 0
 
     except Exception as e:
-        print(f"❌ Error updating: {e}")
+        print(_t("❌ Error updating: {e}").format(e=e))
         return 1
 
 
@@ -203,39 +204,39 @@ def switch_command(args) -> int:
     config_root_dir = _resolve_config_dir()
     available_ids = list_config_ids(config_root_dir)
     if not available_ids:
-        print(f"❌ No config sets found under: {config_root_dir}")
-        print("   Create or migrate a schedule first so user_config_0 exists.")
+        print(_t("❌ No config sets found under: {config_root_dir}").format(config_root_dir=config_root_dir))
+        print(_t("   Create or migrate a schedule first so user_config_0 exists."))
         return 1
 
     raw_config_id = str(getattr(args, "config_id", "")).strip()
     try:
         requested_id = int(raw_config_id)
     except ValueError:
-        print(f"❌ Invalid config id: {raw_config_id or '(empty)'}")
-        print(f"   Valid config ids: {', '.join(str(item) for item in available_ids)}")
+        print(_t("❌ Invalid config id: {config_id}").format(config_id=raw_config_id or "(empty)"))
+        print(_t("   Valid config ids: {ids}").format(ids=', '.join(str(item) for item in available_ids)))
         return 1
 
     if requested_id not in available_ids:
-        print(f"❌ Invalid config id: {requested_id}")
-        print(f"   Valid config ids: {', '.join(str(item) for item in available_ids)}")
+        print(_t("❌ Invalid config id: {config_id}").format(config_id=requested_id))
+        print(_t("   Valid config ids: {ids}").format(ids=', '.join(str(item) for item in available_ids)))
         return 1
 
     write_active_config_id(config_root_dir, requested_id)
     active_config_dir = preview_active_config_dir(config_root_dir)
-    print(f"✅ Switched to user_config_{requested_id}")
-    print(f"   Active config directory: {active_config_dir}")
+    print(_t("✅ Switched to user_config_{requested_id}").format(requested_id=requested_id))
+    print(_t("   Active config directory: {directory}").format(directory=active_config_dir))
 
     restarted, details = _restart_reminder_service()
     if restarted:
-        print("✅ Reminder service restarted")
+        print(_t("✅ Reminder service restarted"))
         return 0
 
     if details == "No installer restart script found.":
-        print("ℹ️  No installer restart script found.")
-        print("   Restart the reminder service manually if it is already running.")
+        print(_t("ℹ️  No installer restart script found."))
+        print(_t("   Restart the reminder service manually if it is already running."))
         return 0
 
-    print("❌ Reminder service restart failed:")
+    print(_t("❌ Reminder service restart failed:"))
     print(details)
     return 1
 
@@ -267,7 +268,7 @@ def stop_command(args) -> int:
         Stopping reminder service...
         ✅ Reminder service stopped (PID: 12345)
     """
-    print("🛑 Stopping reminder service...")
+    print(_t("🛑 Stopping reminder service..."))
 
     try:
         # Find reminder-runner process
@@ -279,7 +280,7 @@ def stop_command(args) -> int:
         )
 
         if result.returncode != 0 or not result.stdout.strip():
-            print("⚠️  No running reminder-runner process found.")
+            print(_t("⚠️  No running reminder-runner process found."))
             return 0  # Not an error - service may not be running
 
         # Get all matching PIDs
@@ -296,27 +297,27 @@ def stop_command(args) -> int:
                     continue
 
                 os.kill(pid, signal.SIGTERM)
-                print(f"✅ Stopped reminder-runner (PID: {pid})")
+                print(_t("✅ Stopped reminder-runner (PID: {pid})").format(pid=pid))
                 stopped_count += 1
 
             except (ValueError, ProcessLookupError, PermissionError) as e:
-                print(f"⚠️  Could not stop PID {pid_str}: {e}")
+                print(_t("⚠️  Could not stop PID {pid}: {e}").format(pid=pid_str, e=e))
 
         if stopped_count == 0:
-            print("⚠️  No reminder-runner processes were stopped.")
+            print(_t("⚠️  No reminder-runner processes were stopped."))
         else:
-            print(f"   Total processes stopped: {stopped_count}")
+            print(_t("   Total processes stopped: {count}").format(count=stopped_count))
 
         return 0
 
     except FileNotFoundError:
-        print("❌ 'pgrep' command not found.")
+        print(_t("❌ 'pgrep' command not found."))
         print(
-            "   Try finding the process manually with 'ps aux | grep reminder-runner'"
+            _t("   Try finding the process manually with 'ps aux | grep reminder-runner'")
         )
         return 1
     except Exception as e:
-        print(f"❌ Error stopping service: {e}")
+        print(_t("❌ Error stopping service: {e}").format(e=e))
         return 1
 
 
@@ -350,7 +351,7 @@ def report_command(args) -> int:
         $ rmd report weekly -d 2024-01-15
         $ rmd report monthly -d 2024-01-15
     """
-    print("📊 Generating report...")
+    print(_t("📊 Generating report..."))
 
     try:
         # Import here to avoid circular dependency
@@ -363,30 +364,30 @@ def report_command(args) -> int:
             try:
                 target_date = datetime.strptime(args.date, "%Y-%m-%d").date()
             except ValueError:
-                print(f"❌ Invalid date format: {args.date}")
-                print("   Use YYYY-MM-DD format (e.g., 2024-01-15)")
+                print(_t("❌ Invalid date format: {date}").format(date=args.date))
+                print(_t("   Use YYYY-MM-DD format (e.g., 2024-01-15)"))
                 return 1
         else:
             target_date = None
 
         report_type = getattr(args, "type", None)
         if report_type not in {"weekly", "monthly"}:
-            print(f"❌ Unsupported report type: {report_type}")
+            print(_t("❌ Unsupported report type: {type}").format(type=report_type))
             return 1
 
         days = getattr(args, "days", None)
         if report_type == "weekly":
             if days not in (None, 7):
-                print("❌ Custom day ranges are not supported for weekly reports.")
-                print("   Use '--days 7' or omit the flag.")
+                print(_t("❌ Custom day ranges are not supported for weekly reports."))
+                print(_t("   Use '--days 7' or omit the flag."))
                 return 1
         elif days is not None:
-            print("❌ '--days' is not supported for monthly reports.")
+            print(_t("❌ '--days' is not supported for monthly reports."))
             return 1
 
-        print(f"   Report type: {report_type}")
+        print(_t("   Report type: {type}").format(type=report_type))
         if target_date is not None:
-            print(f"   Target date: {target_date}")
+            print(_t("   Target date: {date}").format(date=target_date))
 
         # Generate report
         report_path = generate_manual_report(
@@ -395,7 +396,7 @@ def report_command(args) -> int:
         )
 
         if report_path:
-            print(f"\n✅ Report generated: {report_path}")
+            print("\n" + _t("✅ Report generated: {path}").format(path=report_path))
 
             # Try to open on macOS
             if sys.platform == "darwin":
@@ -406,14 +407,14 @@ def report_command(args) -> int:
 
             return 0
         else:
-            print("⚠️  Report generation completed but no file was created.")
+            print(_t("⚠️  Report generation completed but no file was created."))
             return 1
 
     except ImportError as e:
-        print(f"❌ Missing dependency for report generation: {e}")
+        print(_t("❌ Missing dependency for report generation: {e}").format(e=e))
         return 1
     except Exception as e:
-        print(f"❌ Error generating report: {e}")
+        print(_t("❌ Error generating report: {e}").format(e=e))
         return 1
 
 
@@ -452,15 +453,15 @@ def edit_schedule_command(args) -> int:
     target = getattr(args, "file", "settings").lower()
 
     if target not in file_map:
-        print(f"❌ Unknown file: {target}")
-        print(f"   Available: {', '.join(file_map.keys())}")
+        print(_t("❌ Unknown file: {file}").format(file=target))
+        print(_t("   Available: {files}").format(files=', '.join(file_map.keys())))
         return 1
 
     file_path = Path(file_map[target])
 
     if not file_path.exists():
-        print(f"⚠️  File does not exist: {file_path}")
-        print("   Creating empty file...")
+        print(_t("⚠️  File does not exist: {path}").format(path=file_path))
+        print(_t("   Creating empty file..."))
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.touch()
 
@@ -478,15 +479,62 @@ def edit_schedule_command(args) -> int:
                 continue
 
     if not editor:
-        print(f"❌ No editor found. Set $EDITOR environment variable.")
-        print(f"   File path: {file_path}")
+        print(_t("❌ No editor found. Set $EDITOR environment variable."))
+        print(_t("   File path: {path}").format(path=file_path))
         return 1
 
-    print(f"📝 Opening {target} in {editor}...")
+    print(_t("📝 Opening {file} in {editor}...").format(file=target, editor=editor))
 
     try:
         subprocess.run([editor, str(file_path)], check=False)
         return 0
     except Exception as e:
-        print(f"❌ Could not open editor: {e}")
+        print(_t("❌ Could not open editor: {e}").format(e=e))
+        return 1
+
+
+def mode_command(args) -> int:
+    """
+    Handle the 'mode' command - display or switch the active mode.
+
+    If no mode argument is provided, display the current mode.
+    If 'j' or 'p' is provided, update the mode and reload/restart the reminder service.
+    """
+    from schedule_management.data.loaders import load_mode, save_mode
+
+    requested_mode = getattr(args, "mode", None)
+    if requested_mode is None:
+        current_mode = load_mode()
+        print(_t("Current mode is {mode} mode").format(mode=current_mode))
+        return 0
+
+    requested_mode = requested_mode.lower().strip()
+    if requested_mode not in ("j", "p"):
+        print(_t("❌ Invalid mode: {mode}. Only 'j' or 'p' is supported.").format(mode=requested_mode))
+        return 1
+
+    current_mode = load_mode()
+    if current_mode == requested_mode:
+        print(_t("Already in {mode} mode").format(mode=requested_mode))
+        return 0
+
+    try:
+        save_mode(requested_mode)
+        print(_t("✅ Mode switched to {mode} mode successfully!").format(mode=requested_mode))
+
+        # Restart/reload the reminder service so it immediately updates its log and state
+        restarted, details = _restart_reminder_service()
+        if restarted:
+            print(_t("✅ Reminder service restarted"))
+        elif details == "No installer restart script found.":
+            print(_t("ℹ️  No installer restart script found."))
+            print(_t("   Restart the reminder service manually if it is already running."))
+        else:
+            print(_t("❌ Reminder service restart failed:"))
+            print(details)
+            return 1
+
+        return 0
+    except Exception as e:
+        print(_t("❌ Failed to switch mode: {e}").format(e=e))
         return 1

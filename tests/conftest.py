@@ -25,6 +25,7 @@ TEST_TASKS_PATH = TEST_CONFIG_DIR / "tasks" / "tasks.json"
 TEST_TASK_LOG_PATH = TEST_CONFIG_DIR / "tasks" / "tasks.log"
 TEST_RECORD_PATH = TEST_CONFIG_DIR / "tasks" / "record.json"
 TEST_PROCRASTINATE_PATH = TEST_CONFIG_DIR / "tasks" / "procrastinate.json"
+TEST_MODE_PATH = TEST_CONFIG_DIR / "tasks" / "mode.txt"
 
 
 def _apply_test_paths(module, *, task_log_path: Path | None = None):
@@ -39,6 +40,7 @@ def _apply_test_paths(module, *, task_log_path: Path | None = None):
     setattr(module, "TASK_LOG_PATH", str(task_log_path or TEST_TASK_LOG_PATH))
     setattr(module, "RECORD_PATH", str(TEST_RECORD_PATH))
     setattr(module, "PROCRASTINATE_PATH", str(TEST_PROCRASTINATE_PATH))
+    setattr(module, "MODE_PATH", str(TEST_MODE_PATH))
 
 
 @pytest.fixture(autouse=True)
@@ -85,4 +87,5 @@ __all__ = [
     "TEST_TASK_LOG_PATH",
     "TEST_RECORD_PATH",
     "TEST_PROCRASTINATE_PATH",
+    "TEST_MODE_PATH",
 ]

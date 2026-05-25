@@ -43,6 +43,7 @@ import argparse
 import sys
 
 from schedule_management import COLORS
+from schedule_management.i18n import _t
 from schedule_management.config_layout import (
     preview_active_config_dir,
     resolve_config_root_dir,
@@ -68,6 +69,7 @@ from schedule_management.commands.service import (
     switch_command,
     report_command,
     edit_schedule_command,
+    mode_command,
 )
 from schedule_management.commands.setup import setup_command
 
@@ -110,13 +112,13 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Build colored help text
     colored_description = (
-        f"{COLORS['BOLD']}{COLORS['CYAN']}rmd CLI{COLORS['RESET']} - "
-        f"{COLORS['GREEN']}Manage your schedule management system{COLORS['RESET']}"
+        f"{COLORS['BOLD']}{COLORS['CYAN']}{_t('rmd CLI')}{COLORS['RESET']} - "
+        f"{COLORS['GREEN']}{_t('Manage your schedule management system')}{COLORS['RESET']}"
     )
 
     colored_epilog = f"""
-{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Configuration root:{COLORS["RESET"]} {COLORS["BLUE"]}{config_root_dir}{COLORS["RESET"]}
-{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}Active config:{COLORS["RESET"]} {COLORS["BLUE"]}{active_config_dir}{COLORS["RESET"]}
+{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}{_t('Configuration root:')}{COLORS["RESET"]} {COLORS["BLUE"]}{config_root_dir}{COLORS["RESET"]}
+{COLORS["UNDERLINE"]}{COLORS["YELLOW"]}{_t('Active config:')}{COLORS["RESET"]} {COLORS["BLUE"]}{active_config_dir}{COLORS["RESET"]}
     """
 
     # Create main parser
@@ -130,7 +132,7 @@ def create_parser() -> argparse.ArgumentParser:
     # Create subparsers container
     subparsers = parser.add_subparsers(
         dest="command",
-        title="Available commands",
+        title=_t("Available commands"),
         metavar="<command>",
     )
 
@@ -385,6 +387,20 @@ def create_parser() -> argparse.ArgumentParser:
         parser_factory=create_parser,
     )
 
+    # mode - display or switch the active mode
+    mode_parser = subparsers.add_parser(
+        "mode",
+        help="Switch or display the current mode (j mode or p mode)",
+        description="Switch or display the current mode. j mode allows all notifications, p mode cancels specific event notifications.",
+    )
+    mode_parser.add_argument(
+        "mode",
+        choices=["j", "p"],
+        nargs="?",
+        help="Mode to switch to ('j' or 'p')",
+    )
+    mode_parser.set_defaults(func=mode_command)
+
     return parser
 
 
@@ -430,11 +446,11 @@ def main() -> int:
         return result if isinstance(result, int) else 0
 
     except KeyboardInterrupt:
-        print("\n❌ Operation cancelled by user")
+        print("\n" + _t("❌ Operation cancelled by user"))
         return 1
 
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(_t("❌ Unexpected error: {e}").format(e=e))
         # For debugging, uncomment:
         # import traceback
         # traceback.print_exc()

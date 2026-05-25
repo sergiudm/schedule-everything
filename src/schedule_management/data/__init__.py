@@ -23,6 +23,8 @@ from schedule_management.data.loaders import (
     load_habits,
     load_habit_records,
     save_habit_records,
+    load_mode,
+    save_mode,
 )
 
 __all__ = [
@@ -40,4 +42,6 @@ __all__ = [
     "load_habits",
     "load_habit_records",
     "save_habit_records",
+    "load_mode",
+    "save_mode",
 ]

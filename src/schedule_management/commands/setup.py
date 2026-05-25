@@ -7,6 +7,7 @@ existing import paths stable for CLI wiring and tests.
 from __future__ import annotations
 
 from schedule_management.commands.setup_agent import workflow as _workflow
+from schedule_management.i18n import _t
 
 # Re-export data structures and agent helpers used by tests/callers.
 LLMConfig = _workflow.LLMConfig
@@ -40,10 +41,10 @@ def setup_command(args) -> int:
     try:
         llm_config = ensure_llm_config()
     except KeyboardInterrupt:
-        CONSOLE.print("[bold yellow]Setup cancelled by user.[/]")
+        CONSOLE.print("[bold yellow]" + _t("Setup cancelled by user.") + "[/]")
         return 1
     except Exception as exc:
-        CONSOLE.print(f"[bold red]Failed to initialize LLM config:[/] {exc}")
+        CONSOLE.print("[bold red]" + _t("Failed to initialize LLM config:") + "[/] " + str(exc))
         return 1
 
     config_dir = _resolve_config_dir()
@@ -53,21 +54,21 @@ def setup_command(args) -> int:
 
     if is_complete:
         CONSOLE.print(
-            f"[bold green]Detected an existing completed configuration in[/] "
+            "[bold green]" + _t("Detected an existing completed configuration in") + "[/] "
             f"[cyan]{config_dir}[/]."
         )
-        if _ask_yes_no("Do you want to modify existing schedules?", default=False):
+        if _ask_yes_no(_t("Do you want to modify existing schedules?"), default=False):
             return modify_schedule_agent(llm_config, config_dir)
-        CONSOLE.print("[bright_black]No changes made.[/]")
+        CONSOLE.print("[bright_black]" + _t("No changes made.") + "[/]")
         return 0
 
     CONSOLE.print(
-        f"[bold yellow]No valid completed configuration detected[/] ({reason})."
+        "[bold yellow]" + _t("No valid completed configuration detected") + f"[/] ({reason})."
     )
-    if _ask_yes_no("Do you want to build a new schedule?", default=True):
+    if _ask_yes_no(_t("Do you want to build a new schedule?"), default=True):
         return build_schedule_agent(llm_config, config_dir)
 
-    CONSOLE.print("[bright_black]No changes made.[/]")
+    CONSOLE.print("[bright_black]" + _t("No changes made.") + "[/]")
     return 0
 
 

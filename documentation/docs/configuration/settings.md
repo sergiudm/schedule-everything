@@ -29,6 +29,7 @@ The `settings.toml` file contains global configuration, reusable time blocks, an
 
 ```toml
 [settings]
+language = "en"
 sound_file = "/System/Library/Sounds/Ping.aiff"
 alarm_interval = 5
 max_alarm_duration = 300
@@ -36,6 +37,7 @@ max_alarm_duration = 300
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `language` | string | `"en"` | Preferred language. Supported values are `"en"` (English) and `"zh"` (Chinese / 中文). Can also be overridden temporarily via the `REMINDER_LANG` environment variable. |
 | `sound_file` | string | `"/System/Library/Sounds/Ping.aiff"` | Path to the sound file for notifications |
 | `alarm_interval` | integer | `5` | Seconds between repeated alerts |
 | `max_alarm_duration` | integer | `300` | Maximum duration for alerts in seconds (5 minutes) |

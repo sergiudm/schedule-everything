@@ -31,6 +31,7 @@ except ImportError:
     sys.exit(1)
 
 from schedule_management import SETTINGS_PATH, ODD_PATH, EVEN_PATH
+from schedule_management.i18n import _t
 from schedule_management.config import ScheduleConfig, WeeklySchedule
 from schedule_management.synced_schedule import (
     apply_synced_schedule,
@@ -38,6 +39,7 @@ from schedule_management.synced_schedule import (
     get_event_block_name,
 )
 from schedule_management.time_utils import get_week_parity, parse_time
+from schedule_management.data.loaders import load_mode
 
 
 # =============================================================================
@@ -150,11 +152,11 @@ def get_current_and_next_events(
 
         # Check if this event is currently active
         if start_dt <= now_dt < end_dt:
-            current_event = f"{event_name} at {time_str}"
+            current_event = _t("{event} at {time}").format(event=event_name, time=time_str)
 
         # Check if this is the next upcoming event
         if start_dt > now_dt and next_event is None:
-            next_event = f"{event_name} at {time_str}"
+            next_event = _t("{event} at {time}").format(event=event_name, time=time_str)
 
             # Calculate time until next event
             diff = start_dt - now_dt
@@ -163,9 +165,9 @@ def get_current_and_next_events(
             minutes = total_minutes % 60
 
             if hours > 0:
-                time_to_next = f"{hours}h {minutes}m"
+                time_to_next = _t("{hours}h {minutes}m").format(hours=hours, minutes=minutes)
             else:
-                time_to_next = f"{minutes}m"
+                time_to_next = _t("{minutes}m").format(minutes=minutes)
 
     return current_event, next_event, time_to_next
 
@@ -208,13 +210,18 @@ def status_command(args) -> int:
         │          (in 15m)               │
         ╰─────────────────────────────────╯
     """
+    if load_mode() == "p":
+        print(_t("❌ Currently in p mode. Switch back to j mode to execute this command."))
+        return 1
+
     console = Console()
 
     try:
         schedule, parity, is_skipped, config = get_today_schedule_for_status()
 
         # Header: Week parity
-        parity_text = f"📅 {parity.title()} Week"
+        parity_display = _t("Odd") if parity == "odd" else _t("Even")
+        parity_text = _t("📅 {parity} Week").format(parity=parity_display)
         parity_style = "bold magenta" if parity == "odd" else "bold cyan"
         console.print(Align.center(f"[{parity_style}]{parity_text}[/{parity_style}]"))
 
@@ -222,7 +229,7 @@ def status_command(args) -> int:
         if is_skipped:
             console.print(
                 Panel(
-                    Align.center("⏭️  Today is a skipped day - enjoy your time off!"),
+                    Align.center(_t("⏭️  Today is a skipped day - enjoy your time off!")),
                     style="yellow",
                     box=box.ROUNDED,
                 )
@@ -238,26 +245,26 @@ def status_command(args) -> int:
         status_lines = []
 
         if current_event:
-            status_lines.append(f"[bold green]🔔 NOW:[/bold green]  {current_event}")
+            status_lines.append(_t("[bold green]🔔 NOW:[/bold green]  {event}").format(event=current_event))
         else:
-            status_lines.append("[bold yellow]🟡 IDLE[/bold yellow]")
+            status_lines.append(_t("[bold yellow]🟡 IDLE[/bold yellow]"))
 
         status_lines.append("")  # Spacer
 
         if next_ev:
-            time_str = f" (in {time_until})" if time_until else ""
+            time_str = _t(" (in {time_until})").format(time_until=time_until) if time_until else ""
             status_lines.append(
-                f"[bold blue]⏰ NEXT:[/bold blue] {next_ev}[yellow]{time_str}[/yellow]"
+                _t("[bold blue]⏰ NEXT:[/bold blue] {event}{time_str}").format(event=next_ev, time_str=time_str)
             )
         else:
-            status_lines.append("[dim]📭 No upcoming events[/dim]")
+            status_lines.append(_t("[dim]📭 No upcoming events[/dim]"))
 
         # Show status panel
         status_content = "\n".join(status_lines)
         console.print(
             Panel(
                 status_content,
-                title="[bold]Status[/bold]",
+                title="[bold]" + _t("Status") + "[/bold]",
                 expand=False,
                 border_style="green" if current_event else "dim",
                 box=box.ROUNDED,
@@ -302,9 +309,9 @@ def status_command(args) -> int:
             )
 
             table.add_column(
-                "Time", justify="right", style="cyan", width=8, no_wrap=True
+                _t("Time"), justify="right", style="cyan", width=8, no_wrap=True
             )
-            table.add_column("Activity", justify="left")
+            table.add_column(_t("Activity"), justify="left")
 
             def add_period_section(title: str, icon: str, events: list, color: str):
                 """Add a time-of-day section to the table."""
@@ -343,20 +350,20 @@ def status_command(args) -> int:
 
                         table.add_row(time_str, f"{icon_type}  {name_styled}")
 
-            add_period_section("Morning", "🌅", morning_events, "yellow")
-            add_period_section("Afternoon", "☀️ ", afternoon_events, "orange1")
-            add_period_section("Evening", "🌆", evening_events, "purple")
+            add_period_section(_t("Morning"), "🌅", morning_events, "yellow")
+            add_period_section(_t("Afternoon"), "☀️ ", afternoon_events, "orange1")
+            add_period_section(_t("Evening"), "🌆", evening_events, "purple")
 
             console.print(table)
             console.print(
-                f"[dim italic]Total events: {len(schedule)}[/dim italic]",
+                "[dim italic]" + _t("Total events: {count}").format(count=len(schedule)) + "[/dim italic]",
                 justify="right",
             )
 
         return 0
 
     except Exception as e:
-        console.print(f"[bold red]❌ Error checking status:[/bold red] {e}")
+        console.print(_t("[bold red]❌ Error checking status:[/bold red] {e}").format(e=e))
         return 1
 
 
@@ -388,7 +395,11 @@ def view_command(args) -> int:
         📁 Visualization file generated:
         🖼️  Opening visualization...
     """
-    print("📊 Generating schedule visualizations...")
+    if load_mode() == "p":
+        print(_t("❌ Currently in p mode. Switch back to j mode to execute this command."))
+        return 1
+
+    print(_t("📊 Generating schedule visualizations..."))
 
     try:
         config = ScheduleConfig(SETTINGS_PATH)
@@ -397,11 +408,11 @@ def view_command(args) -> int:
         visualizer = ScheduleVisualizer(config, weekly.odd_data, weekly.even_data)
         visualizer.visualize()
 
-        print("\n📁 Visualization file generated:")
+        print("\n" + _t("📁 Visualization file generated:"))
 
         # Open PDF on macOS
         if sys.platform == "darwin":
-            print("\n🖼️  Opening visualization...")
+            print("\n" + _t("🖼️  Opening visualization..."))
             try:
                 import platform
 
@@ -416,10 +427,10 @@ def view_command(args) -> int:
                     check=False,
                 )
             except Exception as e:
-                print(f"⚠️  Could not open file: {e}")
+                print(_t("⚠️  Could not open file: {e}").format(e=e))
 
         return 0
 
     except Exception as e:
-        print(f"❌ Error generating visualizations: {e}")
+        print(_t("❌ Error generating visualizations: {e}").format(e=e))
         return 1

@@ -18,6 +18,7 @@ Example Usage (via CLI):
 
 import sys
 from datetime import datetime
+from schedule_management.i18n import _t
 
 try:
     from rich import box
@@ -25,7 +26,7 @@ try:
     from rich.table import Table
     from rich.text import Text
 except ImportError:
-    print("Please install the 'rich' library: pip install rich")
+    print(_t("Please install the 'rich' library: pip install rich"))
     sys.exit(1)
 
 from schedule_management.data import (
@@ -66,7 +67,7 @@ def add_task(args) -> int:
 
     # Validate priority
     if priority <= 0:
-        print("❌ Error: Priority must be a positive integer")
+        print(_t("❌ Error: Priority must be a positive integer"))
         return 1
 
     # Load existing tasks
@@ -89,24 +90,26 @@ def add_task(args) -> int:
     if existing_task_index is not None:
         old_priority = tasks[existing_task_index]["priority"]
         tasks[existing_task_index] = new_task
-        action_msg = f"✅ Task '{task_description}' updated! Priority changed from {old_priority} to {priority}"
+        action_msg = _t("✅ Task '{task_description}' updated! Priority changed from {old_priority} to {priority}").format(
+            task_description=task_description, old_priority=old_priority, priority=priority
+        )
 
         # Log the update
         try:
             log_task_action("updated", new_task, {"old_priority": old_priority})
         except Exception as e:
-            print(f"⚠️  Warning: Could not log task update: {e}")
+            print(_t("⚠️  Warning: Could not log task update: {e}").format(e=e))
     else:
         tasks.append(new_task)
-        action_msg = (
-            f"✅ Task '{task_description}' added successfully with priority {priority}!"
+        action_msg = _t("✅ Task '{task_description}' added successfully with priority {priority}!").format(
+            task_description=task_description, priority=priority
         )
 
         # Log the addition
         try:
             log_task_action("added", new_task)
         except Exception as e:
-            print(f"⚠️  Warning: Could not log task addition: {e}")
+            print(_t("⚠️  Warning: Could not log task addition: {e}").format(e=e))
 
     # Save tasks
     try:
@@ -114,7 +117,7 @@ def add_task(args) -> int:
         print(action_msg)
         return 0
     except Exception as e:
-        print(f"❌ Error saving task: {e}")
+        print(_t("❌ Error saving task: {e}").format(e=e))
         return 1
 
 
@@ -152,7 +155,7 @@ def delete_task(args) -> int:
     procrastinate_updated = False
 
     if not tasks:
-        print("⚠️  No tasks found to delete")
+        print(_t("⚠️  No tasks found to delete"))
         return 1
 
     # Sort tasks by priority (descending) to match show_tasks display
@@ -169,7 +172,9 @@ def delete_task(args) -> int:
 
             # Validate ID range
             if task_id < 1 or task_id > len(sorted_tasks):
-                error_msg = f"❌ Invalid task ID: {task_id}. Please use a number between 1 and {len(sorted_tasks)}"
+                error_msg = _t("❌ Invalid task ID: {task_id}. Please use a number between 1 and {length}").format(
+                    task_id=task_id, length=len(sorted_tasks)
+                )
                 all_errors.append(error_msg)
                 continue
 
@@ -191,7 +196,9 @@ def delete_task(args) -> int:
 
         # Check if anything was deleted
         if len(tasks) == original_count:
-            error_msg = f"❌ Task '{task_description}' not found"
+            error_msg = _t("❌ Task '{task_description}' not found").format(
+                task_description=task_description
+            )
             all_errors.append(error_msg)
             continue
 
@@ -200,7 +207,7 @@ def delete_task(args) -> int:
             for deleted_task in deleted_tasks:
                 log_task_action("deleted", deleted_task)
         except Exception as e:
-            print(f"⚠️  Warning: Could not log task deletion: {e}")
+            print(_t("⚠️  Warning: Could not log task deletion: {e}").format(e=e))
 
         # Keep procrastinate list in sync with completed tasks
         for deleted_task in deleted_tasks:
@@ -213,10 +220,12 @@ def delete_task(args) -> int:
         total_deleted_count += deleted_count
 
         if deleted_count == 1:
-            successful_deletions.append(f"Task '{task_description}'")
+            successful_deletions.append(_t("Task '{task_description}'").format(task_description=task_description))
         else:
             successful_deletions.append(
-                f"{deleted_count} tasks with description '{task_description}'"
+                _t("{deleted_count} tasks with description '{task_description}'").format(
+                    deleted_count=deleted_count, task_description=task_description
+                )
             )
 
     # Print results
@@ -229,16 +238,16 @@ def delete_task(args) -> int:
             if procrastinate_updated:
                 save_procrastinate_list(procrastinate_list)
             if len(successful_deletions) == 1:
-                print(f"✅ {successful_deletions[0]} deleted successfully!")
+                print(_t("✅ {deletion} deleted successfully!").format(deletion=successful_deletions[0]))
             else:
                 print(
-                    f"✅ {len(successful_deletions)} sets of tasks deleted successfully:"
+                    _t("✅ {count} sets of tasks deleted successfully:").format(count=len(successful_deletions))
                 )
                 for deletion in successful_deletions:
                     print(f"   - {deletion}")
             return 0 if not all_errors else 1
         except Exception as e:
-            print(f"❌ Error saving tasks: {e}")
+            print(_t("❌ Error saving tasks: {e}").format(e=e))
             return 1
     else:
         return 1
@@ -254,10 +263,10 @@ def _format_procrastination_suffix(age_days: int | None) -> str:
     if age_days is None:
         return ""
     if age_days == 0:
-        return " (deferred today)"
+        return _t(" (deferred today)")
     if age_days == 1:
-        return " (1 day)"
-    return f" ({age_days} days)"
+        return _t(" (1 day)")
+    return _t(" ({age_days} days)").format(age_days=age_days)
 
 
 def show_tasks(args) -> int:
@@ -293,7 +302,7 @@ def show_tasks(args) -> int:
     console = Console()
 
     if not tasks:
-        console.print("[bold yellow]📋 No tasks found[/bold yellow]")
+        console.print("[bold yellow]" + _t("📋 No tasks found") + "[/bold yellow]")
         return 0
 
     # Sort by priority (highest first)
@@ -301,15 +310,15 @@ def show_tasks(args) -> int:
 
     # Create table
     table = Table(
-        title="[bold]Current Task List[/bold]",
+        title="[bold]" + _t("Current Task List") + "[/bold]",
         box=box.ROUNDED,
         header_style="bold cyan",
         expand=True,
     )
 
-    table.add_column("ID", justify="right", style="dim", width=4)
-    table.add_column("Priority", justify="left", width=18)
-    table.add_column("Description", justify="left")
+    table.add_column(_t("ID"), justify="right", style="dim", width=4)
+    table.add_column(_t("Priority"), justify="left", width=18)
+    table.add_column(_t("Description"), justify="left")
 
     for i, task in enumerate(sorted_tasks, 1):
         description = task["description"]
@@ -343,6 +352,6 @@ def show_tasks(args) -> int:
         table.add_row(str(i), prio_visual, description_text)
 
     console.print(table)
-    console.print(f"[dim]Total tasks: {len(tasks)}[/dim]", justify="right")
+    console.print("[dim]" + _t("Total tasks: {count}").format(count=len(tasks)) + "[/dim]", justify="right")
 
     return 0

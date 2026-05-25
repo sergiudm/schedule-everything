@@ -23,6 +23,7 @@ TASKS_PATH = DynamicPath(lambda: resolve_runtime_paths().tasks_path)
 TASK_LOG_PATH = DynamicPath(lambda: resolve_runtime_paths().task_log_path)
 RECORD_PATH = DynamicPath(lambda: resolve_runtime_paths().record_path)
 PROCRASTINATE_PATH = DynamicPath(lambda: resolve_runtime_paths().procrastinate_path)
+MODE_PATH = DynamicPath(lambda: resolve_runtime_paths().mode_path)
 
 
 __all__ = [
@@ -37,4 +38,5 @@ __all__ = [
     "TASK_LOG_PATH",
     "RECORD_PATH",
     "PROCRASTINATE_PATH",
+    "MODE_PATH",
 ]

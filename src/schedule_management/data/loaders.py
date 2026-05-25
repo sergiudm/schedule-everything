@@ -31,6 +31,7 @@ from schedule_management import (
     HABIT_PATH,
     RECORD_PATH,
     PROCRASTINATE_PATH,
+    MODE_PATH,
 )
 
 
@@ -406,3 +407,47 @@ def save_habit_records(records: list[dict[str, Any]]) -> None:
 
     with open(record_path, "w", encoding="utf-8") as f:
         json.dump(records, f, indent=2, ensure_ascii=False)
+
+
+# =============================================================================
+# MODE MANAGEMENT
+# =============================================================================
+
+
+def load_mode() -> str:
+    """
+    Load the current mode ('j' or 'p') from mode.txt.
+
+    Defaults to 'j' if file does not exist or is invalid.
+
+    Returns:
+        The current mode string, either 'j' or 'p'.
+    """
+    try:
+        mode_path = Path(MODE_PATH)
+        if not mode_path.exists():
+            return "j"
+        with open(mode_path, "r", encoding="utf-8") as f:
+            val = f.read().strip().lower()
+            return "p" if val == "p" else "j"
+    except Exception:
+        return "j"
+
+
+def save_mode(mode: str) -> None:
+    """
+    Save the current mode ('j' or 'p') to mode.txt.
+
+    Creates parent directories if they don't exist.
+
+    Args:
+        mode: The mode string to save ('j' or 'p').
+    """
+    if mode not in ("j", "p"):
+        raise ValueError("Mode must be 'j' or 'p'")
+
+    mode_path = Path(MODE_PATH)
+    mode_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(mode_path, "w", encoding="utf-8") as f:
+        f.write(mode)

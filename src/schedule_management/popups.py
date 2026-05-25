@@ -28,6 +28,7 @@ from schedule_management import (
     RECORD_PATH,
 )
 from schedule_management.platform import play_sound, show_dialog, ask_yes_no
+from schedule_management.i18n import _t, get_language
 
 
 # =============================================================================
@@ -102,7 +103,7 @@ def show_daily_summary_popup() -> None:
     completed_tasks = get_today_completed_tasks()
 
     if not completed_tasks:
-        summary_message = "📋 今日完成任务\n\n✨ 今天没有完成的任务哦，明天继续加油！"
+        summary_message = _t("📋 Daily Completed Tasks\n\n✨ No tasks completed today. Keep it up tomorrow!")
     else:
         # Sort by priority (highest first)
         sorted_tasks = sorted(
@@ -111,12 +112,18 @@ def show_daily_summary_popup() -> None:
 
         task_lines = []
         for i, task in enumerate(sorted_tasks, 1):
-            description = task.get("description", "未知任务")
+            description = task.get("description", _t("Unknown Task"))
             priority = task.get("priority", 0)
-            task_lines.append(f"{i}. {description} (优先级: {priority})")
+            task_lines.append(
+                _t("{index}. {description} (Priority: {priority})").format(
+                    index=i, description=description, priority=priority
+                )
+            )
 
         summary_message = (
-            f"📋 今日完成任务总结\n\n🎉 今天完成了 {len(sorted_tasks)} 个任务：\n\n"
+            _t("📋 Daily Completed Tasks Summary\n\n🎉 Completed {count} tasks today:\n\n").format(
+                count=len(sorted_tasks)
+            )
             + "\n".join(task_lines)
         )
 
@@ -172,11 +179,13 @@ def _habit_question(description: str) -> str:
     """
     text = str(description).strip()
     if not text:
-        return "Did you complete this habit today?"
+        return _t("Did you complete this habit today?")
     if text.endswith("?"):
         return text
     if text.lower().startswith("did you "):
         return f"{text}?"
+    if get_language() == "zh":
+        return f"今天你 {text} 了吗？"
     if text[0].isalpha():
         text = text[0].lower() + text[1:]
     return f"Did you {text} today?"
@@ -277,7 +286,7 @@ def show_habit_tracking_popup(now: datetime | None = None) -> bool:
     # Ask about each habit
     for i, (habit_id, description) in enumerate(sorted_habits, 1):
         question = _habit_question(description)
-        title = f"Habit Tracker ({i}/{total_habits})"
+        title = _t("Habit Tracker ({i}/{total_habits})").format(i=i, total_habits=total_habits)
 
         result = ask_yes_no(question, title)
 

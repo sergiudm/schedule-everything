@@ -8,6 +8,7 @@ from schedule_management.reminder_macos import (
     ScheduleRunner,
 )
 from schedule_management.utils import parse_time, add_minutes_to_time, time_to_str
+from schedule_management.i18n import _t
 
 
 def test_parse_time():
@@ -195,7 +196,7 @@ class TestScheduleRunner:
         mock_alarm.assert_called_once()
         assert "08:30" in self.runner.notified_today
         assert "08:55" in self.runner.pending_end_alarms
-        assert self.runner.pending_end_alarms["08:55"] == "pomodoro 结束！休息一下 🎉"
+        assert self.runner.pending_end_alarms["08:55"] == _t("{title} finished! Take a break 🎉").format(title="pomodoro")
 
     @patch("schedule_management.runner._log_runtime_event")
     @patch("schedule_management.runner.alarm")
@@ -250,7 +251,7 @@ class TestScheduleRunner:
         mock_alarm.assert_called_once()
         assert "09:10" in self.runner.notified_today
         assert "09:35" in self.runner.pending_end_alarms
-        assert self.runner.pending_end_alarms["09:35"] == "写代码 结束！休息一下 🎉"
+        assert self.runner.pending_end_alarms["09:35"] == _t("{title} finished! Take a break 🎉").format(title="写代码")
 
     @patch("schedule_management.runner.alarm")
     def test_handle_unknown_block_type(self, mock_alarm):
@@ -398,7 +399,7 @@ class TestFullFlow:
         # Now assert based on actual logged events
         assert "START: Focus Task A (25min) → ends at 09:25" in event_log
         assert "MESSAGE: Lunch time 🍜" in event_log
-        assert "END: Focus Task A 结束！休息一下 🎉" in event_log
+        assert f"END: {_t('{title} finished! Take a break 🎉').format(title='Focus Task A')}" in event_log
         assert "RESET" in event_log
 
 
