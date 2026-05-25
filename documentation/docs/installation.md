@@ -186,3 +186,7 @@ To completely remove the application:
 
 *   **"Command not found: rmd"**: Ensure you have added the alias and exports to your shell profile and sourced it.
 *   **Service not starting**: Check the logs (standard error/output) or try running `rmd update` to refresh the service definition.
+*   **"Schedule Everything is damaged and can't be opened" on macOS**: Since pre-built DMGs from GitHub Releases are unsigned, macOS Gatekeeper might block them by marking them as "damaged". You can resolve this by running the following command in your terminal:
+    ```bash
+    xattr -r -d com.apple.quarantine "/Applications/Schedule Everything.app"
+    ```

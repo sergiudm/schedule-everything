@@ -73,8 +73,17 @@ class DynamicPath(os.PathLike[str]):
 
 def resolve_config_root_dir() -> Path:
     """Return the root config directory from the runtime environment."""
-    raw_dir = os.getenv("REMINDER_CONFIG_DIR") or "config"
-    return Path(raw_dir).expanduser().resolve()
+    raw_dir = os.getenv("REMINDER_CONFIG_DIR")
+    if raw_dir:
+        return Path(raw_dir).expanduser().resolve()
+
+    # Fallback to the standard installed config path under home directory first.
+    installed_dir = Path.home() / ".schedule_management" / "config"
+    if installed_dir.exists():
+        return installed_dir.resolve()
+
+    # If not installed yet, fall back to "config" in current working directory.
+    return Path("config").resolve()
 
 
 def _parse_config_set_id(path: Path) -> int | None:

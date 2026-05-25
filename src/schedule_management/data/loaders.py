@@ -19,6 +19,7 @@ Example Usage:
 """
 
 import json
+import sys
 import tomllib
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -57,7 +58,7 @@ def load_tasks() -> list[dict[str, Any]]:
         with open(TASKS_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        print("Error loading tasks file, starting with an empty task list.")
+        print("Error loading tasks file, starting with an empty task list.", file=sys.stderr)
         return []
 
 
@@ -303,7 +304,7 @@ def load_deadlines() -> list[dict[str, Any]]:
         with open(DDL_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        print("Error loading deadlines file, starting with an empty deadline list.")
+        print("Error loading deadlines file, starting with an empty deadline list.", file=sys.stderr)
         return []
 
 
@@ -365,7 +366,7 @@ def load_habits() -> dict[str, str]:
                     habits[str(key)] = str(value)
             return habits
     except Exception as e:
-        print(f"Error loading habits file: {e}")
+        print(f"Error loading habits file: {e}", file=sys.stderr)
         return {}
 
 

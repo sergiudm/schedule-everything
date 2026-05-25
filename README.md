@@ -95,6 +95,8 @@ local config, tasks, deadlines, habits, and sync overlay files as the CLI, but
 presents them as a daily command center with quick task/deadline entry, habit
 checks, and `rmd sync` proposal review.
 
+You can download a pre-built DMG from the GitHub Releases or build it yourself:
+
 ```bash
 npm install
 npm run tauri:dev
@@ -103,6 +105,12 @@ npm run tauri:build
 
 `npm run tauri:build` packages the Python JSON bridge as a sidecar and writes
 the macOS bundles under `src-tauri/target/release/bundle/`.
+
+> [!TIP]
+> **macOS "App is damaged" Workaround**: Since pre-built DMGs are unsigned, macOS Gatekeeper may show a warning saying the app is damaged. You can easily fix this by dragging the app to `/Applications` and running:
+> ```bash
+> xattr -r -d com.apple.quarantine "/Applications/Schedule Everything.app"
+> ```
 
 ## Core Commands
 

@@ -94,6 +94,8 @@ rmd switch 0
 
 仓库中也包含一个基于 Tauri 2 的 macOS 桌面应用。它和 CLI 使用同一套本地配置、任务、截止日期、习惯记录和 sync overlay 文件，但用 Daily Command Center 的界面展示当天日程，并提供快速添加任务/截止日期、勾选习惯、预览并确认 `rmd sync` 方案等操作。
 
+你可以直接从 GitHub Releases 下载预构建好的 DMG 安装包，或者自行编译：
+
 ```bash
 npm install
 npm run tauri:dev
@@ -102,6 +104,12 @@ npm run tauri:build
 
 `npm run tauri:build` 会把 Python JSON bridge 打包成 sidecar，并把 macOS
 应用包输出到 `src-tauri/target/release/bundle/`。
+
+> [!TIP]
+> **macOS “已损坏” 提示解决方法**：由于 GitHub Releases 提供的预编译 DMG 是未签名的，macOS Gatekeeper 安全机制在下载打开时会拦截并提示“已损坏，应移至废纸篓”。你可以将应用拖入 `/Applications` 后，在终端运行以下命令来解除限制：
+> ```bash
+> xattr -r -d com.apple.quarantine "/Applications/Schedule Everything.app"
+> ```
 
 ## 常用命令
 
