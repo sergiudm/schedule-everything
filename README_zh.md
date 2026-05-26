@@ -72,6 +72,8 @@ rmd setup
 ```bash
 rmd add "完成方案初稿" 9
 rmd add "Review PR #128" 7
+# 将每日紧急任务的警报延迟到明天（可选的第三个参数：天数）
+rmd add "Biology homework" 9 1
 rmd sync
 ```
 

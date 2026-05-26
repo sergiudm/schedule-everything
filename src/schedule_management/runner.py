@@ -250,6 +250,20 @@ class ScheduleRunner:
         except (TypeError, ValueError):
             return 0
 
+    @staticmethod
+    def _is_task_postponed(task: dict[str, Any], today: Any = None) -> bool:
+        """Check if a task's warning is postponed relative to the target date (today)."""
+        alarm_from = task.get("alarm_from")
+        if not alarm_from:
+            return False
+        try:
+            if today is None:
+                today = datetime.now().date()
+            alarm_from_date = datetime.strptime(alarm_from, "%Y-%m-%d").date()
+            return today < alarm_from_date
+        except Exception:
+            return False
+
     def _get_unfinished_urgent_tasks(self) -> list[dict[str, Any]]:
         """
         Get high-priority tasks that are still pending.
@@ -259,10 +273,13 @@ class ScheduleRunner:
         """
         tasks = load_tasks()
         urgent_tasks = []
+        today = datetime.now().date()
         for task in tasks:
             if not isinstance(task, dict):
                 continue
             if self._task_priority(task) > 7:
+                if self._is_task_postponed(task, today):
+                    continue
                 urgent_tasks.append(task)
         return urgent_tasks
 
@@ -287,10 +304,13 @@ class ScheduleRunner:
 
         try:
             tasks = load_tasks()
+            today = datetime.now().date()
             urgent_tasks = [
                 task
                 for task in tasks
-                if isinstance(task, dict) and self._task_priority(task) > 7
+                if isinstance(task, dict)
+                and self._task_priority(task) > 7
+                and not self._is_task_postponed(task, today)
             ]
 
             if not urgent_tasks:

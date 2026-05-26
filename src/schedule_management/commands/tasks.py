@@ -18,6 +18,7 @@ Example Usage (via CLI):
 
 import sys
 from datetime import datetime
+from typing import Any
 from schedule_management.i18n import _t
 
 try:
@@ -53,22 +54,34 @@ def add_task(args) -> int:
     its priority instead of creating a duplicate.
 
     Args:
-        args: Namespace with 'task' (description) and 'priority' (int)
+        args: Namespace with 'task' (description), 'priority' (int), and optional 'postpone' (int)
 
     Returns:
         0 on success, 1 on error
 
     Example:
-        $ rmd add "Complete homework" 7
-        ✅ Task 'Complete homework' added successfully with priority 7!
+        $ rmd add "Complete homework" 7 1
+        ✅ Task 'Complete homework' added successfully with priority 7! (Daily urgent alarm postponed until 2026-05-27)
     """
     task_description = args.task
     priority = args.priority
+    postpone = getattr(args, "postpone", None)
 
     # Validate priority
     if priority <= 0:
         print(_t("❌ Error: Priority must be a positive integer"))
         return 1
+
+    # Validate postpone
+    alarm_from = None
+    if postpone is not None and isinstance(postpone, int):
+        if postpone < 0:
+            print(_t("❌ Error: Postpone days must be a non-negative integer"))
+            return 1
+        if postpone > 0:
+            from datetime import timedelta
+            alarm_from_date = datetime.now().date() + timedelta(days=postpone)
+            alarm_from = alarm_from_date.isoformat()
 
     # Load existing tasks
     tasks = load_tasks()
@@ -85,14 +98,17 @@ def add_task(args) -> int:
         "description": task_description,
         "priority": priority,
     }
+    if alarm_from:
+        new_task["alarm_from"] = alarm_from
 
     # Update existing or add new
     if existing_task_index is not None:
         old_priority = tasks[existing_task_index]["priority"]
         tasks[existing_task_index] = new_task
+        suffix = _t(" (Daily urgent alarm postponed until {alarm_from})").format(alarm_from=alarm_from) if alarm_from else ""
         action_msg = _t("✅ Task '{task_description}' updated! Priority changed from {old_priority} to {priority}").format(
             task_description=task_description, old_priority=old_priority, priority=priority
-        )
+        ) + suffix
 
         # Log the update
         try:
@@ -101,9 +117,10 @@ def add_task(args) -> int:
             print(_t("⚠️  Warning: Could not log task update: {e}").format(e=e))
     else:
         tasks.append(new_task)
+        suffix = _t(" (Daily urgent alarm postponed until {alarm_from})").format(alarm_from=alarm_from) if alarm_from else ""
         action_msg = _t("✅ Task '{task_description}' added successfully with priority {priority}!").format(
             task_description=task_description, priority=priority
-        )
+        ) + suffix
 
         # Log the addition
         try:
@@ -158,8 +175,10 @@ def delete_task(args) -> int:
         print(_t("⚠️  No tasks found to delete"))
         return 1
 
-    # Sort tasks by priority (descending) to match show_tasks display
-    sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
+    # Sort tasks into three sections (procrastinated -> current -> incoming)
+    # ordered by priority descending in each section to match show_tasks display
+    today = datetime.now().date()
+    sorted_tasks = _sort_tasks_by_section_and_priority(tasks, today, procrastinate_list)
 
     total_deleted_count = 0
     all_errors = []
@@ -265,8 +284,54 @@ def _format_procrastination_suffix(age_days: int | None) -> str:
     if age_days == 0:
         return _t(" (deferred today)")
     if age_days == 1:
-        return _t(" (1 day)")
-    return _t(" ({age_days} days)").format(age_days=age_days)
+        return _t(" (1 day overdue)")
+    return _t(" ({age_days} days overdue)").format(age_days=age_days)
+
+
+def _format_postpone_suffix(days_left: int) -> str:
+    """Format postponement remaining days for the task list."""
+    if days_left <= 0:
+        return ""
+    if days_left == 1:
+        return _t(" (coming tomorrow)")
+    return _t(" (coming in {days_left} days)").format(days_left=days_left)
+
+
+def _sort_tasks_by_section_and_priority(
+    tasks: list[dict], today: Any, procrastinate_list: set[str]
+) -> list[dict]:
+    """
+    Sort tasks into three sections:
+    1. Procrastinated tasks
+    2. Current tasks
+    3. Incoming (future postponed) tasks
+    Within each section, tasks are ordered by priority (highest first).
+    """
+    def get_days_left(task) -> int:
+        alarm_from = task.get("alarm_from")
+        if alarm_from:
+            try:
+                alarm_from_date = datetime.strptime(alarm_from, "%Y-%m-%d").date()
+                return (alarm_from_date - today).days
+            except Exception:
+                pass
+        return 0
+
+    def task_sort_key(task):
+        days_left = get_days_left(task)
+        is_postponed_future = days_left > 0
+        is_procrastinated = (not is_postponed_future) and (task["description"] in procrastinate_list)
+
+        if is_procrastinated:
+            section = 0
+        elif not is_postponed_future:
+            section = 1
+        else:
+            section = 2
+
+        return (section, -task["priority"])
+
+    return sorted(tasks, key=task_sort_key)
 
 
 def show_tasks(args) -> int:
@@ -305,8 +370,9 @@ def show_tasks(args) -> int:
         console.print("[bold yellow]" + _t("📋 No tasks found") + "[/bold yellow]")
         return 0
 
-    # Sort by priority (highest first)
-    sorted_tasks = sorted(tasks, key=lambda x: x["priority"], reverse=True)
+    # Sort tasks into three sections (procrastinated -> current -> incoming)
+    # ordered by priority descending in each section
+    sorted_tasks = _sort_tasks_by_section_and_priority(tasks, today, procrastinate_list)
 
     # Create table
     table = Table(
@@ -323,6 +389,19 @@ def show_tasks(args) -> int:
     for i, task in enumerate(sorted_tasks, 1):
         description = task["description"]
         priority = task["priority"]
+        alarm_from = task.get("alarm_from")
+
+        postpone_suffix = ""
+        is_postponed_future = False
+        if alarm_from:
+            try:
+                alarm_from_date = datetime.strptime(alarm_from, "%Y-%m-%d").date()
+                days_left = (alarm_from_date - today).days
+                if days_left > 0:
+                    postpone_suffix = _format_postpone_suffix(days_left)
+                    is_postponed_future = True
+            except Exception:
+                pass
 
         # Color based on priority level
         if priority >= 8:
@@ -337,7 +416,12 @@ def show_tasks(args) -> int:
         empty = "░" * (10 - min(priority, 10))
 
         prio_visual = f"[{color}]{filled}[dim]{empty}[/dim] ({priority})[/{color}]"
-        if description in procrastinate_list:
+        if is_postponed_future:
+            description_text = Text(
+                f"💤 {description}{postpone_suffix}",
+                style="italic dim",
+            )
+        elif description in procrastinate_list:
             age_days = get_procrastinate_age_days(
                 procrastinate_records.get(description, {}).get("since"),
                 today=today,

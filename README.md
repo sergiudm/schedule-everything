@@ -65,6 +65,8 @@ sync the current day instead of rebuilding the whole schedule.
 ```bash
 rmd add "Finish proposal draft" 9
 rmd add "Review PR #128" 7
+# Postpone daily urgent alarm until tomorrow (optional third argument: days)
+rmd add "Biology homework" 9 1
 rmd sync
 ```
 

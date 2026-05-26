@@ -157,6 +157,13 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="PRIORITY",
         help="Priority level 1-10 (higher = more important)",
     )
+    add_parser.add_argument(
+        "postpone",
+        type=int,
+        nargs="?",
+        default=None,
+        help="Optional days to postpone daily urgent alarms (e.g., 1 for tomorrow, 2 for two days later)",
+    )
     add_parser.set_defaults(func=add_task)
 
     # rm - Delete tasks

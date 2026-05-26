@@ -1129,6 +1129,73 @@ class TestTaskManagement:
 
     @patch("schedule_management.commands.tasks.load_tasks")
     @patch("schedule_management.commands.tasks.save_tasks")
+    def test_add_task_with_postpone_success(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a task with a valid positive postpone argument."""
+        from datetime import datetime, timedelta
+        mock_load_tasks.return_value = []
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "Postponed project"
+        args.priority = 9
+        args.postpone = 2
+
+        result = reminder.add_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 1
+        assert saved_tasks[0]["description"] == "Postponed project"
+        assert saved_tasks[0]["priority"] == 9
+        
+        expected_date = (datetime.now().date() + timedelta(days=2)).isoformat()
+        assert saved_tasks[0]["alarm_from"] == expected_date
+
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
+    def test_add_task_with_negative_postpone(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a task with negative postpone fails validation."""
+        mock_load_tasks.return_value = []
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "Postponed project"
+        args.priority = 9
+        args.postpone = -1
+
+        with patch("builtins.print") as mock_print:
+            result = reminder.add_task(args)
+
+        assert result == 1
+        mock_save_tasks.assert_not_called()
+        mock_print.assert_called_once_with(
+            "❌ Error: Postpone days must be a non-negative integer"
+        )
+
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
+    def test_add_task_with_zero_postpone(self, mock_save_tasks, mock_load_tasks):
+        """Test adding a task with postpone=0 works and does not set alarm_from."""
+        mock_load_tasks.return_value = []
+        mock_save_tasks.return_value = None
+
+        args = MagicMock()
+        args.task = "Non-postponed project"
+        args.priority = 9
+        args.postpone = 0
+
+        result = reminder.add_task(args)
+
+        assert result == 0
+        mock_save_tasks.assert_called_once()
+        saved_tasks = mock_save_tasks.call_args[0][0]
+        assert len(saved_tasks) == 1
+        assert "alarm_from" not in saved_tasks[0]
+
+
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.save_tasks")
     def test_delete_task_success(self, mock_save_tasks, mock_load_tasks):
         """Test deleting an existing task successfully."""
         existing_tasks = [
@@ -1787,6 +1854,132 @@ class TestTaskManagement:
         assert len(procrastinated_cells) == 1
         assert procrastinated_cells[0].plain == "⏳ Delayed task (3 days)"
         assert procrastinated_cells[0].style == "italic dim"
+
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.load_procrastinate_records")
+    @patch("schedule_management.commands.tasks.Table")
+    def test_show_tasks_marks_postponed_tasks(
+        self,
+        mock_table_class,
+        mock_load_procrastinate_records,
+        mock_load_tasks,
+    ):
+        """Test that future postponed tasks are prefixed and styled with sleep emoji and days left."""
+        from datetime import datetime
+
+        mock_load_tasks.return_value = [
+            {"description": "Task tomorrow", "priority": 9, "alarm_from": "2026-04-09"},
+            {"description": "Task in 2 days", "priority": 8, "alarm_from": "2026-04-10"},
+            {"description": "Today or past task", "priority": 7, "alarm_from": "2026-04-08"},
+        ]
+        mock_load_procrastinate_records.return_value = {}
+
+        mock_table = MagicMock()
+        mock_table_class.return_value = mock_table
+
+        args = MagicMock()
+
+        with patch("schedule_management.commands.tasks.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            with patch("schedule_management.commands.tasks.datetime") as mock_datetime:
+                mock_datetime.now.return_value = datetime(2026, 4, 8, 9, 0)
+                mock_datetime.strptime = datetime.strptime
+                result = reminder.show_tasks(args)
+
+        assert result == 0
+        description_cells = [
+            call.args[2]
+            for call in mock_table.add_row.call_args_list
+            if len(call.args) >= 3
+        ]
+
+        postponed_cells = [
+            cell
+            for cell in description_cells
+            if hasattr(cell, "plain") and cell.plain.startswith("💤 ")
+        ]
+        assert len(postponed_cells) == 2
+        # Highest priority first
+        assert postponed_cells[0].plain == "💤 Task tomorrow (1 day left)"
+        assert postponed_cells[0].style == "italic dim"
+        assert postponed_cells[1].plain == "💤 Task in 2 days (2 days left)"
+        assert postponed_cells[1].style == "italic dim"
+
+
+    @patch("schedule_management.commands.tasks.load_tasks")
+    @patch("schedule_management.commands.tasks.load_procrastinate_records")
+    @patch("schedule_management.commands.tasks.Table")
+    def test_show_tasks_sorted_by_section_and_priority(
+        self,
+        mock_table_class,
+        mock_load_procrastinate_records,
+        mock_load_tasks,
+    ):
+        """Test that tasks are ordered: procrastinated -> current -> incoming, and sorted by priority descending in each section."""
+        from datetime import datetime
+
+        # Task 1: Procrastinated, priority 5
+        # Task 2: Current, priority 9
+        # Task 3: Incoming, priority 10
+        # Task 4: Procrastinated, priority 8
+        # Task 5: Current, priority 3
+        # Task 6: Incoming, priority 2
+        mock_load_tasks.return_value = [
+            {"description": "Task 1 (proc 5)", "priority": 5},
+            {"description": "Task 2 (curr 9)", "priority": 9},
+            {"description": "Task 3 (inc 10)", "priority": 10, "alarm_from": "2026-04-10"},
+            {"description": "Task 4 (proc 8)", "priority": 8},
+            {"description": "Task 5 (curr 3)", "priority": 3},
+            {"description": "Task 6 (inc 2)", "priority": 2, "alarm_from": "2026-04-10"},
+        ]
+        # Set Procrastinated tasks
+        mock_load_procrastinate_records.return_value = {
+            "Task 1 (proc 5)": {"since": "2026-04-05"},
+            "Task 4 (proc 8)": {"since": "2026-04-05"},
+        }
+
+        mock_table = MagicMock()
+        mock_table_class.return_value = mock_table
+
+        args = MagicMock()
+
+        with patch("schedule_management.commands.tasks.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            with patch("schedule_management.commands.tasks.datetime") as mock_datetime:
+                mock_datetime.now.return_value = datetime(2026, 4, 8, 9, 0)
+                mock_datetime.strptime = datetime.strptime
+                result = reminder.show_tasks(args)
+
+        assert result == 0
+
+        # Extract the description strings that were added as rows
+        added_rows = [
+            call.args[2].plain
+            for call in mock_table.add_row.call_args_list
+            if len(call.args) >= 3
+        ]
+
+        # The expected order should be:
+        # Procrastinated tasks (prio 8 first, then 5):
+        # 1. ⏳ Task 4 (proc 8) (3 days)
+        # 2. ⏳ Task 1 (proc 5) (3 days)
+        # Current tasks (prio 9 first, then 3):
+        # 3. Task 2 (curr 9)
+        # 4. Task 5 (curr 3)
+        # Incoming tasks (prio 10 first, then 2):
+        # 5. 💤 Task 3 (inc 10) (2 days left)
+        # 6. 💤 Task 6 (inc 2) (2 days left)
+
+        assert len(added_rows) == 6
+        assert added_rows[0] == "⏳ Task 4 (proc 8) (3 days)"
+        assert added_rows[1] == "⏳ Task 1 (proc 5) (3 days)"
+        assert added_rows[2] == "Task 2 (curr 9)"
+        assert added_rows[3] == "Task 5 (curr 3)"
+        assert added_rows[4] == "💤 Task 3 (inc 10) (2 days left)"
+        assert added_rows[5] == "💤 Task 6 (inc 2) (2 days left)"
+
 
     @patch("schedule_management.commands.tasks.log_task_action")
     @patch("schedule_management.commands.tasks.save_procrastinate_list")

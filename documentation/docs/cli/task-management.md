@@ -12,7 +12,7 @@ Add a new task or update an existing one with an importance level.
 
 ### Syntax
 ```bash
-rmd add "TASK_DESCRIPTION" PRIORITY_LEVEL
+rmd add "TASK_DESCRIPTION" PRIORITY_LEVEL [POSTPONE_DAYS]
 ```
 
 ### Parameters
@@ -20,6 +20,7 @@ rmd add "TASK_DESCRIPTION" PRIORITY_LEVEL
 |-----------|------|-------------|
 | `TASK_DESCRIPTION` | string | Description of the task (quoted if contains spaces) |
 | `PRIORITY_LEVEL` | integer | Priority level from 1-10 (higher = more important) |
+| `POSTPONE_DAYS` | integer (optional) | Number of days to postpone the daily urgent alarm (e.g. 1 for tomorrow, 2 for two days later) |
 
 ### Examples
 ```bash
@@ -31,6 +32,12 @@ rmd add "Review pull request #123" 5
 
 # Add high-priority task
 rmd add "Call dentist" 9
+
+# Add task with alarm postponed to tomorrow
+rmd add "Biology homework" 9 1
+
+# Add task with alarm postponed for two days
+rmd add "Fix buggy script" 8 2
 ```
 
 ### Smart Duplicate Handling

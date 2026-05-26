@@ -79,6 +79,8 @@ ZH_TRANSLATIONS = {
     " (deferred today)": " (今天已延期)",
     " (1 day)": " (1 天)",
     " ({age_days} days)": " ({age_days} 天)",
+    " (1 day left)": " (剩余 1 天)",
+    " ({days_left} days left)": " (剩余 {days_left} 天)",
     "📋 No tasks found": "📋 未找到任务",
     "Current Task List": "当前任务列表",
     "ID": "ID",

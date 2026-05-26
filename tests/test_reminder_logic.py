@@ -670,3 +670,48 @@ class TestUrgentDeadlines:
         runner._check_urgent_deadlines()
 
         runner._trigger_alarm.assert_not_called()
+
+
+class TestUrgentTasksPostpone:
+    def test_postponed_tasks_skipped_in_runner(self, tmp_path, monkeypatch):
+        import json
+        from datetime import datetime
+        from unittest.mock import patch, MagicMock
+
+        import schedule_management.runner as runner_module
+        import schedule_management.data.loaders as data_loaders
+
+        tasks_path = tmp_path / "tasks.json"
+
+        # Task A is postponed to tomorrow (2026-04-09)
+        # Task B is postponed to today (2026-04-08) - should NOT be skipped today
+        # Task C has no postponement - should NOT be skipped today
+        # Task D is postponed to two days later (2026-04-10)
+        tasks_path.write_text(
+            json.dumps(
+                [
+                    {"description": "Task A", "priority": 9, "alarm_from": "2026-04-09"},
+                    {"description": "Task B", "priority": 8, "alarm_from": "2026-04-08"},
+                    {"description": "Task C", "priority": 9},
+                    {"description": "Task D", "priority": 10, "alarm_from": "2026-04-10"},
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(data_loaders, "TASKS_PATH", str(tasks_path))
+
+        runner = runner_module.ScheduleRunner.__new__(runner_module.ScheduleRunner)
+
+        with patch.object(runner_module, "datetime") as mock_datetime:
+            mock_datetime.now.return_value = datetime(2026, 4, 8, 9, 0)
+            mock_datetime.strptime = datetime.strptime
+
+            # Test _get_unfinished_urgent_tasks
+            unfinished = runner._get_unfinished_urgent_tasks()
+            descriptions = [t["description"] for t in unfinished]
+            assert "Task A" not in descriptions
+            assert "Task D" not in descriptions
+            assert "Task B" in descriptions
+            assert "Task C" in descriptions
+
